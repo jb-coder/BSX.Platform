@@ -95,3 +95,12 @@ dotnet_naming_style.pascal.capitalization = pascal_case
 
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1062.severity = none
+
+# ---------------------------------------------------------------------------
+# Entity Framework Core migrations (generated code)
+# ---------------------------------------------------------------------------
+
+[**/Migrations/*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+dotnet_diagnostic.IDE0005.severity = none

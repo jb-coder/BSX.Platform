@@ -6,7 +6,7 @@ namespace BSX.SharedKernel.Primitives;
 /// place where domain events may be raised.
 /// </summary>
 /// <typeparam name="TId">The type of the aggregate identifier.</typeparam>
-public abstract class AggregateRoot<TId> : Entity<TId>
+public abstract class AggregateRoot<TId> : Entity<TId>, IHasDomainEvents
     where TId : notnull
 {
     private readonly List<IDomainEvent> _domainEvents = [];

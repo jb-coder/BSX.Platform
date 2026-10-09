@@ -40,6 +40,9 @@ Identity
 - JWT
 - Refresh Tokens
 
+Status: Domain, Application and Infrastructure (EF Core + PostgreSQL, outbox, auditing, soft delete) implemented; endpoints and tokens pending.
+
+
 ---
 
 ## Phase 3
