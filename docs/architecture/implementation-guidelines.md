@@ -22,7 +22,10 @@ src/Modules/<Module>
 | `<Module>.Application` | `<Module>.Domain`, `BSX.BuildingBlocks`, `BSX.SharedKernel` |
 | `<Module>.Infrastructure` | `<Module>.Application`, `<Module>.Domain` |
 | `<Module>.Endpoints` | `<Module>.Application` |
-| `<Module>.Contracts` | `BSX.SharedKernel` |
+| `<Module>.Contracts` | `BSX.Contracts` |
+
+`BSX.Contracts` owns the cross-module contract primitives (`IIntegrationEvent`, shared
+identifiers); module Contracts depend on it, never on `BSX.BuildingBlocks` (ADR-015).
 
 - `Domain` never references EF Core, BuildingBlocks or another module.
 - Other modules reference only `<Module>.Contracts`.

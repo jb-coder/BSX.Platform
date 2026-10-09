@@ -18,6 +18,14 @@ tests/Modules/<Module>
 └── <Module>.IntegrationTests
 ```
 
+## Platform Projects Referenced by Modules
+
+| Project | Purpose |
+| --- | --- |
+| `BSX.SharedKernel` | Domain primitives and `Result`. |
+| `BSX.Contracts` | Cross-module contract primitives: `IIntegrationEvent`, shared identifiers. |
+| `BSX.BuildingBlocks` | CQRS, behaviors, persistence and authorization abstractions. |
+
 ## Dependency Direction
 
 ```mermaid
@@ -27,28 +35,35 @@ flowchart TD
     INFRA["Module.Infrastructure"]
     EP["Module.Endpoints"]
     CONTRACTS["Module.Contracts"]
-    SK[BSX.SharedKernel]
-    BB[BSX.BuildingBlocks]
-    OTHER[Other modules]
+    SK["BSX.SharedKernel"]
+    CON["BSX.Contracts"]
+    BB["BSX.BuildingBlocks"]
+    OTHER["Other modules"]
 
     DOMAIN --> SK
     APP --> DOMAIN
+    APP --> CONTRACTS
     APP --> BB
     APP --> SK
     INFRA --> APP
     INFRA --> DOMAIN
     EP --> APP
-    CONTRACTS --> SK
+    CONTRACTS --> CON
+    CON --> SK
+    BB --> CON
     OTHER -->|"references only"| CONTRACTS
 ```
 
 Rules:
 
 - `Domain` depends on the SharedKernel only. No EF Core, no BuildingBlocks, no other module.
-- `Application` depends on Domain and BuildingBlocks. It defines ports; it does not implement
-  infrastructure.
+- `Application` depends on Domain, its own Contracts, BuildingBlocks and the SharedKernel. It
+  defines ports; it does not implement infrastructure.
 - `Infrastructure` depends on Application and Domain and owns EF Core.
 - `Endpoints` depends on Application and maps `Result` to transport.
+- `Contracts` depends on `BSX.Contracts` only (ADR-015). It carries integration events, integration
+  DTOs and shared identifiers; it never references a module's Domain, Application or
+  Infrastructure.
 - Other modules reference **only** `Module.Contracts`. Direct references to another module's
   Domain/Application/Infrastructure are forbidden.
 - Inter-module reactions use integration events (ADR-009), never direct calls.
@@ -68,3 +83,6 @@ flowchart LR
 Each module exposes a single `IModule` entry point that registers its services, handlers,
 validators, configurations and endpoints. The host composes modules without knowing their
 internals. Solution folders `src/Modules` and `src/Platform` hold the modules until implemented.
+
+See [ADR-015](../decisions/ADR-015-Contracts-Abstraction-Strategy.md) for the contracts
+abstraction rationale.

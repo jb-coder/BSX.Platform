@@ -17,6 +17,12 @@ affects long-term maintainability, module boundaries, or the technology baseline
 | [ADR-010](ADR-010-Auditing-Strategy.md) | Auditing Strategy | Accepted |
 | [ADR-011](ADR-011-Result-And-Error-Mapping-Strategy.md) | Result and Error Mapping Strategy | Accepted |
 | [ADR-012](ADR-012-Authorization-Architecture.md) | Authorization Architecture | Accepted |
+| [ADR-013](ADR-013-Multi-Tenant-Identity-Strategy.md) | Multi-Tenant Identity Strategy | Accepted |
+| [ADR-014](ADR-014-Credential-Model-Strategy.md) | Credential Model Strategy | Accepted |
+| [ADR-015](ADR-015-Contracts-Abstraction-Strategy.md) | Contracts Abstraction Strategy | Accepted |
+| [ADR-016](ADR-016-Password-Reset-Security-Strategy.md) | Password Reset Security Strategy | Accepted |
+| [ADR-017](ADR-017-Token-Invalidation-And-Session-Strategy.md) | Token Invalidation, Security Stamp and Session Strategy | Accepted |
+| [ADR-018](ADR-018-Role-Lifecycle-And-Permission-Cache-Strategy.md) | Role Lifecycle and Permission Cache Strategy | Accepted |
 
 ## Conventions
 

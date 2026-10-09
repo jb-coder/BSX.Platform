@@ -18,6 +18,7 @@ BSX.Platform
 │
 ├── src
 │   ├── BSX.SharedKernel        Platform kernel (DDD primitives + Result)
+│   ├── BSX.Contracts           Cross-module contract primitives (integration events, shared ids)
 │   ├── BSX.BuildingBlocks      Technical cross-cutting abstractions
 │   ├── BSX.Web                 Blazor Web App composition root
 │   ├── Modules                 Business modules (planned, no projects yet)
@@ -51,7 +52,8 @@ Contents: `Entity<TId>`, `AggregateRoot<TId>`, `IHasDomainEvents`, `ValueObject`
 
 ### BSX.BuildingBlocks
 
-Reusable technical patterns shared by every module. References `BSX.SharedKernel` only.
+Reusable technical patterns shared by every module. References `BSX.SharedKernel` and
+`BSX.Contracts`.
 
 Contents: CQRS abstractions and dispatcher, the canonical pipeline behaviors, domain/integration
 event abstractions, persistence abstractions, authorization abstractions and the `IModule`
@@ -69,12 +71,17 @@ through `IModule` and hosts the application. It contains no business features.
 
 ```text
 BSX.Web  ──►  BSX.BuildingBlocks  ──►  BSX.SharedKernel
+                     │
+                     └──►  BSX.Contracts  ──►  BSX.SharedKernel
+
+<Module>.Contracts  ──►  BSX.Contracts
 ```
 
 - `BSX.SharedKernel` depends on nothing.
-- `BSX.BuildingBlocks` may depend on `BSX.SharedKernel` only.
-- `BSX.Web` may depend on both.
-- Modules may depend on the kernel and the building blocks; the internal module direction is
+- `BSX.Contracts` owns integration-event primitives and shared identifiers (ADR-015).
+- `BSX.BuildingBlocks` may depend on `BSX.SharedKernel` and `BSX.Contracts`.
+- `BSX.Web` may depend on the platform projects.
+- Modules may depend on the kernel, contracts and building blocks; the internal module direction is
   defined in [module-structure.md](../diagrams/module-structure.md).
 - Modules must never depend on each other's implementation; they communicate through integration
   events and `<Module>.Contracts`.
@@ -130,6 +137,12 @@ decisions:
 | `ICurrentUser` unregistered; no authorization behavior | [ADR-012](../decisions/ADR-012-Authorization-Architecture.md) — always-registered defaults, fail-closed checker, authorization behavior. |
 | No transaction enforcement for commands | `TransactionBehavior` (pipeline) — see [implementation-guidelines.md](implementation-guidelines.md). |
 | No module composition contract | `IModule` — see [module-structure.md](../diagrams/module-structure.md). |
+| Contracts/`IIntegrationEvent` dependency contradiction | [ADR-015](../decisions/ADR-015-Contracts-Abstraction-Strategy.md) — `BSX.Contracts` owns integration-event primitives. |
+| Single-tenant identity model blocked multi-company/SaaS | [ADR-013](../decisions/ADR-013-Multi-Tenant-Identity-Strategy.md) — global identity + tenant membership. |
+| Single `PasswordCredential` blocked MFA/passkeys/API keys | [ADR-014](../decisions/ADR-014-Credential-Model-Strategy.md) — principal + hybrid credential model. |
+| Reset token persisted in Outbox | [ADR-016](../decisions/ADR-016-Password-Reset-Security-Strategy.md) — hashed token + encrypted sensitive payloads. |
+| Security stamp / token invalidation / session gaps | [ADR-017](../decisions/ADR-017-Token-Invalidation-And-Session-Strategy.md). |
+| Role deletion, system-role sync, permission cache gaps | [ADR-018](../decisions/ADR-018-Role-Lifecycle-And-Permission-Cache-Strategy.md). |
 
 The concrete conventions every module must follow are in
 [implementation-guidelines.md](implementation-guidelines.md).
