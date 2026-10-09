@@ -48,8 +48,12 @@ Namespace: `BSX.BuildingBlocks.Events`
 
 - `IDomainEventDispatcher` and its in-process implementation
 - `IDomainEventHandler<TDomainEvent>`
-- `IIntegrationEvent`
-- `IEventBus`
+- Outbox publishing of integration events
+
+The integration-event contract primitives (`IIntegrationEvent` and the integration-event base)
+live in `BSX.Contracts`, so module Contracts can reference them without depending on
+BuildingBlocks. `IEventBus` remains the publishing abstraction. See
+[ADR-015](../decisions/ADR-015-Contracts-Abstraction-Strategy.md).
 
 Domain events are internal to a module and dispatched in-process after commit. Integration events
 are the only inter-module channel and travel through the Outbox. See

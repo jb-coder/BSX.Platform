@@ -41,6 +41,10 @@ Each module exposes a `<Module>.Contracts` project. It is the **only** project o
 reference. It contains integration events and integration DTOs, never domain or infrastructure
 types.
 
+`<Module>.Contracts` references `BSX.Contracts`, which owns the cross-module contract primitives
+(`IIntegrationEvent`, the integration-event base and shared identifiers). See
+[ADR-015](../decisions/ADR-015-Contracts-Abstraction-Strategy.md).
+
 ---
 
 ## Forbidden Communication

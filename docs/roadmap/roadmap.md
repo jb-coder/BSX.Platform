@@ -25,6 +25,7 @@ Core — Done
 - [x] Architecture tests
 - [x] Build governance (.NET 10, central package management)
 - [x] Architecture hardening (ADR-009 domain dispatch, ADR-010 auditing, ADR-011 errors, ADR-012 authorization)
+- [x] Identity architecture hardening (ADR-013 multi-tenant identity, ADR-014 credentials, ADR-015 contracts, ADR-016 password reset, ADR-017 tokens/sessions, ADR-018 roles/permissions)
 
 ---
 
