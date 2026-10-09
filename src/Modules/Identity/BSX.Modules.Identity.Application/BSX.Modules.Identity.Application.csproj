@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.Modules.Identity.Application</RootNamespace>
+    <AssemblyName>BSX.Modules.Identity.Application</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Identity.Domain\BSX.Modules.Identity.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
