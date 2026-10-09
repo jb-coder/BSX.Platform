@@ -2,24 +2,29 @@
 
 ## Phase 0
 
-Foundation
+Foundation — Done
 
-- Documentation
-- ADRs
-- Architecture
-- Agents
-- Skills
+- [x] Documentation
+- [x] ADRs
+- [x] Architecture
+- [x] Agents
+- [x] Skills
 
 ---
 
 ## Phase 1
 
-Core
+Core — Done
 
-- SharedKernel
-- BuildingBlocks
-- Result Pattern
-- Domain Events
+- [x] SharedKernel
+- [x] BuildingBlocks
+- [x] Result Pattern
+- [x] Domain Events
+- [x] In-process CQRS dispatcher
+- [x] Validation and logging behaviors
+- [x] Architecture tests
+- [x] Build governance (.NET 10, central package management)
+- [x] Architecture hardening (ADR-009 domain dispatch, ADR-010 auditing, ADR-011 errors, ADR-012 authorization)
 
 ---
 

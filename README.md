@@ -104,6 +104,10 @@ src
     └── Observability
 ```
 
+`Modules` and `Platform` are currently solution folders only. The kernel (`BSX.SharedKernel`
+and `BSX.BuildingBlocks`) and the `BSX.Web` composition root are implemented. See
+[docs/architecture/foundation.md](docs/architecture/foundation.md).
+
 ---
 
 ## Architectural Principles
@@ -195,8 +199,8 @@ v2.0.0
 
 ### Foundation
 
-- [ ] Shared Kernel
-- [ ] Building Blocks
+- [x] Shared Kernel
+- [x] Building Blocks
 - [ ] Identity Module
 - [ ] Authorization
 - [ ] Auditing

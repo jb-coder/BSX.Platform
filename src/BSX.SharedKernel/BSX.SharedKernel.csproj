@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.SharedKernel</RootNamespace>
+    <AssemblyName>BSX.SharedKernel</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    The Shared Kernel must remain extremely small.
+    Allowed contents: Entity, AggregateRoot, ValueObject, DomainEvent, Result and Error.
+    It must have zero external dependencies and stay database agnostic.
+  -->
+
+</Project>
