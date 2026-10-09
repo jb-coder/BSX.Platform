@@ -29,8 +29,10 @@ public static class BuildingBlocksServiceCollectionExtensions
         services.TryAddScoped<ISender, Sender>();
         services.TryAddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
-        services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
+        // Canonical pipeline order (outermost first): Logging, Validation, Authorization, Transaction.
         services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>)));
 
         foreach (Assembly assembly in handlerAssemblies)
         {

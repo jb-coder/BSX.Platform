@@ -60,11 +60,13 @@ Pipeline order (fixed): **Logging → Validation → Authorization → Transacti
 
 ## 4. Transactions
 
-- Only commands run inside transactions, opened and committed by `TransactionBehavior` through
-  `IUnitOfWork`.
-- Commands must not manage transactions manually.
+- Only commands run inside transactions. `TransactionBehavior` opens the transaction, rolls back
+  on failure, and invokes the commit seam; queries never transact.
+- Commands persist through `IUnitOfWork.SaveChangesAndDispatchAsync` (the ADR-009 seam). Handlers
+  must not manage transactions manually.
 - Multi-step commands use a single unit-of-work commit; avoid partial saves.
-- Domain events are persisted in the same transaction and dispatched after commit (ADR-009).
+- The seam persists state and events atomically, commits, then dispatches domain events
+  (ADR-009). See [persistence-dispatch.md](persistence-dispatch.md).
 
 ---
 

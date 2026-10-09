@@ -135,7 +135,7 @@ decisions:
 | Auditing interfaces forced Domain → BuildingBlocks | [ADR-010](../decisions/ADR-010-Auditing-Strategy.md) — auditing moved to shadow properties; interfaces removed. |
 | Transport semantics in the kernel; flat validation errors | [ADR-011](../decisions/ADR-011-Result-And-Error-Mapping-Strategy.md) — semantic `ErrorKind`, structured errors, adapter-only mapping. |
 | `ICurrentUser` unregistered; no authorization behavior | [ADR-012](../decisions/ADR-012-Authorization-Architecture.md) — always-registered defaults, fail-closed checker, authorization behavior. |
-| No transaction enforcement for commands | `TransactionBehavior` (pipeline) — see [implementation-guidelines.md](implementation-guidelines.md). |
+| No transaction enforcement or dispatch seam for commands | `TransactionBehavior` + `IUnitOfWork.SaveChangesAndDispatchAsync` + `UnitOfWorkBase` (ADR-009) — see [persistence-dispatch.md](persistence-dispatch.md). |
 | No module composition contract | `IModule` — see [module-structure.md](../diagrams/module-structure.md). |
 | Contracts/`IIntegrationEvent` dependency contradiction | [ADR-015](../decisions/ADR-015-Contracts-Abstraction-Strategy.md) — `BSX.Contracts` owns integration-event primitives. |
 | Single-tenant identity model blocked multi-company/SaaS | [ADR-013](../decisions/ADR-013-Multi-Tenant-Identity-Strategy.md) — global identity + tenant membership. |

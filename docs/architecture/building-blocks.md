@@ -35,10 +35,13 @@ Canonical order (outermost first):
 
 1. `LoggingBehavior` — structured start/completion logging.
 2. `ValidationBehavior` — FluentValidation; short-circuits with structured validation errors.
-3. `AuthorizationBehavior` — permission gate for requests that declare a requirement.
-4. `TransactionBehavior` — opens a transaction for commands only.
+3. `AuthorizationBehavior` — permission gate for requests that declare a requirement (ADR-012; pending).
+4. `TransactionBehavior` — opens a transaction for commands only, rolls back on failure, and
+   invokes the post-commit persistence and dispatch seam (ADR-009).
 
-See [cqrs-pipeline.md](../diagrams/cqrs-pipeline.md).
+Only commands are transacted; queries bypass `TransactionBehavior`. See
+[cqrs-pipeline.md](../diagrams/cqrs-pipeline.md) and
+[persistence-dispatch.md](persistence-dispatch.md).
 
 ---
 
@@ -68,12 +71,18 @@ it never fails before a broker is configured.
 
 Namespace: `BSX.BuildingBlocks.Persistence`
 
-- `IUnitOfWork`
+- `IUnitOfWork` — `SaveChangesAsync`, `BeginTransactionAsync`, and the ADR-009 seam
+  `SaveChangesAndDispatchAsync`.
 - `IDatabaseTransaction`
+- `UnitOfWorkBase` — abstract base that owns the ordered post-commit flow (collect events →
+  persist → commit → clear → dispatch) and delegates the store-specific hooks to Infrastructure.
 
-Auditing and soft delete are **not** contracts. They are applied by the persistence layer through
-EF Core shadow properties and a centralized interceptor. Domain entities do not implement
-auditing interfaces. See [ADR-010](../decisions/ADR-010-Auditing-Strategy.md).
+`SaveChangesAndDispatchAsync` is the single commit and dispatch point used by
+`TransactionBehavior`. Auditing and soft delete are **not** contracts; they are applied by the
+persistence layer through EF Core shadow properties and a centralized interceptor. See
+[ADR-009](../decisions/ADR-009-Domain-Event-Dispatching-Strategy.md),
+[ADR-010](../decisions/ADR-010-Auditing-Strategy.md), and
+[persistence-dispatch.md](persistence-dispatch.md).
 
 ---
 

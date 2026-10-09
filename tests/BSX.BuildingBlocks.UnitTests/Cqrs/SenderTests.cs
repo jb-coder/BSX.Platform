@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.DependencyInjection;
+using BSX.BuildingBlocks.Persistence;
 using BSX.BuildingBlocks.UnitTests.Fixtures;
 using BSX.SharedKernel.Results;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,6 +71,7 @@ public sealed class SenderTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<IUnitOfWork, FakeUnitOfWork>();
         services.AddBuildingBlocks(typeof(SenderTests).Assembly);
         return services.BuildServiceProvider().GetRequiredService<ISender>();
     }
