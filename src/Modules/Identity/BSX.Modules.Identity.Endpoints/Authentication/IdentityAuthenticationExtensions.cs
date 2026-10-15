@@ -39,7 +39,7 @@ public static class IdentityAuthenticationExtensions
                 };
             });
 
-        services.TryAddScoped<ICurrentUser, ClaimsPrincipalCurrentUser>();
+        services.Replace(ServiceDescriptor.Scoped<ICurrentUser, ClaimsPrincipalCurrentUser>());
         return services;
     }
 }

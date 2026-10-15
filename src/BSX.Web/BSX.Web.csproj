@@ -20,6 +20,9 @@
   <ItemGroup>
     <ProjectReference Include="..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
     <ProjectReference Include="..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\Modules\Identity\BSX.Modules.Identity.Application\BSX.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\Modules\Identity\BSX.Modules.Identity.Infrastructure\BSX.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Identity\BSX.Modules.Identity.Endpoints\BSX.Modules.Identity.Endpoints.csproj" />
   </ItemGroup>
 
 </Project>
