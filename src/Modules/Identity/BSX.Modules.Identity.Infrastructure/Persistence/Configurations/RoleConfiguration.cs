@@ -20,6 +20,7 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(role => role.IsDeleted).IsRequired();
 
         builder.HasIndex(role => new { role.TenantId, role.Name }).IsUnique();
+        builder.HasIndex(role => role.Name).IsUnique().HasFilter("\"TenantId\" IS NULL");
 
         builder.Ignore(role => role.DomainEvents);
 

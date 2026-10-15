@@ -1,6 +1,7 @@
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Roles;
 using BSX.Modules.Identity.Domain.ServiceAccounts;
+using BSX.Modules.Identity.Domain.Sessions;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Infrastructure.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,9 @@ public sealed class IdentityDbContext : DbContext
 
     /// <summary>Gets the API keys.</summary>
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
+    /// <summary>Gets the user sessions (ADR-017).</summary>
+    public DbSet<UserSession> Sessions => Set<UserSession>();
 
     /// <summary>Gets the transactional outbox (ADR-009).</summary>
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

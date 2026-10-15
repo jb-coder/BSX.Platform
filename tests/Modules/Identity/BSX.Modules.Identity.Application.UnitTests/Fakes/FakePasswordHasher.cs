@@ -7,4 +7,7 @@ namespace BSX.Modules.Identity.Application.UnitTests.Fakes;
 internal sealed class FakePasswordHasher : IPasswordHasher
 {
     public PasswordHash Hash(string plainTextPassword) => PasswordHash.From($"hashed::{plainTextPassword}", "fake");
+
+    public bool Verify(string plainTextPassword, PasswordHash passwordHash)
+        => passwordHash.Hash == $"hashed::{plainTextPassword}";
 }

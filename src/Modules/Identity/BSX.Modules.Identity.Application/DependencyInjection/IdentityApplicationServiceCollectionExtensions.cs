@@ -1,5 +1,7 @@
 using BSX.BuildingBlocks.DependencyInjection;
+using BSX.Modules.Identity.Application.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace BSX.Modules.Identity.Application.DependencyInjection;
 
@@ -17,6 +19,7 @@ public static class IdentityApplicationServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddBuildingBlocks(typeof(IdentityApplicationServiceCollectionExtensions).Assembly);
+        services.TryAddScoped<PermissionResolver>();
         return services;
     }
 }

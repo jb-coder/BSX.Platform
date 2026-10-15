@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Sessions = BSX.Modules.Identity.Domain.Sessions;
 using ValueObjects = BSX.Modules.Identity.Domain.ValueObjects;
 
 namespace BSX.Modules.Identity.Infrastructure.Persistence.Configurations;
@@ -59,4 +60,13 @@ internal static class IdentityValueConverters
 
     public static readonly ValueConverter<ValueObjects.ApiKeyHash, string> ApiKeyHash =
         new(value => value.Value, value => ValueObjects.ApiKeyHash.From(value));
+
+    public static readonly ValueConverter<Sessions.SessionId, Guid> SessionId =
+        new(value => value.Value, value => Sessions.SessionId.From(value));
+
+    public static readonly ValueConverter<Sessions.RefreshTokenId, Guid> RefreshTokenId =
+        new(value => value.Value, value => Sessions.RefreshTokenId.From(value));
+
+    public static readonly ValueConverter<ValueObjects.RefreshTokenHash, string> RefreshTokenHash =
+        new(value => value.Value, value => ValueObjects.RefreshTokenHash.From(value));
 }

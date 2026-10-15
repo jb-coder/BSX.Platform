@@ -18,6 +18,7 @@ public sealed class UserSession : AggregateRoot<SessionId>
         SessionId id,
         UserId userId,
         TenantId? tenantId,
+        string securityStamp,
         RefreshTokenHash hash,
         SessionMetadata metadata,
         DateTimeOffset nowUtc,
@@ -26,6 +27,7 @@ public sealed class UserSession : AggregateRoot<SessionId>
     {
         UserId = userId;
         TenantId = tenantId;
+        SecurityStamp = securityStamp;
         Metadata = metadata;
         Status = SessionStatus.Active;
         CreatedOnUtc = nowUtc;
@@ -44,6 +46,9 @@ public sealed class UserSession : AggregateRoot<SessionId>
 
     /// <summary>Gets the tenant active at session start, if any.</summary>
     public TenantId? TenantId { get; private set; }
+
+    /// <summary>Gets the security stamp captured at session start (ADR-017).</summary>
+    public string SecurityStamp { get; private set; } = null!;
 
     /// <summary>Gets the session status.</summary>
     public SessionStatus Status { get; private set; }
@@ -80,12 +85,13 @@ public sealed class UserSession : AggregateRoot<SessionId>
         SessionId id,
         UserId userId,
         TenantId? tenantId,
+        string securityStamp,
         RefreshTokenHash hash,
         SessionMetadata metadata,
         DateTimeOffset nowUtc,
         SessionPolicy policy)
     {
-        var session = new UserSession(id, userId, tenantId, hash, metadata, nowUtc, policy);
+        var session = new UserSession(id, userId, tenantId, securityStamp, hash, metadata, nowUtc, policy);
         session.RaiseDomainEvent(new SessionStarted(id, userId, tenantId?.Value));
         return Result.Success(session);
     }

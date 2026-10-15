@@ -28,4 +28,46 @@ internal sealed class PasswordHasher : IPasswordHasher
         string encoded = $"{Iterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(key)}";
         return PasswordHash.From(encoded, Algorithm);
     }
+
+    /// <inheritdoc />
+    public bool Verify(string plainTextPassword, PasswordHash passwordHash)
+    {
+        ArgumentNullException.ThrowIfNull(passwordHash);
+
+        if (string.IsNullOrEmpty(plainTextPassword))
+        {
+            return false;
+        }
+
+        // Backward-compatible parsing: iterations.salt.key (base64). Unknown formats fail closed.
+        string[] parts = passwordHash.Hash.Split('.');
+        if (parts.Length != 3
+            || !int.TryParse(parts[0], out int iterations)
+            || iterations <= 0)
+        {
+            return false;
+        }
+
+        byte[] salt;
+        byte[] expectedKey;
+
+        try
+        {
+            salt = Convert.FromBase64String(parts[1]);
+            expectedKey = Convert.FromBase64String(parts[2]);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        byte[] actualKey = Rfc2898DeriveBytes.Pbkdf2(
+            plainTextPassword,
+            salt,
+            iterations,
+            HashAlgorithmName.SHA256,
+            expectedKey.Length);
+
+        return CryptographicOperations.FixedTimeEquals(actualKey, expectedKey);
+    }
 }

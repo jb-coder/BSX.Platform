@@ -93,6 +93,19 @@ internal sealed class AuditingSaveChangesInterceptor : SaveChangesInterceptor
                 SetIfPresent(entry, "SearchEmail", user.Email.Value);
                 SetIfPresent(entry, "SearchName", user.Name.Value);
             }
+
+            if (entry.Metadata.FindProperty("Version") is not null)
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.Property("Version").CurrentValue = 1;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    int originalValue = entry.Property("Version").OriginalValue is int value ? value : 0;
+                    entry.Property("Version").CurrentValue = originalValue + 1;
+                }
+            }
         }
     }
 

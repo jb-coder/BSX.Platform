@@ -4,6 +4,7 @@ using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Roles;
 using BSX.Modules.Identity.Domain.ServiceAccounts;
+using BSX.Modules.Identity.Domain.Sessions;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Infrastructure.Persistence;
 using BSX.Modules.Identity.Infrastructure.Persistence.Interceptors;
@@ -43,6 +44,7 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddScoped<ITenantMembershipRepository, TenantMembershipRepository>();
         services.TryAddScoped<IServiceAccountRepository, ServiceAccountRepository>();
         services.TryAddScoped<IApiKeyRepository, ApiKeyRepository>();
+        services.TryAddScoped<IUserSessionRepository, UserSessionRepository>();
         services.TryAddScoped<IUserReadRepository, UserReadRepository>();
         services.TryAddScoped<IRoleReadRepository, RoleReadRepository>();
         services.TryAddScoped<IUnitOfWork, IdentityUnitOfWork>();
@@ -51,6 +53,7 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddSingleton<IPasswordHasher, PasswordHasher>();
         services.TryAddSingleton<IApiKeyHasher, ApiKeyHasher>();
         services.TryAddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
+        services.TryAddSingleton<IRefreshTokenHasher, RefreshTokenHasher>();
 
         return services;
     }

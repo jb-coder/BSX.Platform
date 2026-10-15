@@ -74,6 +74,12 @@ namespace BSX.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId", "UserId")
@@ -123,7 +129,17 @@ namespace BSX.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("UpdatedOnUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasFilter("\"TenantId\" IS NULL");
 
                     b.HasIndex("TenantId", "Name")
                         .IsUnique();
@@ -194,6 +210,12 @@ namespace BSX.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("UpdatedOnUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
                     b.HasIndex("Prefix");
@@ -240,9 +262,120 @@ namespace BSX.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("UpdatedOnUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
                     b.ToTable("service_accounts", "identity");
+                });
+
+            modelBuilder.Entity("BSX.Modules.Identity.Domain.Sessions.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ExpiresOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("IssuedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RevokedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UsedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("session_refresh_tokens", "identity");
+                });
+
+            modelBuilder.Entity("BSX.Modules.Identity.Domain.Sessions.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AbsoluteExpiresOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("DeletedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("IdleExpiresOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastRefreshedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("RevokedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RevokedReason")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("user_sessions", "identity");
                 });
 
             modelBuilder.Entity("BSX.Modules.Identity.Domain.Users.Credentials.Credential", b =>
@@ -372,10 +505,17 @@ namespace BSX.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("UpdatedOnUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.HasIndex("SearchEmail");
 
@@ -621,6 +761,43 @@ namespace BSX.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("RoleIds");
                 });
 
+            modelBuilder.Entity("BSX.Modules.Identity.Domain.Sessions.RefreshToken", b =>
+                {
+                    b.HasOne("BSX.Modules.Identity.Domain.Sessions.UserSession", null)
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("BSX.Modules.Identity.Domain.Sessions.UserSession", b =>
+                {
+                    b.OwnsOne("BSX.Modules.Identity.Domain.Sessions.SessionMetadata", "Metadata", b1 =>
+                        {
+                            b1.Property<Guid>("UserSessionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("IpAddress")
+                                .HasMaxLength(64)
+                                .HasColumnType("character varying(64)")
+                                .HasColumnName("ip_address");
+
+                            b1.Property<string>("UserAgent")
+                                .HasMaxLength(512)
+                                .HasColumnType("character varying(512)")
+                                .HasColumnName("user_agent");
+
+                            b1.HasKey("UserSessionId");
+
+                            b1.ToTable("user_sessions", "identity");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserSessionId");
+                        });
+
+                    b.Navigation("Metadata")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("BSX.Modules.Identity.Domain.Users.Credentials.Credential", b =>
                 {
                     b.HasOne("BSX.Modules.Identity.Domain.Users.User", null)
@@ -732,6 +909,11 @@ namespace BSX.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("_codes");
 
                     b.Navigation("_used");
+                });
+
+            modelBuilder.Entity("BSX.Modules.Identity.Domain.Sessions.UserSession", b =>
+                {
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("BSX.Modules.Identity.Domain.Users.User", b =>

@@ -49,4 +49,16 @@ public static class IdentityApplicationErrors
 
     /// <summary>The API key identifier is invalid.</summary>
     public static Error InvalidApiKeyId => Error.Validation("Identity.ApiKey.InvalidId", "The API key identifier is invalid.");
+
+    /// <summary>The credentials are invalid.</summary>
+    public static Error InvalidCredentials => Error.Unauthorized("Identity.Authentication.InvalidCredentials", "The credentials are invalid.");
+
+    /// <summary>The user account is not active.</summary>
+    public static Error UserNotActive => Error.Forbidden("Identity.Authentication.UserNotActive", "The user account is not active.");
+
+    /// <summary>The refresh token is invalid or expired.</summary>
+    public static Error InvalidRefreshToken => Error.Unauthorized("Identity.Authentication.InvalidRefreshToken", "The refresh token is invalid or expired.");
+
+    /// <summary>The tenant is invalid or the user is not an active member.</summary>
+    public static Error InvalidTenant => Error.Validation("Identity.Authentication.InvalidTenant", "The tenant is invalid or the user is not an active member.");
 }

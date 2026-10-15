@@ -26,6 +26,11 @@ internal static class AuditingEntityTypeBuilderExtensions
         {
             EnsureProperty<bool>(builder, "IsDeleted", required: true, defaultValue: false);
         }
+
+        if (builder.Metadata.FindProperty("Version") is null)
+        {
+            builder.Property<int>("Version").IsConcurrencyToken().IsRequired().HasDefaultValue(1);
+        }
     }
 
     private static void EnsureProperty<TProperty>(

@@ -13,7 +13,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.Id).HasConversion(IdentityValueConverters.UserId);
         builder.Property(user => user.Email).HasConversion(IdentityValueConverters.Email).HasMaxLength(320).IsRequired();
-        builder.HasIndex(user => user.Email).IsUnique();
+        builder.HasIndex(user => user.Email).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(user => user.Name).HasConversion(IdentityValueConverters.PersonName).HasMaxLength(200).IsRequired();
         builder.Property(user => user.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(user => user.SecurityStamp).HasConversion(IdentityValueConverters.SecurityStamp).HasMaxLength(64).IsRequired();
