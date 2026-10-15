@@ -8,6 +8,8 @@ internal sealed class TestCurrentUser : ICurrentUser
 
     public Guid? UserId { get; }
 
+    public Guid? TenantId { get; }
+
     public string? Email => null;
 
     public bool IsAuthenticated => UserId.HasValue;

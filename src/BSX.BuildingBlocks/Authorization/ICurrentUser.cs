@@ -12,6 +12,11 @@ public interface ICurrentUser
     Guid? UserId { get; }
 
     /// <summary>
+    /// Gets the identifier of the tenant the caller is acting within, if any.
+    /// </summary>
+    Guid? TenantId { get; }
+
+    /// <summary>
     /// Gets the email of the current user, if available.
     /// </summary>
     string? Email { get; }

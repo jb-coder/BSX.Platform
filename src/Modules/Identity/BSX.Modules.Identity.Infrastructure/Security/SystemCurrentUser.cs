@@ -12,6 +12,9 @@ internal sealed class SystemCurrentUser : ICurrentUser
     public Guid? UserId => null;
 
     /// <inheritdoc />
+    public Guid? TenantId => null;
+
+    /// <inheritdoc />
     public string? Email => null;
 
     /// <inheritdoc />

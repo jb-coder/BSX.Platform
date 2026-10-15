@@ -123,4 +123,19 @@ public static class IdentityErrors
 
     /// <summary>The API key expiry is invalid.</summary>
     public static Error ApiKeyExpiryInvalid => Error.Validation("Identity.ApiKey.ExpiryInvalid", "The API key expiry must be in the future.");
+
+    /// <summary>The session has expired or is no longer active.</summary>
+    public static Error SessionExpired => Error.Conflict("Identity.Session.Expired", "The session has expired or is no longer active.");
+
+    /// <summary>The session was not found.</summary>
+    public static Error SessionNotFound => Error.NotFound("Identity.Session.NotFound", "The session was not found.");
+
+    /// <summary>The refresh token is invalid.</summary>
+    public static Error RefreshTokenInvalid => Error.Failure("Identity.Session.RefreshTokenInvalid", "The refresh token is invalid.");
+
+    /// <summary>The refresh token has expired.</summary>
+    public static Error RefreshTokenExpired => Error.Failure("Identity.Session.RefreshTokenExpired", "The refresh token has expired.");
+
+    /// <summary>Refresh-token reuse was detected; the session was revoked.</summary>
+    public static Error RefreshTokenReuseDetected => Error.Conflict("Identity.Session.RefreshTokenReuse", "Refresh token reuse was detected; the session has been revoked.");
 }

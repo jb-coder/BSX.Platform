@@ -1,4 +1,5 @@
 using System.Reflection;
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Behaviors;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Events;
@@ -28,10 +29,12 @@ public static class BuildingBlocksServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<ISender, Sender>();
         services.TryAddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.TryAddScoped<IPermissionChecker, ClaimsPermissionChecker>();
 
         // Canonical pipeline order (outermost first): Logging, Validation, Authorization, Transaction.
         services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>)));
 
         foreach (Assembly assembly in handlerAssemblies)
