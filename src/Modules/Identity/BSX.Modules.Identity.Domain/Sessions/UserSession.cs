@@ -12,7 +12,7 @@ namespace BSX.Modules.Identity.Domain.Sessions;
 /// </summary>
 public sealed class UserSession : AggregateRoot<SessionId>
 {
-    private readonly List<RefreshToken> _tokens = [];
+    private readonly List<RefreshToken> _refreshTokens = [];
 
     private UserSession(
         SessionId id,
@@ -34,7 +34,7 @@ public sealed class UserSession : AggregateRoot<SessionId>
         LastRefreshedOnUtc = nowUtc;
         IdleExpiresOnUtc = nowUtc.Add(policy.IdleTimeout);
         AbsoluteExpiresOnUtc = nowUtc.Add(policy.AbsoluteLifetime);
-        _tokens.Add(new RefreshToken(RefreshTokenId.New(), hash, nowUtc, nowUtc.Add(policy.TokenLifetime)));
+        _refreshTokens.Add(new RefreshToken(RefreshTokenId.New(), hash, nowUtc, nowUtc.Add(policy.TokenLifetime)));
     }
 
     private UserSession()
@@ -75,10 +75,10 @@ public sealed class UserSession : AggregateRoot<SessionId>
     public string? RevokedReason { get; private set; }
 
     /// <summary>Gets the rotation chain.</summary>
-    public IReadOnlyCollection<RefreshToken> RefreshTokens => _tokens.AsReadOnly();
+    public IReadOnlyCollection<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
     /// <summary>Gets the currently active (usable) token, if any.</summary>
-    public RefreshToken? CurrentToken => _tokens.FindLast(token => !token.IsUsed && token.RevokedOnUtc is null);
+    public RefreshToken? CurrentToken => _refreshTokens.FindLast(token => !token.IsUsed && token.RevokedOnUtc is null);
 
     /// <summary>Starts a new session with the first refresh token.</summary>
     public static Result<UserSession> Start(
@@ -116,7 +116,7 @@ public sealed class UserSession : AggregateRoot<SessionId>
             return Result.Failure(IdentityErrors.SessionExpired);
         }
 
-        RefreshToken? token = _tokens.Find(candidate => candidate.Hash == providedHash);
+        RefreshToken? token = _refreshTokens.Find(candidate => candidate.Hash == providedHash);
 
         if (token is null || token.RevokedOnUtc is not null)
         {
@@ -164,13 +164,13 @@ public sealed class UserSession : AggregateRoot<SessionId>
     {
         if (previous.ReplacedByTokenId is { } replacedById)
         {
-            _tokens.Find(token => token.Id == replacedById)?.Revoke(nowUtc);
+            _refreshTokens.Find(token => token.Id == replacedById)?.Revoke(nowUtc);
         }
 
         var newToken = new RefreshToken(RefreshTokenId.New(), newHash, nowUtc, nowUtc.Add(policy.TokenLifetime));
         previous.MarkUsed(nowUtc);
         previous.SetReplacedBy(newToken.Id);
-        _tokens.Add(newToken);
+        _refreshTokens.Add(newToken);
 
         LastRefreshedOnUtc = nowUtc;
         IdleExpiresOnUtc = nowUtc.Add(policy.IdleTimeout);

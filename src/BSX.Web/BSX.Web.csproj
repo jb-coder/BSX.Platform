@@ -25,4 +25,8 @@
     <ProjectReference Include="..\Modules\Identity\BSX.Modules.Identity.Endpoints\BSX.Modules.Identity.Endpoints.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="BSX.Web.IntegrationTests" />
+  </ItemGroup>
+
 </Project>
