@@ -1,3 +1,4 @@
+using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Authentication.Login;
 using BSX.Modules.Identity.Application.Authentication.RefreshToken;
@@ -27,9 +28,11 @@ public sealed class RefreshTokenCommandHandlerTests
         new FakeRefreshTokenHasher(),
         new FakeAccessTokenIssuer(),
         _unitOfWork,
-        _timeProvider);
+        _timeProvider,
+        new FakeRateLimiter(),
+        new RateLimitOptions());
 
-    private RefreshTokenCommandHandler CreateRefreshHandler() => new(
+    private RefreshTokenCommandHandler CreateRefreshHandler(IRateLimiter? rateLimiter = null) => new(
         _users,
         _sessions,
         _memberships,
@@ -38,7 +41,9 @@ public sealed class RefreshTokenCommandHandlerTests
         new FakeSecureTokenGenerator(),
         new FakeAccessTokenIssuer(),
         _unitOfWork,
-        _timeProvider);
+        _timeProvider,
+        rateLimiter ?? new FakeRateLimiter(),
+        new RateLimitOptions());
 
     private async Task<string> LoginAsync()
     {
@@ -78,5 +83,19 @@ public sealed class RefreshTokenCommandHandlerTests
         replay.IsFailure.Should().BeTrue();
         replay.Error.Code.Should().Be("Identity.Session.RefreshTokenReuse");
         _sessions.Sessions.Should().OnlyContain(session => session.Status == Domain.Sessions.SessionStatus.Revoked);
+    }
+
+    [Fact]
+    public async Task Should_RateLimit_Refresh()
+    {
+        string refreshToken = await LoginAsync();
+        RefreshTokenCommandHandler handler = CreateRefreshHandler(new FakeRateLimiter(maxRequests: 1));
+
+        var first = await handler.HandleAsync(new RefreshTokenCommand(refreshToken));
+        var second = await handler.HandleAsync(new RefreshTokenCommand(refreshToken));
+
+        first.IsSuccess.Should().BeTrue();
+        second.IsFailure.Should().BeTrue();
+        second.Error.Code.Should().Be("Identity.Authentication.TooManyRequests");
     }
 }

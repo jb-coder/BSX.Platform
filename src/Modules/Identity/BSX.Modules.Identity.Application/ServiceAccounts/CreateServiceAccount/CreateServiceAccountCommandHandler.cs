@@ -1,6 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
-using BSX.Modules.Identity.Application.Errors;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Domain.ServiceAccounts;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.SharedKernel.Results;
@@ -12,20 +12,26 @@ public sealed class CreateServiceAccountCommandHandler : ICommandHandler<CreateS
 {
     private readonly IServiceAccountRepository _serviceAccounts;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TenantGuard _tenantGuard;
 
     /// <summary>Initializes a new instance of the <see cref="CreateServiceAccountCommandHandler"/> class.</summary>
-    public CreateServiceAccountCommandHandler(IServiceAccountRepository serviceAccounts, IUnitOfWork unitOfWork)
+    public CreateServiceAccountCommandHandler(
+        IServiceAccountRepository serviceAccounts,
+        IUnitOfWork unitOfWork,
+        TenantGuard tenantGuard)
     {
         _serviceAccounts = serviceAccounts;
         _unitOfWork = unitOfWork;
+        _tenantGuard = tenantGuard;
     }
 
     /// <inheritdoc />
     public async Task<Result<CreateServiceAccountResponse>> HandleAsync(CreateServiceAccountCommand request, CancellationToken cancellationToken = default)
     {
-        if (request.TenantId == Guid.Empty)
+        Result guard = _tenantGuard.Ensure(request.TenantId);
+        if (guard.IsFailure)
         {
-            return Result.Failure<CreateServiceAccountResponse>(IdentityApplicationErrors.InvalidTenantId);
+            return Result.Failure<CreateServiceAccountResponse>(guard.Error);
         }
 
         var accountResult = ServiceAccount.Create(ServiceAccountId.New(), TenantId.From(request.TenantId), request.Name);

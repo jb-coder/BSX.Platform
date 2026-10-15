@@ -1,3 +1,4 @@
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Memberships.AssignRoleToMembership;
 using BSX.Modules.Identity.Application.UnitTests.Fakes;
 using BSX.Modules.Identity.Domain.Roles;
@@ -11,8 +12,8 @@ public sealed class AssignRoleToMembershipCommandHandlerTests
     private readonly InMemoryRoleRepository _roles = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
 
-    private AssignRoleToMembershipCommandHandler CreateHandler()
-        => new(_memberships, _roles, _unitOfWork);
+    private AssignRoleToMembershipCommandHandler CreateHandler(Guid activeTenantId)
+        => new(_memberships, _roles, _unitOfWork, new TenantGuard(new FakeTenantContext(activeTenantId)));
 
     [Fact]
     public async Task Should_Assign_WhenRoleBelongsToSameTenant()
@@ -23,7 +24,7 @@ public sealed class AssignRoleToMembershipCommandHandlerTests
         _memberships.Seed(membership);
         _roles.Seed(role);
 
-        var result = await CreateHandler().HandleAsync(new AssignRoleToMembershipCommand(membership.Id.Value, role.Id.Value));
+        var result = await CreateHandler(tenantId.Value).HandleAsync(new AssignRoleToMembershipCommand(membership.Id.Value, role.Id.Value));
 
         result.IsSuccess.Should().BeTrue();
         membership.RoleIds.Should().Contain(role.Id);
@@ -40,9 +41,24 @@ public sealed class AssignRoleToMembershipCommandHandlerTests
         _memberships.Seed(membership);
         _roles.Seed(role);
 
-        var result = await CreateHandler().HandleAsync(new AssignRoleToMembershipCommand(membership.Id.Value, role.Id.Value));
+        var result = await CreateHandler(tenantA.Value).HandleAsync(new AssignRoleToMembershipCommand(membership.Id.Value, role.Id.Value));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Identity.Role.TenantMismatch");
+    }
+
+    [Fact]
+    public async Task Should_Fail_WhenCrossTenant()
+    {
+        var tenantA = TenantId.From(Guid.NewGuid());
+        var membership = TestData.CreateActiveMembership(tenantA, UserId.New());
+        Role role = TestData.CreateRole(tenantId: tenantA, name: "Manager");
+        _memberships.Seed(membership);
+        _roles.Seed(role);
+
+        var result = await CreateHandler(Guid.NewGuid()).HandleAsync(new AssignRoleToMembershipCommand(membership.Id.Value, role.Id.Value));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Authorization.TenantForbidden");
     }
 }

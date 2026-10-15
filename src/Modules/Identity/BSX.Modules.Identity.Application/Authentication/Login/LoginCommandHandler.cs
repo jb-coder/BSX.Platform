@@ -34,6 +34,8 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
     private readonly IAccessTokenIssuer _accessTokenIssuer;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
+    private readonly IRateLimiter _rateLimiter;
+    private readonly RateLimitOptions _rateLimitOptions;
 
     /// <summary>Initializes a new instance of the <see cref="LoginCommandHandler"/> class.</summary>
     public LoginCommandHandler(
@@ -46,7 +48,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         IRefreshTokenHasher refreshTokenHasher,
         IAccessTokenIssuer accessTokenIssuer,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IRateLimiter rateLimiter,
+        RateLimitOptions rateLimitOptions)
     {
         _users = users;
         _sessions = sessions;
@@ -58,11 +62,19 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         _accessTokenIssuer = accessTokenIssuer;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
+        _rateLimiter = rateLimiter;
+        _rateLimitOptions = rateLimitOptions;
     }
 
     /// <inheritdoc />
     public async Task<Result<AuthenticationTokensResponse>> HandleAsync(LoginCommand request, CancellationToken cancellationToken = default)
     {
+        string partitionKey = $"login:{request.Email?.Trim().ToLowerInvariant()}";
+        if (!_rateLimiter.Acquire(partitionKey, _rateLimitOptions.Login).IsAllowed)
+        {
+            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.TooManyRequests);
+        }
+
         var emailResult = Email.Create(request.Email);
         if (emailResult.IsFailure)
         {

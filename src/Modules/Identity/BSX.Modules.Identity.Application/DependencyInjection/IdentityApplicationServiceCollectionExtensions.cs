@@ -20,6 +20,7 @@ public static class IdentityApplicationServiceCollectionExtensions
 
         services.AddBuildingBlocks(typeof(IdentityApplicationServiceCollectionExtensions).Assembly);
         services.TryAddScoped<PermissionResolver>();
+        services.TryAddScoped<TenantGuard>();
         return services;
     }
 }

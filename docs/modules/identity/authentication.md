@@ -89,6 +89,24 @@ the **active tenant membership** role permissions.
 4. System-role uniqueness — filtered unique index on `roles.name` (`WHERE TenantId IS NULL`).
 5. Session persistence — `user_sessions` + `session_refresh_tokens` tables with rotation chain.
 
+## Tenant Isolation
+
+- `ITenantContext` resolves the active tenant from `ICurrentUser` (the JWT `tenant_id` claim).
+- `TenantGuard` is **fail-closed**: an operation may only target the principal's active tenant. A
+  missing/empty target returns `Identity.Authentication.InvalidTenant`; a mismatched tenant
+  returns `Authorization.TenantForbidden`.
+- Applied to tenant-scoped commands (invite user, create service account, set role permissions,
+  assign role to membership). System roles are exempt from the tenant check (platform-level).
+
+## Authentication Rate Limiting
+
+- `IRateLimiter` is **fail-closed** and parameterized by a `RateLimitPolicy` (max requests + window).
+- `InMemoryRateLimiter` (fixed window) is registered by default; replace it with a distributed
+  limiter (for example Redis) when the API scales out.
+- **Login** is limited per normalized email; **refresh** per token hash. Exceeding the limit returns
+  `Identity.Authentication.TooManyRequests` as a `Result` (never an exception).
+- Thresholds are configurable via `RateLimitOptions` (`Identity:RateLimiting`).
+
 ## Not implemented
 
 API endpoints, Blazor UI and MFA remain out of scope. MFA hooks into login before token issuance.

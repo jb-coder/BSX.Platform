@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Errors;
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Users;
@@ -15,26 +16,30 @@ public sealed class InviteUserToTenantCommandHandler : ICommandHandler<InviteUse
     private readonly ITenantMembershipRepository _memberships;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
+    private readonly TenantGuard _tenantGuard;
 
     /// <summary>Initializes a new instance of the <see cref="InviteUserToTenantCommandHandler"/> class.</summary>
     public InviteUserToTenantCommandHandler(
         IUserRepository users,
         ITenantMembershipRepository memberships,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        TenantGuard tenantGuard)
     {
         _users = users;
         _memberships = memberships;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
+        _tenantGuard = tenantGuard;
     }
 
     /// <inheritdoc />
     public async Task<Result<InviteUserToTenantResponse>> HandleAsync(InviteUserToTenantCommand request, CancellationToken cancellationToken = default)
     {
-        if (request.TenantId == Guid.Empty)
+        Result guard = _tenantGuard.Ensure(request.TenantId);
+        if (guard.IsFailure)
         {
-            return Result.Failure<InviteUserToTenantResponse>(IdentityApplicationErrors.InvalidTenantId);
+            return Result.Failure<InviteUserToTenantResponse>(guard.Error);
         }
 
         if (request.UserId == Guid.Empty)

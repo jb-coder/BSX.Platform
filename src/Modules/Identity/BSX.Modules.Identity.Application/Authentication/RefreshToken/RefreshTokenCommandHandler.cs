@@ -25,6 +25,8 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
     private readonly IAccessTokenIssuer _accessTokenIssuer;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
+    private readonly IRateLimiter _rateLimiter;
+    private readonly RateLimitOptions _rateLimitOptions;
 
     /// <summary>Initializes a new instance of the <see cref="RefreshTokenCommandHandler"/> class.</summary>
     public RefreshTokenCommandHandler(
@@ -36,7 +38,9 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
         ISecureTokenGenerator tokenGenerator,
         IAccessTokenIssuer accessTokenIssuer,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IRateLimiter rateLimiter,
+        RateLimitOptions rateLimitOptions)
     {
         _users = users;
         _sessions = sessions;
@@ -47,6 +51,8 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
         _accessTokenIssuer = accessTokenIssuer;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
+        _rateLimiter = rateLimiter;
+        _rateLimitOptions = rateLimitOptions;
     }
 
     /// <inheritdoc />
@@ -54,6 +60,11 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
     {
         DateTimeOffset nowUtc = _timeProvider.GetUtcNow();
         var providedHash = _refreshTokenHasher.Hash(request.RefreshToken);
+
+        if (!_rateLimiter.Acquire($"refresh:{providedHash.Value}", _rateLimitOptions.Refresh).IsAllowed)
+        {
+            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.TooManyRequests);
+        }
 
         UserSession? session = await _sessions.FindByRefreshTokenAsync(providedHash, cancellationToken).ConfigureAwait(false);
         if (session is null)

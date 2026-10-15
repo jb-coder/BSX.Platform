@@ -1,3 +1,4 @@
+using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Authentication.Login;
 using BSX.Modules.Identity.Application.UnitTests.Fakes;
@@ -17,7 +18,7 @@ public sealed class LoginCommandHandlerTests
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly MutableTimeProvider _timeProvider = new(TestData.Now);
 
-    private LoginCommandHandler CreateHandler() => new(
+    private LoginCommandHandler CreateHandler(IRateLimiter? rateLimiter = null) => new(
         _users,
         _sessions,
         _memberships,
@@ -27,7 +28,9 @@ public sealed class LoginCommandHandlerTests
         new FakeRefreshTokenHasher(),
         new FakeAccessTokenIssuer(),
         _unitOfWork,
-        _timeProvider);
+        _timeProvider,
+        rateLimiter ?? new FakeRateLimiter(),
+        new RateLimitOptions());
 
     private User SeedUser(bool activate)
     {
@@ -79,5 +82,19 @@ public sealed class LoginCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Identity.Authentication.InvalidCredentials");
         _users.Users.Should().OnlyContain(user => user.Status == UserStatus.Pending);
+    }
+
+    [Fact]
+    public async Task Should_RateLimit_AfterThreshold()
+    {
+        SeedUser(activate: true);
+        LoginCommandHandler handler = CreateHandler(new FakeRateLimiter(maxRequests: 2));
+
+        await handler.HandleAsync(new LoginCommand("user@example.com", "Passw0rd!", null, null, null));
+        await handler.HandleAsync(new LoginCommand("user@example.com", "Passw0rd!", null, null, null));
+        var limited = await handler.HandleAsync(new LoginCommand("user@example.com", "Passw0rd!", null, null, null));
+
+        limited.IsFailure.Should().BeTrue();
+        limited.Error.Code.Should().Be("Identity.Authentication.TooManyRequests");
     }
 }

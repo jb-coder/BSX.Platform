@@ -55,6 +55,9 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
         services.TryAddSingleton<IRefreshTokenHasher, RefreshTokenHasher>();
 
+        services.TryAddSingleton<RateLimitOptions>();
+        services.TryAddSingleton<IRateLimiter, InMemoryRateLimiter>();
+
         return services;
     }
 }

@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Application.Errors;
 using BSX.Modules.Identity.Domain.Roles;
@@ -13,12 +14,14 @@ public sealed class SetRolePermissionsCommandHandler : ICommandHandler<SetRolePe
 {
     private readonly IRoleRepository _roles;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TenantGuard _tenantGuard;
 
     /// <summary>Initializes a new instance of the <see cref="SetRolePermissionsCommandHandler"/> class.</summary>
-    public SetRolePermissionsCommandHandler(IRoleRepository roles, IUnitOfWork unitOfWork)
+    public SetRolePermissionsCommandHandler(IRoleRepository roles, IUnitOfWork unitOfWork, TenantGuard tenantGuard)
     {
         _roles = roles;
         _unitOfWork = unitOfWork;
+        _tenantGuard = tenantGuard;
     }
 
     /// <inheritdoc />
@@ -41,6 +44,15 @@ public sealed class SetRolePermissionsCommandHandler : ICommandHandler<SetRolePe
         if (role is null)
         {
             return Result.Failure(IdentityApplicationErrors.RoleNotFound);
+        }
+
+        if (!role.IsSystem)
+        {
+            Result guard = _tenantGuard.Ensure(role.TenantId?.Value);
+            if (guard.IsFailure)
+            {
+                return guard;
+            }
         }
 
         HashSet<Permission> target = permissionsResult.Value.ToHashSet();

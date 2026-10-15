@@ -64,4 +64,10 @@ public static class IdentityApplicationErrors
 
     /// <summary>A concurrent modification was detected; retry the operation.</summary>
     public static Error ConcurrentOperation => Error.Conflict("Identity.Concurrency.Conflict", "A concurrent modification was detected. Retry the operation.");
+
+    /// <summary>The operation targets a tenant the principal does not belong to.</summary>
+    public static Error CrossTenantForbidden => Error.Forbidden("Authorization.TenantForbidden", "The operation is not permitted for the active tenant.");
+
+    /// <summary>Too many authentication attempts.</summary>
+    public static Error TooManyRequests => Error.Conflict("Identity.Authentication.TooManyRequests", "Too many attempts. Try again later.");
 }

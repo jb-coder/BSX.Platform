@@ -30,6 +30,7 @@ public static class BuildingBlocksServiceCollectionExtensions
         services.TryAddScoped<ISender, Sender>();
         services.TryAddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.TryAddScoped<ICurrentUser, AnonymousCurrentUser>();
+        services.TryAddScoped<ITenantContext, CurrentUserTenantContext>();
         services.TryAddScoped<IPermissionChecker, ClaimsPermissionChecker>();
 
         // Canonical pipeline order (outermost first): Logging, Validation, Authorization, Transaction.
