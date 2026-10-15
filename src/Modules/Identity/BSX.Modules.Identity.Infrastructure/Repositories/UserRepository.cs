@@ -26,6 +26,14 @@ internal sealed class UserRepository : IUserRepository
     public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken = default)
         => _context.Users.AnyAsync(user => user.Email == email, cancellationToken);
 
+    public Task<User?> FindByPasswordResetTokenAsync(PasswordResetTokenHash hash, CancellationToken cancellationToken = default)
+        => _context.Users
+            .Include(user => user.Credentials)
+            .Include(user => user.PasswordResetToken)
+            .FirstOrDefaultAsync(
+                user => user.PasswordResetToken != null && user.PasswordResetToken.Hash == hash,
+                cancellationToken);
+
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)
         => await _context.Users.AddAsync(user, cancellationToken).ConfigureAwait(false);
 }

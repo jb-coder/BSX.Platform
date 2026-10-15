@@ -11,4 +11,7 @@ public sealed class RateLimitOptions
 
     /// <summary>Gets or sets the refresh policy.</summary>
     public RateLimitPolicy Refresh { get; set; } = new(MaxRequests: 20, Window: TimeSpan.FromMinutes(1));
+
+    /// <summary>Gets or sets the password reset request policy.</summary>
+    public RateLimitPolicy PasswordReset { get; set; } = new(MaxRequests: 3, Window: TimeSpan.FromMinutes(1));
 }

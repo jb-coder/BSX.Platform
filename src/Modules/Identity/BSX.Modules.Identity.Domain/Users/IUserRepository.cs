@@ -15,6 +15,11 @@ public interface IUserRepository
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
     Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken = default);
 
+    /// <summary>Finds a user by the hash of their active password reset token.</summary>
+    /// <param name="hash">The password reset token hash.</param>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
+    Task<User?> FindByPasswordResetTokenAsync(PasswordResetTokenHash hash, CancellationToken cancellationToken = default);
+
     /// <summary>Determines whether a user with the given email exists (global uniqueness, ADR-013).</summary>
     /// <param name="email">The email address.</param>
     /// <param name="cancellationToken">A token used to cancel the operation.</param>

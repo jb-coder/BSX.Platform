@@ -107,6 +107,21 @@ the **active tenant membership** role permissions.
   `Identity.Authentication.TooManyRequests` as a `Result` (never an exception).
 - Thresholds are configurable via `RateLimitOptions` (`Identity:RateLimiting`).
 
+## Password Reset
+
+Follows [ADR-016](../../decisions/ADR-016-Password-Reset-Security-Strategy.md).
+
+- `RequestPasswordResetCommand` (anonymous): generates a 256-bit token, stores **only its hash** on
+  the user (replacing any previous token), then delivers the plaintext token through the
+  `IPasswordResetNotifier` **out-of-band port** (never persisted, never logged, never in the
+  Outbox). Responses are **enumeration-safe** — always success, regardless of account existence.
+- `CompletePasswordResetCommand` (anonymous): hashes the presented token, finds the user by hash,
+  and completes the reset. The token is **single-use** and expires after **30 minutes**. A
+  successful reset **revokes all sessions** (ADR-017).
+- Ports: `IPasswordResetTokenHasher` (SHA-256), `IPasswordResetNotifier` (no-op default until the
+  Notifications module registers a real implementation).
+- Rate limited per email via `RateLimitOptions.PasswordReset`.
+
 ## Not implemented
 
 API endpoints, Blazor UI and MFA remain out of scope. MFA hooks into login before token issuance.

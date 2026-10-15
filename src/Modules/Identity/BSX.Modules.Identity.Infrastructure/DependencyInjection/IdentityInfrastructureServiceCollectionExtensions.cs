@@ -54,6 +54,8 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddSingleton<IApiKeyHasher, ApiKeyHasher>();
         services.TryAddSingleton<ISecureTokenGenerator, SecureTokenGenerator>();
         services.TryAddSingleton<IRefreshTokenHasher, RefreshTokenHasher>();
+        services.TryAddSingleton<IPasswordResetTokenHasher, PasswordResetTokenHasher>();
+        services.TryAddSingleton<IPasswordResetNotifier, NullPasswordResetNotifier>();
 
         services.TryAddSingleton<RateLimitOptions>();
         services.TryAddSingleton<IRateLimiter, InMemoryRateLimiter>();

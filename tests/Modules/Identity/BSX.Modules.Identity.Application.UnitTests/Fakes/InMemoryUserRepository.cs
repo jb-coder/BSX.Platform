@@ -3,7 +3,6 @@ using BSX.Modules.Identity.Domain.ValueObjects;
 
 namespace BSX.Modules.Identity.Application.UnitTests.Fakes;
 
-/// <summary>In-memory <see cref="IUserRepository"/> for handler tests.</summary>
 internal sealed class InMemoryUserRepository : IUserRepository
 {
     private readonly List<User> _users = [];
@@ -17,6 +16,9 @@ internal sealed class InMemoryUserRepository : IUserRepository
 
     public Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken = default)
         => Task.FromResult(_users.Find(user => user.Email == email));
+
+    public Task<User?> FindByPasswordResetTokenAsync(PasswordResetTokenHash hash, CancellationToken cancellationToken = default)
+        => Task.FromResult(_users.Find(user => user.PasswordResetToken is not null && user.PasswordResetToken.Hash == hash));
 
     public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken = default)
         => Task.FromResult(_users.Exists(user => user.Email == email));
