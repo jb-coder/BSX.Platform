@@ -1,6 +1,7 @@
 using BSX.BuildingBlocks.Events;
 using BSX.BuildingBlocks.Persistence;
 using BSX.SharedKernel.Primitives;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -19,8 +20,17 @@ internal sealed class IdentityUnitOfWork : UnitOfWorkBase
         => _context = context;
 
     /// <inheritdoc />
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        => _context.SaveChangesAsync(cancellationToken);
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new ConcurrencyConflictException("A concurrent modification was detected.", exception);
+        }
+    }
 
     /// <inheritdoc />
     public override async Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)

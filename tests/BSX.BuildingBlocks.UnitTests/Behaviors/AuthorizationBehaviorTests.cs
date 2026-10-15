@@ -44,7 +44,31 @@ public sealed class AuthorizationBehaviorTests
         Result result = await sender.SendAsync(new RequirePermissionCommand());
 
         result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Authorization.Unauthenticated");
         RequirePermissionCommandHandler.InvocationCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Should_RequireAuthentication_ForCommandsWithoutAllowAnonymous()
+    {
+        RequirePermissionCommandHandler.Reset();
+        ISender sender = CreateSender(new FakeCurrentUser());
+
+        Result result = await sender.SendAsync(new RequirePermissionCommand());
+
+        result.IsFailure.Should().BeTrue();
+        RequirePermissionCommandHandler.InvocationCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Should_AllowAnonymous_WhenMarked()
+    {
+        RequirePermissionCommandHandler.Reset();
+        ISender sender = CreateSender(new FakeCurrentUser());
+
+        Result result = await sender.SendAsync(new CreateThingCommand("thing"));
+
+        result.IsSuccess.Should().BeTrue();
     }
 
     private static ISender CreateSender(ICurrentUser currentUser)

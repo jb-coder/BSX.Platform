@@ -71,7 +71,7 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
         if (!string.Equals(session.SecurityStamp, user.SecurityStamp.Value, StringComparison.Ordinal))
         {
             session.Revoke(nowUtc, "security_stamp_changed");
-            await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await TrySaveAsync(cancellationToken).ConfigureAwait(false);
             return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidRefreshToken);
         }
 
@@ -80,7 +80,7 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
 
         if (rotation.IsFailure)
         {
-            await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await TrySaveAsync(cancellationToken).ConfigureAwait(false);
             return Result.Failure<AuthenticationTokensResponse>(rotation.Error);
         }
 
@@ -106,8 +106,25 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
             user.SecurityStamp.Value,
             session.Id.Value));
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (!await TrySaveAsync(cancellationToken).ConfigureAwait(false))
+        {
+            // Concurrent refresh: the caller should retry against the freshly persisted chain.
+            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.ConcurrentOperation);
+        }
 
         return Result.Success(new AuthenticationTokensResponse(accessToken.Token, accessToken.ExpiresAtUtc, newRefreshToken));
+    }
+
+    private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (BSX.BuildingBlocks.Persistence.ConcurrencyConflictException)
+        {
+            return false;
+        }
     }
 }

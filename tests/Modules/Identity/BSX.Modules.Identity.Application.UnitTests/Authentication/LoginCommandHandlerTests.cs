@@ -77,7 +77,7 @@ public sealed class LoginCommandHandlerTests
         var result = await CreateHandler().HandleAsync(new LoginCommand("user@example.com", "Passw0rd!", null, null, null));
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Identity.Authentication.UserNotActive");
+        result.Error.Code.Should().Be("Identity.Authentication.InvalidCredentials");
         _users.Users.Should().OnlyContain(user => user.Status == UserStatus.Pending);
     }
 }

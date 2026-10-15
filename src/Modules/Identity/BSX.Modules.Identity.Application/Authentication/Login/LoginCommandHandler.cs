@@ -19,6 +19,11 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
     private const int MaxActiveSessions = 10;
     private const string UserPrincipalType = "User";
 
+    // A fixed, valid PBKDF2 hash used to equalize login timing for unknown users (no enumeration).
+    private static readonly PasswordHash DummyPasswordHash = PasswordHash.From(
+        "210000.AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "pbkdf2-sha256");
+
     private readonly IUserRepository _users;
     private readonly IUserSessionRepository _sessions;
     private readonly ITenantMembershipRepository _memberships;
@@ -67,6 +72,8 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         User? user = await _users.GetByEmailAsync(emailResult.Value, cancellationToken).ConfigureAwait(false);
         if (user is null)
         {
+            // Equalize timing with the credential-present path and return a generic failure.
+            _passwordHasher.Verify(request.Password, DummyPasswordHash);
             return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidCredentials);
         }
 
@@ -79,7 +86,7 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
 
         if (user.Status is UserStatus.Disabled or UserStatus.Pending or UserStatus.Locked)
         {
-            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.UserNotActive);
+            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidCredentials);
         }
 
         PasswordCredential? credential = user.Credentials.OfType<PasswordCredential>().FirstOrDefault();

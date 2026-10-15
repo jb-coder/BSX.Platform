@@ -61,4 +61,7 @@ public static class IdentityApplicationErrors
 
     /// <summary>The tenant is invalid or the user is not an active member.</summary>
     public static Error InvalidTenant => Error.Validation("Identity.Authentication.InvalidTenant", "The tenant is invalid or the user is not an active member.");
+
+    /// <summary>A concurrent modification was detected; retry the operation.</summary>
+    public static Error ConcurrentOperation => Error.Conflict("Identity.Concurrency.Conflict", "A concurrent modification was detected. Retry the operation.");
 }

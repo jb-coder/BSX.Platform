@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.Modules.Identity.Application.Dtos;
 
@@ -9,6 +10,7 @@ namespace BSX.Modules.Identity.Application.Authentication.Login;
 /// <param name="TenantId">The requested tenant, when the user belongs to several.</param>
 /// <param name="UserAgent">The client user agent.</param>
 /// <param name="IpAddress">The client IP address.</param>
+[AllowAnonymous]
 public sealed record LoginCommand(
     string Email,
     string Password,

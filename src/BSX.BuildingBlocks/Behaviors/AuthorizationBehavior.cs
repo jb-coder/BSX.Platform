@@ -6,15 +6,20 @@ using BSX.SharedKernel.Results;
 namespace BSX.BuildingBlocks.Behaviors;
 
 /// <summary>
-/// Enforces the <see cref="RequirePermissionAttribute"/> declared on a request (ADR-012).
-/// Never throws: authorization failures are returned as a failed <see cref="Result"/>.
+/// Enforces authentication (fail-closed) and the <see cref="RequirePermissionAttribute"/> declared
+/// on a request (ADR-012). Requests marked <see cref="AllowAnonymousAttribute"/> bypass the
+/// authentication gate. Never throws: failures are returned as a failed <see cref="Result"/>.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
 /// <typeparam name="TResponse">The response type.</typeparam>
 internal sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
+    private const string UnauthenticatedCode = "Authorization.Unauthenticated";
     private const string ForbiddenCode = "Authorization.Forbidden";
+
+    private static readonly bool AllowsAnonymous = typeof(TRequest)
+        .GetCustomAttribute<AllowAnonymousAttribute>(inherit: true) is not null;
 
     private static readonly string[] RequiredPermissions = typeof(TRequest)
         .GetCustomAttributes<RequirePermissionAttribute>(inherit: true)
@@ -22,10 +27,16 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBeha
         .ToArray();
 
     private readonly IPermissionChecker _permissionChecker;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>Initializes a new instance of the <see cref="AuthorizationBehavior{TRequest, TResponse}"/> class.</summary>
     /// <param name="permissionChecker">The permission checker.</param>
-    public AuthorizationBehavior(IPermissionChecker permissionChecker) => _permissionChecker = permissionChecker;
+    /// <param name="currentUser">The current user.</param>
+    public AuthorizationBehavior(IPermissionChecker permissionChecker, ICurrentUser currentUser)
+    {
+        _permissionChecker = permissionChecker;
+        _currentUser = currentUser;
+    }
 
     /// <inheritdoc />
     public async Task<TResponse> HandleAsync(
@@ -35,23 +46,31 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBeha
     {
         ArgumentNullException.ThrowIfNull(next);
 
+        if (AllowsAnonymous)
+        {
+            return await next().ConfigureAwait(false);
+        }
+
+        if (!_currentUser.IsAuthenticated)
+        {
+            return Failure(Error.Unauthorized(UnauthenticatedCode, "Authentication is required."));
+        }
+
         foreach (string permission in RequiredPermissions)
         {
             bool granted = await _permissionChecker.HasPermissionAsync(permission, cancellationToken).ConfigureAwait(false);
 
             if (!granted)
             {
-                return Failure(permission);
+                return Failure(Error.Forbidden(ForbiddenCode, $"The permission '{permission}' is required."));
             }
         }
 
         return await next().ConfigureAwait(false);
     }
 
-    private static TResponse Failure(string permission)
+    private static TResponse Failure(Error error)
     {
-        Error error = Error.Forbidden(ForbiddenCode, $"The permission '{permission}' is required.");
-
         Type responseType = typeof(TResponse);
 
         if (responseType == typeof(Result))
