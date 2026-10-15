@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
 
 namespace BSX.Modules.Identity.Application.Roles.CreateRole;
@@ -7,6 +8,7 @@ namespace BSX.Modules.Identity.Application.Roles.CreateRole;
 /// <param name="Name">The role name.</param>
 /// <param name="Description">An optional description.</param>
 /// <param name="Permissions">The granted permission codes.</param>
+[RequirePermission("identity.roles.create")]
 public sealed record CreateRoleCommand(
     Guid? TenantId,
     string Name,

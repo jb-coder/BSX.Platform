@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
 
 namespace BSX.Modules.Identity.Application.Users.RegisterUser;
@@ -6,4 +7,5 @@ namespace BSX.Modules.Identity.Application.Users.RegisterUser;
 /// <param name="Email">The email address.</param>
 /// <param name="Name">The display name.</param>
 /// <param name="Password">An optional initial password.</param>
+[RequirePermission("identity.users.create")]
 public sealed record RegisterUserCommand(string Email, string Name, string? Password) : ICommand<RegisterUserResponse>;

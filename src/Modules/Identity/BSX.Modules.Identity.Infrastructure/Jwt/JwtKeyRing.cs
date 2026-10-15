@@ -4,7 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace BSX.Modules.Identity.Infrastructure.Jwt;
 
 /// <summary>Holds the asymmetric signing keys and exposes signing/validation material (ADR-017).</summary>
-internal sealed class JwtKeyRing : IDisposable
+public sealed class JwtKeyRing : IDisposable
 {
     private readonly List<(string Kid, RSA Rsa)> _keys = [];
 

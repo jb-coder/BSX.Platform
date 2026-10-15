@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.Modules.Identity.Application.Dtos;
 
@@ -7,4 +8,5 @@ namespace BSX.Modules.Identity.Application.Users.ListUsers;
 /// <param name="Page">The one-based page number.</param>
 /// <param name="Size">The page size.</param>
 /// <param name="Search">An optional search term.</param>
+[RequirePermission("identity.users.read")]
 public sealed record ListUsersQuery(int Page, int Size, string? Search) : IQuery<PagedResult<UserSummaryDto>>;
