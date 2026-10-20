@@ -53,6 +53,8 @@ CRM
 - Contacts
 - Categories
 
+Status: Domain implemented (Customer, Organization, Contact aggregates; value objects, domain events, repository contracts) with unit tests. Application, Infrastructure, API and UI pending.
+
 ---
 
 ## Phase 4
