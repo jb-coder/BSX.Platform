@@ -45,6 +45,7 @@ if (string.IsNullOrWhiteSpace(identityConnectionString))
 
 builder.Services.AddIdentityApplication();
 builder.Services.AddIdentityInfrastructure(identityConnectionString);
+builder.Services.AddCompositeUnitOfWork();
 builder.Services.AddIdentityJwt(options =>
 {
     builder.Configuration.GetSection(JwtOptions.SectionName).Bind(options);

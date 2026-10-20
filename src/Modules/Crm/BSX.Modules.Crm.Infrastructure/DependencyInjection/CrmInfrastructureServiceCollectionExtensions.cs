@@ -24,6 +24,8 @@ public static class CrmInfrastructureServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddScoped<CrmTenantScope>();
+        services.TryAddScoped<ICrmTenantScope>(provider => provider.GetRequiredService<CrmTenantScope>());
         services.TryAddScoped<CrmAuditingSaveChangesInterceptor>();
 
         services.AddDbContext<CrmDbContext>((provider, options) =>
@@ -37,7 +39,7 @@ public static class CrmInfrastructureServiceCollectionExtensions
         services.TryAddScoped<IOrganizationRepository, OrganizationRepository>();
         services.TryAddScoped<ICustomerReadRepository, CustomerReadRepository>();
         services.TryAddScoped<IOrganizationReadRepository, OrganizationReadRepository>();
-        services.TryAddScoped<IUnitOfWork, CrmUnitOfWork>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, CrmUnitOfWork>());
 
         return services;
     }

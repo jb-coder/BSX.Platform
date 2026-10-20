@@ -11,7 +11,8 @@ internal sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organ
 {
     public void Configure(EntityTypeBuilder<Organization> builder)
     {
-        builder.ToTable("organizations");
+        builder.ToTable("organizations", table =>
+            table.HasCheckConstraint("CK_organizations_tenant_key", "\"TenantKey\" = \"TenantId\""));
         builder.HasKey(organization => organization.Id);
 
         builder.Property(organization => organization.Id).HasConversion(CrmValueConverters.OrganizationId);

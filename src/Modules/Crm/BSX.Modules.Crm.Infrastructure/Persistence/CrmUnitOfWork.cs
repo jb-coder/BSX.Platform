@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 namespace BSX.Modules.Crm.Infrastructure.Persistence;
 
 /// <summary>CRM unit of work implementing the ADR-009 persistence and dispatch seam.</summary>
-internal sealed class CrmUnitOfWork : UnitOfWorkBase
+internal sealed class CrmUnitOfWork : UnitOfWorkBase, IModuleUnitOfWork
 {
     private readonly CrmDbContext _context;
 
@@ -17,6 +17,15 @@ internal sealed class CrmUnitOfWork : UnitOfWorkBase
     public CrmUnitOfWork(CrmDbContext context, IDomainEventDispatcher domainEventDispatcher)
         : base(domainEventDispatcher)
         => _context = context;
+
+    /// <inheritdoc />
+    public string ModuleName => "Crm";
+
+    /// <inheritdoc />
+    public IReadOnlyCollection<IDomainEvent> CollectPendingDomainEvents() => CollectDomainEvents();
+
+    /// <inheritdoc />
+    public void ClearPendingDomainEvents() => ClearDomainEvents();
 
     /// <inheritdoc />
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

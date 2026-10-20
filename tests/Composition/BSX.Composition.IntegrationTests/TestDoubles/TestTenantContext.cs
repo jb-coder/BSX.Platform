@@ -1,6 +1,6 @@
 using BSX.BuildingBlocks.Authorization;
 
-namespace BSX.Modules.Crm.Infrastructure.IntegrationTests.TestInfrastructure;
+namespace BSX.Composition.IntegrationTests.TestDoubles;
 
 internal sealed class TestTenantContext : ITenantContext
 {

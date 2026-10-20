@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace BSX.Modules.Identity.Infrastructure.Persistence;
 
 /// <summary>Identity unit of work implementing the ADR-009 persistence and dispatch seam.</summary>
-internal sealed class IdentityUnitOfWork : UnitOfWorkBase
+internal sealed class IdentityUnitOfWork : UnitOfWorkBase, IModuleUnitOfWork
 {
     private readonly IdentityDbContext _context;
 
@@ -18,6 +18,15 @@ internal sealed class IdentityUnitOfWork : UnitOfWorkBase
     public IdentityUnitOfWork(IdentityDbContext context, IDomainEventDispatcher domainEventDispatcher)
         : base(domainEventDispatcher)
         => _context = context;
+
+    /// <inheritdoc />
+    public string ModuleName => "Identity";
+
+    /// <inheritdoc />
+    public IReadOnlyCollection<IDomainEvent> CollectPendingDomainEvents() => CollectDomainEvents();
+
+    /// <inheritdoc />
+    public void ClearPendingDomainEvents() => ClearDomainEvents();
 
     /// <inheritdoc />
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -47,7 +47,7 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddScoped<IUserSessionRepository, UserSessionRepository>();
         services.TryAddScoped<IUserReadRepository, UserReadRepository>();
         services.TryAddScoped<IRoleReadRepository, RoleReadRepository>();
-        services.TryAddScoped<IUnitOfWork, IdentityUnitOfWork>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, IdentityUnitOfWork>());
         services.TryAddScoped<IOutboxWriter, OutboxWriter>();
 
         services.TryAddSingleton<IPasswordHasher, PasswordHasher>();

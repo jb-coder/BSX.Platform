@@ -1,4 +1,3 @@
-using BSX.BuildingBlocks.Authorization;
 using BSX.Modules.Crm.Domain.Customers;
 using BSX.Modules.Crm.Domain.Organizations;
 using Microsoft.EntityFrameworkCore;
@@ -8,14 +7,14 @@ namespace BSX.Modules.Crm.Infrastructure.Persistence;
 /// <summary>The CRM module persistence context (PostgreSQL; ADR-004).</summary>
 public sealed class CrmDbContext : DbContext
 {
-    private readonly ITenantContext? _tenantContext;
+    private readonly ICrmTenantScope? _tenantScope;
 
     /// <summary>Initializes a new instance of the <see cref="CrmDbContext"/> class.</summary>
     /// <param name="options">The context options.</param>
-    /// <param name="tenantContext">The ambient tenant context, when available.</param>
-    public CrmDbContext(DbContextOptions<CrmDbContext> options, ITenantContext? tenantContext = null)
+    /// <param name="tenantScope">The tenant scope, when available.</param>
+    public CrmDbContext(DbContextOptions<CrmDbContext> options, ICrmTenantScope? tenantScope = null)
         : base(options)
-        => _tenantContext = tenantContext;
+        => _tenantScope = tenantScope;
 
     /// <summary>Gets the customers.</summary>
     public DbSet<Customer> Customers => Set<Customer>();
@@ -23,8 +22,11 @@ public sealed class CrmDbContext : DbContext
     /// <summary>Gets the organizations.</summary>
     public DbSet<Organization> Organizations => Set<Organization>();
 
-    /// <summary>Gets the ambient tenant used by the global tenant query filters.</summary>
-    public Guid? CurrentTenantId => _tenantContext?.TenantId;
+    /// <summary>Gets the tenant used by the global query filters.</summary>
+    public Guid? CurrentTenantId => _tenantScope?.TenantId;
+
+    /// <summary>Gets a value indicating whether the explicit system scope is active.</summary>
+    public bool IsSystemScope => _tenantScope?.IsSystem == true;
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -38,15 +40,15 @@ public sealed class CrmDbContext : DbContext
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CrmDbContext).Assembly);
 
-        // Tenant + soft-delete filters. The tenant clause is open only when no ambient tenant is
-        // present (background/ops); tenant-scoped repositories always pass an explicit tenant.
+        // Fail-closed tenant filter plus soft delete. A missing tenant returns no data unless the
+        // scope is explicitly privileged (system). TenantKey is constrained to TenantId in the DB.
         modelBuilder.Entity<Customer>().HasQueryFilter(customer =>
             !EF.Property<bool>(customer, "IsDeleted")
-            && (CurrentTenantId == null || EF.Property<Guid>(customer, "TenantKey") == CurrentTenantId));
+            && (IsSystemScope || (CurrentTenantId != null && EF.Property<Guid>(customer, "TenantKey") == CurrentTenantId)));
 
         modelBuilder.Entity<Organization>().HasQueryFilter(organization =>
             !EF.Property<bool>(organization, "IsDeleted")
-            && (CurrentTenantId == null || EF.Property<Guid>(organization, "TenantKey") == CurrentTenantId));
+            && (IsSystemScope || (CurrentTenantId != null && EF.Property<Guid>(organization, "TenantKey") == CurrentTenantId)));
 
         base.OnModelCreating(modelBuilder);
     }

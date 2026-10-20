@@ -94,3 +94,20 @@ Infrastructure must register an `IUnitOfWork` implementation; commands resolve i
 `TransactionBehavior`. See
 [building-blocks.md](building-blocks.md) and
 [implementation-guidelines.md](implementation-guidelines.md).
+
+## Module composition
+
+A host can load several modules, each owning its own DbContext. To avoid `IUnitOfWork`
+registration conflicts and persistence failures:
+
+- Every module unit of work implements `IModuleUnitOfWork` and is registered with
+  `TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, ...>())`.
+- Modules must **not** register `IUnitOfWork` directly.
+- The host calls `AddCompositeUnitOfWork()` after the module infrastructure registrations.
+- `CompositeUnitOfWork` resolves `IEnumerable<IModuleUnitOfWork>` and implements the ADR-009 seam
+  across them: collect pending events from all modules, save all module contexts, commit all module
+  transactions, clear the aggregates, then dispatch each event exactly once.
+- If no module unit is registered, the composite throws at resolution (fail-fast).
+- Cross-module atomicity across separate connections is **not** guaranteed. A command targets a
+  single module aggregate; cross-module workflows use integration events / the outbox / a saga.
+

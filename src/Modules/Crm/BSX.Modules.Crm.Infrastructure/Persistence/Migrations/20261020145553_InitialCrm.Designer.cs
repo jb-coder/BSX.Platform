@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BSX.Modules.Crm.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CrmDbContext))]
-    [Migration("20261020143504_InitialCrm")]
+    [Migration("20261020145553_InitialCrm")]
     partial class InitialCrm
     {
         /// <inheritdoc />
@@ -110,7 +110,10 @@ namespace BSX.Modules.Crm.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "SearchName");
 
-                    b.ToTable("customers", "crm");
+                    b.ToTable("customers", "crm", t =>
+                        {
+                            t.HasCheckConstraint("CK_customers_tenant_key", "\"TenantKey\" = \"TenantId\"");
+                        });
                 });
 
             modelBuilder.Entity("BSX.Modules.Crm.Domain.Organizations.Organization", b =>
@@ -180,7 +183,10 @@ namespace BSX.Modules.Crm.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "SearchTaxIdentifier");
 
-                    b.ToTable("organizations", "crm");
+                    b.ToTable("organizations", "crm", t =>
+                        {
+                            t.HasCheckConstraint("CK_organizations_tenant_key", "\"TenantKey\" = \"TenantId\"");
+                        });
                 });
 
             modelBuilder.Entity("BSX.Modules.Crm.Domain.Customers.Customer", b =>

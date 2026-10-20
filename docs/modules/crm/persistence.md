@@ -61,15 +61,21 @@ Two complementary controls:
 
 1. **Explicit tenant on every repository call.** Write repositories take `TenantId` and read
    repositories take a `Guid tenantId`; both filter by tenant. This is the primary guard.
-2. **Global tenant query filters.** `CrmDbContext` reads `ITenantContext.TenantId` and applies:
-   `!IsDeleted && (CurrentTenantId == null || TenantKey == CurrentTenantId)`.
-   `TenantKey` is a mapped `uuid` populated from the aggregate's `TenantId`, so the filter is
-   provider-translatable (SQLite tests and PostgreSQL).
+2. **Fail-closed global tenant query filters.** `CrmDbContext` resolves `ICrmTenantScope`
+   (registered scoped, derived from `ITenantContext`) and applies:
+   `!IsDeleted && (IsSystem || (CurrentTenantId != null && TenantKey == CurrentTenantId))`.
+   A **missing tenant returns no data**. `TenantKey` is a mapped `uuid` populated from the
+   aggregate's `TenantId`, and a database check constraint (`TenantKey = TenantId`) prevents
+   divergence.
 
-Behavior when no ambient tenant is present: the tenant clause is open (background/ops queries see
-all tenants). **Request paths must always resolve a tenant** (the Application `CrmTenantResolver`
-does, and every repository requires one), so sanctioned paths remain tenant-scoped. Set
-`ITenantContext` in every scoped host/service that queries CRM data directly.
+**Explicit privileged/system scope.** Background/operations code may widen the scope on the scoped
+`CrmTenantScope` instance:
+
+- `UseTenant(tenantId)` for a per-tenant background job.
+- `UseSystemScope()` for a privileged cross-tenant job (the soft-delete filter still applies).
+
+Request paths never call these; they rely on the authenticated tenant. A request without a tenant
+sees no CRM data.
 
 Unique index: `(TenantId, Code)` with filter `"IsDeleted" = false`. The same code is allowed in
 different tenants and can be reused after a soft delete.
@@ -104,10 +110,11 @@ Empty/whitespace search returns all rows (subject to tenant and soft-delete filt
 commits, clears and dispatches exactly once; a second call dispatches nothing (events already
 cleared). `DbUpdateConcurrencyException` is mapped to `ConcurrencyConflictException`.
 
-> **Composition note (host responsibility).** Each module registers its own `IUnitOfWork` with
-> `TryAddScoped`. When the host loads both Identity and CRM, it must compose a module-aware unit of
-> work (or coordinate the module units) so a command persists the correct module context and
-> dispatches each event once. This is an API/host integration task, not a CRM Infrastructure defect.
+**Multi-module composition (resolved).** CRM registers its unit of work as `IModuleUnitOfWork`
+(never as `IUnitOfWork`). The host calls `AddCompositeUnitOfWork()` after the module infrastructure
+registrations. `CompositeUnitOfWork` collects the pending events of every module, saves all contexts,
+commits all module transactions, clears the aggregates and dispatches each event exactly once.
+Modules remain isolated; commands resolve the composite through `TransactionBehavior`.
 
 ## Concurrency
 
@@ -126,6 +133,10 @@ a stale write affects zero rows. The unit of work converts this into
 ## Testing
 
 `tests/Modules/Crm/BSX.Modules.Crm.Infrastructure.IntegrationTests` runs against SQLite in-memory
-(provider-compatible) and covers repository round trips, tenant isolation and tenant query filters,
-customer-code uniqueness, search, soft delete, auditing, optimistic concurrency, domain-event
-dispatch and read-model projections.
+(provider-compatible) and covers repository round trips, tenant isolation, fail-closed tenant query
+filters (missing/wrong/correct/system), customer-code uniqueness, search, soft delete, auditing,
+optimistic concurrency, domain-event dispatch and read-model projections.
+
+`tests/Composition/BSX.Composition.IntegrationTests` proves the module unit-of-work composition:
+Identity and CRM commands persist through the same `IUnitOfWork`, each domain event dispatches
+exactly once, and the host resolves a single `CompositeUnitOfWork` over both modules.

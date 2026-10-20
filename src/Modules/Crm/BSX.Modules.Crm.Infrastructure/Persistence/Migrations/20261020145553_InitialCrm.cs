@@ -41,6 +41,7 @@ namespace BSX.Modules.Crm.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_customers", x => x.Id);
+                    table.CheckConstraint("CK_customers_tenant_key", "\"TenantKey\" = \"TenantId\"");
                 });
 
             migrationBuilder.CreateTable(
@@ -73,6 +74,7 @@ namespace BSX.Modules.Crm.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_organizations", x => x.Id);
+                    table.CheckConstraint("CK_organizations_tenant_key", "\"TenantKey\" = \"TenantId\"");
                 });
 
             migrationBuilder.CreateTable(

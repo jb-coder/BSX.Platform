@@ -29,6 +29,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="BSX.Modules.Identity.Infrastructure.IntegrationTests" />
     <InternalsVisibleTo Include="BSX.Web.IntegrationTests" />
+    <InternalsVisibleTo Include="BSX.Composition.IntegrationTests" />
   </ItemGroup>
 
 </Project>

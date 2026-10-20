@@ -17,8 +17,8 @@ public sealed class ConcurrencyTests
         await database.Context.SaveChangesAsync();
         database.Context.ChangeTracker.Clear();
 
-        await using CrmDbContext first = database.CreateContext();
-        await using CrmDbContext second = database.CreateContext();
+        await using CrmDbContext first = database.CreateContext(TestData.TenantA);
+        await using CrmDbContext second = database.CreateContext(TestData.TenantA);
 
         Customer firstCopy = await first.Customers.SingleAsync();
         Customer secondCopy = await second.Customers.SingleAsync();

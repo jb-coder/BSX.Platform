@@ -11,7 +11,8 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
-        builder.ToTable("customers");
+        builder.ToTable("customers", table =>
+            table.HasCheckConstraint("CK_customers_tenant_key", "\"TenantKey\" = \"TenantId\""));
         builder.HasKey(customer => customer.Id);
 
         builder.Property(customer => customer.Id).HasConversion(CrmValueConverters.CustomerId);

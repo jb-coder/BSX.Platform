@@ -27,7 +27,9 @@ internal sealed class SqliteCrmDatabase : IAsyncDisposable
 
     internal static async Task<SqliteCrmDatabase> CreateAsync(
         ICurrentUser? currentUser = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Guid? tenantId = null,
+        bool isSystem = false)
     {
         var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync().ConfigureAwait(false);
@@ -39,15 +41,15 @@ internal sealed class SqliteCrmDatabase : IAsyncDisposable
                 currentUser ?? new TestCurrentUser()))
             .Options;
 
-        var context = new CrmDbContext(options);
+        var context = new CrmDbContext(options, new TestCrmTenantScope(tenantId ?? TestData.TenantA, isSystem));
         await context.Database.EnsureCreatedAsync().ConfigureAwait(false);
 
         return new SqliteCrmDatabase(connection, options, context);
     }
 
-    /// <summary>Creates another context over the same database (used by concurrency and tenant tests).</summary>
-    internal CrmDbContext CreateContext(Guid? tenantId = null)
-        => new(_options, tenantId is { } value ? new TestTenantContext(value) : null);
+    /// <summary>Creates another context over the same database (concurrency and tenant tests).</summary>
+    internal CrmDbContext CreateContext(Guid? tenantId, bool isSystem = false)
+        => new(_options, new TestCrmTenantScope(tenantId, isSystem));
 
     public async ValueTask DisposeAsync()
     {
