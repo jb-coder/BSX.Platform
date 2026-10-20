@@ -53,7 +53,7 @@ CRM
 - Contacts
 - Categories
 
-Status: Domain implemented and hardened (Customer aggregate with owned addresses and contact persons; Organization aggregate; value objects, domain events, tenant-scoped repository contracts) with unit tests. Application, Infrastructure, API and UI pending.
+Status: Domain implemented and hardened; Application layer implemented (CQRS commands/queries, DTO projections, read repositories, validators, tenant-scoped handlers) with unit tests. Infrastructure, API and UI pending.
 
 ---
 

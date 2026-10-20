@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.Modules.Crm.Application</RootNamespace>
+    <AssemblyName>BSX.Modules.Crm.Application</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Crm.Domain\BSX.Modules.Crm.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

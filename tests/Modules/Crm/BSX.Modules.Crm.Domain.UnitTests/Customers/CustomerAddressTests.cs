@@ -141,6 +141,48 @@ public sealed class CustomerAddressTests
     }
 
     [Fact]
+    public void Should_ChangeAddress_WhenRequested()
+    {
+        Customer customer = TestData.CreateCustomer();
+        CustomerAddressId addressId = CustomerAddressId.New();
+        customer.AddAddress(addressId, TestData.Address("1 Main St"), AddressType.Billing);
+        Address updated = TestData.Address("9 New St");
+
+        var result = customer.ChangeAddress(addressId, updated, AddressType.Shipping);
+
+        result.IsSuccess.Should().BeTrue();
+        CustomerAddress address = customer.Addresses.Single();
+        address.Address.Should().Be(updated);
+        address.Type.Should().Be(AddressType.Shipping);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenChangingAddressToDuplicate()
+    {
+        Customer customer = TestData.CreateCustomer();
+        Address address = TestData.Address();
+        customer.AddAddress(CustomerAddressId.New(), address, AddressType.Billing);
+        CustomerAddressId shippingId = CustomerAddressId.New();
+        customer.AddAddress(shippingId, TestData.Address("2 Oak St"), AddressType.Shipping);
+
+        var result = customer.ChangeAddress(shippingId, address, AddressType.Billing);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(CrmErrors.AddressDuplicate);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenChangingUnknownAddress()
+    {
+        Customer customer = TestData.CreateCustomer();
+
+        var result = customer.ChangeAddress(CustomerAddressId.New(), TestData.Address(), AddressType.Billing);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(CrmErrors.AddressNotFound);
+    }
+
+    [Fact]
     public void Should_EnforceAddressLimit()
     {
         Customer customer = TestData.CreateCustomer();

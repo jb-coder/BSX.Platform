@@ -30,6 +30,8 @@ public sealed class CustomerAddress : Entity<CustomerAddressId>
 
     internal void ChangeType(AddressType type) => Type = type;
 
+    internal void ChangeAddress(Address address) => Address = address;
+
     internal void MarkAsDefault() => IsDefault = true;
 
     internal void ClearDefault() => IsDefault = false;

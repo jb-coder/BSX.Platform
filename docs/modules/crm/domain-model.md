@@ -125,7 +125,8 @@ The consistency boundary for a customer, its addresses and its contact persons.
 
 Behavior: `Create`, `Activate`, `Deactivate`, `ChangeName`, `ChangeTaxIdentifier`,
 `AssignOrganization`, `ClearOrganization`, `AddAddress`, `RemoveAddress`, `SetDefaultAddress`,
-`ChangeAddressType`, `AddContact`, `RemoveContact`, `SetPrimaryContact`, `ChangeContactDetails`.
+`ChangeAddressType`, `ChangeAddress`, `AddContact`, `RemoveContact`, `SetPrimaryContact`,
+`ChangeContactDetails`.
 
 Invariants:
 

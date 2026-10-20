@@ -258,8 +258,34 @@ public sealed class Customer : AggregateRoot<CustomerId>
         return Result.Success();
     }
 
-    /// <summary>
-    /// Adds a contact person. A contact must have at least one reachability channel (email or
+    /// <summary>Changes an address value and purpose, enforcing <c>(address, type)</c> uniqueness.</summary>
+    /// <param name="addressId">The address identifier.</param>
+    /// <param name="address">The new postal address.</param>
+    /// <param name="type">The new purpose.</param>
+    public Result ChangeAddress(CustomerAddressId addressId, Address address, AddressType type)
+    {
+        CustomerAddress? existing = _addresses.Find(candidate => candidate.Id == addressId);
+
+        if (existing is null)
+        {
+            return Result.Failure(CrmErrors.AddressNotFound);
+        }
+
+        bool conflict = _addresses.Any(candidate => candidate.Id != addressId
+            && candidate.Address.Equals(address)
+            && candidate.Type == type);
+
+        if (conflict)
+        {
+            return Result.Failure(CrmErrors.AddressDuplicate);
+        }
+
+        existing.ChangeAddress(address);
+        existing.ChangeType(type);
+        return Result.Success();
+    }
+
+    /// <summary>Adds a contact person. A contact must have at least one reachability channel (email or
     /// phone). The first contact becomes the primary contact automatically.
     /// </summary>
     /// <param name="id">The contact person identifier.</param>
