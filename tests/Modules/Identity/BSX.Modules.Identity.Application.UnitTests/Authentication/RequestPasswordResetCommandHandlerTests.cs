@@ -80,4 +80,29 @@ public sealed class RequestPasswordResetCommandHandlerTests
 
         user.PasswordResetToken!.Hash.Value.Should().NotBe(firstHash);
     }
+
+    [Fact]
+    public async Task Should_FailExplicitly_WhenDeliveryDisabled()
+    {
+        SeedUser();
+        _notifier.IsDeliveryEnabled = false;
+
+        var result = await CreateHandler().HandleAsync(new RequestPasswordResetCommand("user@example.com"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.PasswordReset.Unavailable");
+        _notifier.Notifications.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_FailExplicitly_WhenDeliveryDisabled_EvenForUnknownUser()
+    {
+        _notifier.IsDeliveryEnabled = false;
+
+        // Enumeration-safe: the same explicit failure for unknown accounts.
+        var result = await CreateHandler().HandleAsync(new RequestPasswordResetCommand("missing@example.com"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.PasswordReset.Unavailable");
+    }
 }

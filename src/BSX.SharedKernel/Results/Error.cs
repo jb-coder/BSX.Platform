@@ -48,4 +48,9 @@ public sealed record Error(string Code, string Message, ErrorType Type = ErrorTy
     /// Creates an unexpected error.
     /// </summary>
     public static Error Unexpected(string code, string message) => new(code, message, ErrorType.Unexpected);
+
+    /// <summary>
+    /// Creates an unavailable error, for capabilities not active in the current deployment.
+    /// </summary>
+    public static Error Unavailable(string code, string message) => new(code, message, ErrorType.Unavailable);
 }

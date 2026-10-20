@@ -19,6 +19,22 @@ public sealed class IdentityApiTests : IClassFixture<IdentityApiFactory>
     }
 
     [Fact]
+    public async Task Health_Should_ReportLiveness()
+    {
+        HttpResponseMessage response = await _factory.CreateClient().GetAsync("/health/live");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Health_Should_ReportReadiness()
+    {
+        HttpResponseMessage response = await _factory.CreateClient().GetAsync("/health/ready");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Login_Should_Succeed_With_ValidCredentials()
     {
         HttpResponseMessage response = await _factory.CreateClient().PostAsJsonAsync(

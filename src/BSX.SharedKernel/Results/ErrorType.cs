@@ -40,4 +40,9 @@ public enum ErrorType
     /// An unexpected error occurred.
     /// </summary>
     Unexpected = 6,
+
+    /// <summary>
+    /// The requested capability is not available in the current deployment.
+    /// </summary>
+    Unavailable = 7,
 }

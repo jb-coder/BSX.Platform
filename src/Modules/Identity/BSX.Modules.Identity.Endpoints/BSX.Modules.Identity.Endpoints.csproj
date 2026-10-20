@@ -18,4 +18,8 @@
     <ProjectReference Include="..\BSX.Modules.Identity.Infrastructure\BSX.Modules.Identity.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="BSX.Web.IntegrationTests" />
+  </ItemGroup>
+
 </Project>

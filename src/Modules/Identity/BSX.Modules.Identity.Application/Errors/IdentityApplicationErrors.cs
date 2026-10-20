@@ -70,4 +70,9 @@ public static class IdentityApplicationErrors
 
     /// <summary>Too many authentication attempts.</summary>
     public static Error TooManyRequests => Error.Conflict("Identity.Authentication.TooManyRequests", "Too many attempts. Try again later.");
+
+    /// <summary>Password-reset delivery is not configured for this deployment.</summary>
+    public static Error PasswordResetUnavailable => Error.Unavailable(
+        "Identity.PasswordReset.Unavailable",
+        "Password reset is not available in this deployment.");
 }

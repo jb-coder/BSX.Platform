@@ -5,10 +5,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace BSX.Modules.Identity.Endpoints.HealthChecks;
 
-/// <summary>Registers Identity health checks (database and authentication readiness).</summary>
+/// <summary>Registers Identity health checks (liveness, database and authentication readiness).</summary>
 public static class IdentityHealthChecksExtensions
 {
-    /// <summary>Adds the identity database and authentication health checks.</summary>
+    /// <summary>Adds the identity liveness and readiness health checks.</summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddIdentityHealthChecks(this IServiceCollection services)
@@ -16,8 +16,25 @@ public static class IdentityHealthChecksExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddHealthChecks()
+            .AddCheck("self", static () => HealthCheckResult.Healthy(), tags: ["live"])
             .AddCheck<IdentityDatabaseHealthCheck>("identity-database", tags: ["ready"])
             .AddCheck<IdentityAuthenticationHealthCheck>("identity-authentication", tags: ["ready"]);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the identity schema readiness check that detects pending EF Core migrations.
+    /// Enable it with <c>Identity:Database:VerifySchema</c> in deployments that own the schema.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The same service collection for chaining.</returns>
+    public static IServiceCollection AddIdentitySchemaHealthCheck(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddHealthChecks()
+            .AddCheck<IdentitySchemaHealthCheck>("identity-database-schema", tags: ["ready"]);
 
         return services;
     }

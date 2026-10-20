@@ -6,6 +6,13 @@ namespace BSX.Modules.Identity.Application.Abstractions;
 /// </summary>
 public interface IPasswordResetNotifier
 {
+    /// <summary>
+    /// Gets a value indicating whether password-reset delivery is available in the current
+    /// deployment. When <see langword="false"/>, the request endpoint must fail explicitly rather
+    /// than reporting a success that could never be delivered (ADR-016).
+    /// </summary>
+    bool IsDeliveryEnabled => true;
+
     /// <summary>Delivers a reset token to the user.</summary>
     /// <param name="email">The recipient email.</param>
     /// <param name="resetToken">The plaintext reset token.</param>

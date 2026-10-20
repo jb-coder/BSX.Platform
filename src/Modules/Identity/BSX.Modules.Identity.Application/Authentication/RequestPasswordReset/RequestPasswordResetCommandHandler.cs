@@ -52,6 +52,13 @@ public sealed class RequestPasswordResetCommandHandler : ICommandHandler<Request
             return Result.Failure<RequestPasswordResetResponse>(IdentityApplicationErrors.TooManyRequests);
         }
 
+        // Fail explicitly (and enumeration-safely) when the deployment cannot deliver reset emails,
+        // instead of reporting a success that could never reach the user (ADR-016).
+        if (!_notifier.IsDeliveryEnabled)
+        {
+            return Result.Failure<RequestPasswordResetResponse>(IdentityApplicationErrors.PasswordResetUnavailable);
+        }
+
         // Enumeration-safe: identical response regardless of account existence or validity.
         var emailResult = Email.Create(request.Email);
         if (emailResult.IsFailure)
