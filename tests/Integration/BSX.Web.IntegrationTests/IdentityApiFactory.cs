@@ -1,6 +1,8 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using BSX.Modules.Crm.Infrastructure.Persistence;
+using BSX.Modules.Crm.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Roles;
@@ -21,8 +23,8 @@ using ValueObjects = BSX.Modules.Identity.Domain.ValueObjects;
 namespace BSX.Web.IntegrationTests;
 
 /// <summary>
-/// Boots the real <c>BSX.Web</c> host with SQLite in-memory replacing PostgreSQL, and seeds a
-/// multi-tenant, multi-user baseline for endpoint integration tests.
+/// Boots the real <c>BSX.Web</c> host with SQLite in-memory replacing PostgreSQL for both the
+/// Identity and CRM modules, and seeds a multi-tenant, multi-user baseline for endpoint tests.
 /// </summary>
 public class IdentityApiFactory : WebApplicationFactory<Program>
 {
@@ -49,9 +51,16 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         "identity.roles.read",
         "identity.roles.create",
         "identity.users.assign-role",
+        "crm.customers.read",
+        "crm.customers.create",
+        "crm.customers.update",
+        "crm.organizations.read",
+        "crm.organizations.create",
+        "crm.organizations.update",
     ];
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly SqliteConnection _crmConnection = new("DataSource=:memory:");
     private readonly CapturingPasswordResetNotifier _notifier = new();
 
     /// <summary>Initializes a new instance of the <see cref="IdentityApiFactory"/> class.</summary>
@@ -62,6 +71,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         Clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
         Rsa = RSA.Create(2048);
         _connection.Open();
+        _crmConnection.Open();
         _ = CreateClient();
         Seed();
     }
@@ -157,6 +167,16 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
                 options.AddInterceptors(provider.GetRequiredService<AuditingSaveChangesInterceptor>());
             });
 
+            services.RemoveAll<DbContextOptions<CrmDbContext>>();
+            services.RemoveAll<CrmDbContext>();
+            services.RemoveAll<IDbContextOptionsConfiguration<CrmDbContext>>();
+
+            services.AddDbContext<CrmDbContext>((provider, options) =>
+            {
+                options.UseSqlite(_crmConnection);
+                options.AddInterceptors(provider.GetRequiredService<CrmAuditingSaveChangesInterceptor>());
+            });
+
             // The fail-closed limiter is real and correct; raise the thresholds so the test suite
             // (which performs many logins) does not trip it.
             services.RemoveAll<RateLimitOptions>();
@@ -183,6 +203,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         if (disposing)
         {
             _connection.Dispose();
+            _crmConnection.Dispose();
             Rsa.Dispose();
         }
     }
@@ -210,6 +231,10 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         InviteeUserId = AddUser(context, passwordHasher, InviteeEmail, "Invitee", now, platformRoleId: null, memberships: []);
 
         context.SaveChanges();
+
+        using IServiceScope crmScope = Services.CreateScope();
+        var crmContext = crmScope.ServiceProvider.GetRequiredService<CrmDbContext>();
+        crmContext.Database.EnsureCreated();
     }
 
     private static Guid AddUser(

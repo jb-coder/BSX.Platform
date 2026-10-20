@@ -53,7 +53,7 @@ CRM
 - Contacts
 - Categories
 
-Status: Domain, Application and Infrastructure (EF Core + PostgreSQL, migrations, tenant query filters, auditing, soft delete, concurrency, projection reads) implemented with tests. API and UI pending.
+Status: Domain, Application, Infrastructure and HTTP API implemented and tested (CQRS, tenant isolation, auditing, soft delete, concurrency, projections, health). Blazor UI, reporting and analytics pending.
 
 ---
 

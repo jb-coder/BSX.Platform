@@ -1,4 +1,8 @@
 using BSX.BuildingBlocks.DependencyInjection;
+using BSX.Modules.Crm.Application.DependencyInjection;
+using BSX.Modules.Crm.Endpoints;
+using BSX.Modules.Crm.Endpoints.HealthChecks;
+using BSX.Modules.Crm.Infrastructure.DependencyInjection;
 using BSX.Modules.Identity.Application.DependencyInjection;
 using BSX.Modules.Identity.Endpoints;
 using BSX.Modules.Identity.Endpoints.Authentication;
@@ -45,7 +49,6 @@ if (string.IsNullOrWhiteSpace(identityConnectionString))
 
 builder.Services.AddIdentityApplication();
 builder.Services.AddIdentityInfrastructure(identityConnectionString);
-builder.Services.AddCompositeUnitOfWork();
 builder.Services.AddIdentityJwt(options =>
 {
     builder.Configuration.GetSection(JwtOptions.SectionName).Bind(options);
@@ -58,6 +61,16 @@ if (builder.Configuration.GetValue("Identity:Database:VerifySchema", false))
 {
     builder.Services.AddIdentitySchemaHealthCheck();
 }
+
+// CRM module: application, infrastructure and readiness checks. It shares the platform database by
+// default (separate `crm` schema); configure ConnectionStrings:Crm for a dedicated database.
+string crmConnectionString = builder.Configuration.GetConnectionString("Crm") ?? identityConnectionString;
+builder.Services.AddCrmApplication();
+builder.Services.AddCrmInfrastructure(crmConnectionString);
+builder.Services.AddCrmHealthChecks();
+
+// One module-aware unit of work composes every module context (ADR-009).
+builder.Services.AddCompositeUnitOfWork();
 
 const string ServiceName = "BSX.Platform";
 string? otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
@@ -117,6 +130,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = registration => registration.Tags.Contains("ready"),
 });
 app.MapIdentityEndpoints();
+app.MapCrmEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

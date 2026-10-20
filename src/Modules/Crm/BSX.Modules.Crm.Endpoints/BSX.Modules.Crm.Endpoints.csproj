@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.Modules.Crm.Endpoints</RootNamespace>
+    <AssemblyName>BSX.Modules.Crm.Endpoints</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Crm.Application\BSX.Modules.Crm.Application.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Crm.Infrastructure\BSX.Modules.Crm.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
