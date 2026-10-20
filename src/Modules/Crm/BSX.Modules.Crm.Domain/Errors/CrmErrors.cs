@@ -38,11 +38,19 @@ public static class CrmErrors
     /// <summary>The organization is already assigned to the customer.</summary>
     public static Error OrganizationAlreadyAssigned => Error.Conflict("CRM.Customer.OrganizationAlreadyAssigned", "The organization is already assigned.");
 
+    /// <summary>The customer is not assigned to an organization.</summary>
+    public static Error OrganizationNotAssigned => Error.Conflict("CRM.Customer.OrganizationNotAssigned", "The customer is not assigned to an organization.");
+
     /// <summary>The contact person was not found.</summary>
     public static Error ContactNotFound => Error.NotFound("CRM.Customer.ContactNotFound", "The contact person was not found.");
 
-    /// <summary>A contact with the same email already exists.</summary>
-    public static Error ContactEmailDuplicate => Error.Conflict("CRM.Customer.ContactEmailDuplicate", "A contact with this email already exists.");
+    /// <summary>A contact with the same email already exists for this customer.</summary>
+    public static Error ContactEmailDuplicate => Error.Conflict("CRM.Customer.ContactEmailDuplicate", "A contact with this email already exists for this customer.");
+
+    /// <summary>A contact person must have at least one reachability channel.</summary>
+    public static Error ContactUnreachable => Error.Validation(
+        "CRM.Customer.ContactUnreachable",
+        "A contact person must have an email address or a phone number.");
 
     /// <summary>The customer cannot have more contact persons.</summary>
     public static Error ContactLimitReached => Error.Conflict("CRM.Customer.ContactLimitReached", "The customer cannot have more contact persons.");
@@ -50,21 +58,9 @@ public static class CrmErrors
     /// <summary>The customer address was not found.</summary>
     public static Error AddressNotFound => Error.NotFound("CRM.Customer.AddressNotFound", "The customer address was not found.");
 
-    /// <summary>The address already exists for the customer.</summary>
-    public static Error AddressDuplicate => Error.Conflict("CRM.Customer.AddressDuplicate", "The address already exists for this customer.");
+    /// <summary>An address with the same value and type already exists.</summary>
+    public static Error AddressDuplicate => Error.Conflict("CRM.Customer.AddressDuplicate", "An address of this type already exists for this customer.");
 
     /// <summary>The customer cannot have more addresses.</summary>
     public static Error AddressLimitReached => Error.Conflict("CRM.Customer.AddressLimitReached", "The customer cannot have more addresses.");
-
-    /// <summary>The contact is already assigned to the customer.</summary>
-    public static Error ContactAlreadyAssigned => Error.Conflict("CRM.Contact.AlreadyAssigned", "The contact is already assigned to this customer.");
-
-    /// <summary>The contact is not assigned to a customer.</summary>
-    public static Error ContactNotAssigned => Error.Conflict("CRM.Contact.NotAssigned", "The contact is not assigned to a customer.");
-
-    /// <summary>The contact is already active.</summary>
-    public static Error ContactAlreadyActive => Error.Conflict("CRM.Contact.AlreadyActive", "The contact is already active.");
-
-    /// <summary>The contact is already inactive.</summary>
-    public static Error ContactAlreadyInactive => Error.Conflict("CRM.Contact.AlreadyInactive", "The contact is already inactive.");
 }

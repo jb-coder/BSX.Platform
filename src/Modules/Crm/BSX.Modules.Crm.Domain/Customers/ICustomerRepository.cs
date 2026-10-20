@@ -5,10 +5,11 @@ namespace BSX.Modules.Crm.Domain.Customers;
 /// <summary>Persistence contract for the <see cref="Customer"/> aggregate (aggregate-specific).</summary>
 public interface ICustomerRepository
 {
-    /// <summary>Gets a customer by identifier.</summary>
+    /// <summary>Gets a customer by identifier within a tenant.</summary>
+    /// <param name="tenantId">The tenant identifier (read isolation, Option A).</param>
     /// <param name="id">The customer identifier.</param>
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
-    Task<Customer?> GetByIdAsync(CustomerId id, CancellationToken cancellationToken = default);
+    Task<Customer?> GetByIdAsync(TenantId tenantId, CustomerId id, CancellationToken cancellationToken = default);
 
     /// <summary>Determines whether a customer code exists within a tenant.</summary>
     /// <param name="tenantId">The tenant identifier.</param>

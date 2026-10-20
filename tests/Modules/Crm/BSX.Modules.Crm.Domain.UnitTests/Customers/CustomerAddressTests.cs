@@ -35,13 +35,26 @@ public sealed class CustomerAddressTests
     }
 
     [Fact]
-    public void Should_Fail_WhenAddressIsDuplicated()
+    public void Should_AllowSameAddress_WhenTypeDiffers()
     {
         Customer customer = TestData.CreateCustomer();
         Address address = TestData.Address();
         customer.AddAddress(CustomerAddressId.New(), address, AddressType.Billing);
 
         var result = customer.AddAddress(CustomerAddressId.New(), address, AddressType.Shipping);
+
+        result.IsSuccess.Should().BeTrue();
+        customer.Addresses.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenSameAddressAndTypeIsDuplicated()
+    {
+        Customer customer = TestData.CreateCustomer();
+        Address address = TestData.Address();
+        customer.AddAddress(CustomerAddressId.New(), address, AddressType.Billing);
+
+        var result = customer.AddAddress(CustomerAddressId.New(), address, AddressType.Billing);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(CrmErrors.AddressDuplicate);
@@ -99,6 +112,32 @@ public sealed class CustomerAddressTests
         customer.ChangeAddressType(addressId, AddressType.Shipping).IsSuccess.Should().BeTrue();
 
         customer.Addresses.Single().Type.Should().Be(AddressType.Shipping);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenChangingAddressTypeToDuplicate()
+    {
+        Customer customer = TestData.CreateCustomer();
+        Address address = TestData.Address();
+        customer.AddAddress(CustomerAddressId.New(), address, AddressType.Billing);
+        CustomerAddressId shippingId = CustomerAddressId.New();
+        customer.AddAddress(shippingId, address, AddressType.Shipping);
+
+        var result = customer.ChangeAddressType(shippingId, AddressType.Billing);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(CrmErrors.AddressDuplicate);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenChangingUnknownAddressType()
+    {
+        Customer customer = TestData.CreateCustomer();
+
+        var result = customer.ChangeAddressType(CustomerAddressId.New(), AddressType.Shipping);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(CrmErrors.AddressNotFound);
     }
 
     [Fact]

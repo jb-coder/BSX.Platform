@@ -1,4 +1,3 @@
-using BSX.Modules.Crm.Domain.Contacts;
 using BSX.Modules.Crm.Domain.Customers;
 using BSX.Modules.Crm.Domain.Organizations;
 using BSX.Modules.Crm.Domain.ValueObjects;
@@ -36,7 +35,4 @@ internal static class TestData
 
     internal static Organization CreateOrganization(string name = "Holding Group")
         => Organization.Create(OrganizationId.New(), Tenant, Name(name)).Value;
-
-    internal static Contact CreateContact(string name = "Jane Doe")
-        => Contact.Create(ContactId.New(), Tenant, Name(name), Email(), Phone()).Value;
 }

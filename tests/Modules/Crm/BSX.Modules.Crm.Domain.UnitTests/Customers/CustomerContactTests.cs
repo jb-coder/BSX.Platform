@@ -1,5 +1,6 @@
 using BSX.Modules.Crm.Domain.Customers;
 using BSX.Modules.Crm.Domain.DomainEvents;
+using BSX.Modules.Crm.Domain.Enums;
 using BSX.Modules.Crm.Domain.Errors;
 using BSX.Modules.Crm.Domain.ValueObjects;
 
@@ -174,5 +175,54 @@ public sealed class CustomerContactTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(CrmErrors.ContactEmailDuplicate);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenContactHasNoReachabilityChannel()
+    {
+        Customer customer = TestData.CreateCustomer();
+
+        var result = customer.AddContact(ContactPersonId.New(), TestData.Name("Jane"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(CrmErrors.ContactUnreachable);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenChangeLeavesContactWithoutReachabilityChannel()
+    {
+        Customer customer = TestData.CreateCustomer();
+        ContactPersonId contactId = ContactPersonId.New();
+        customer.AddContact(contactId, TestData.Name("Jane"), TestData.Email("jane@example.com"));
+
+        var result = customer.ChangeContactDetails(contactId, TestData.Name("Jane"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(CrmErrors.ContactUnreachable);
+    }
+
+    [Fact]
+    public void Should_AllowAdministrativeChanges_WhenCustomerDeactivated()
+    {
+        Customer customer = TestData.CreateCustomer();
+        ContactPersonId contactId = ContactPersonId.New();
+        customer.AddContact(contactId, TestData.Name("Jane"), TestData.Email("jane@example.com"));
+        customer.Deactivate();
+
+        customer.ChangeName(TestData.Name("Renamed")).IsSuccess.Should().BeTrue();
+        customer.AddAddress(CustomerAddressId.New(), TestData.Address(), AddressType.Billing).IsSuccess.Should().BeTrue();
+        customer.ChangeContactDetails(contactId, TestData.Name("Jane Smith"), TestData.Email("jane.smith@example.com")).IsSuccess.Should().BeTrue();
+        customer.RemoveContact(contactId).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Should_AllowSameContactEmail_AcrossCustomers()
+    {
+        Email email = TestData.Email("shared@example.com");
+        Customer first = TestData.CreateCustomer("CUST-001", "First Customer");
+        Customer second = TestData.CreateCustomer("CUST-002", "Second Customer");
+
+        first.AddContact(ContactPersonId.New(), TestData.Name("Jane"), email).IsSuccess.Should().BeTrue();
+        second.AddContact(ContactPersonId.New(), TestData.Name("Jane"), email).IsSuccess.Should().BeTrue();
     }
 }

@@ -63,4 +63,41 @@ public sealed class CustomerOrganizationTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(CrmErrors.CustomerNotActive);
     }
+
+    [Fact]
+    public void Should_RaiseOrganizationUnassigned_WhenCleared()
+    {
+        Customer customer = TestData.CreateCustomer();
+        customer.AssignOrganization(OrganizationId.New());
+        customer.ClearDomainEvents();
+
+        var result = customer.ClearOrganization();
+
+        result.IsSuccess.Should().BeTrue();
+        customer.OrganizationId.Should().BeNull();
+        customer.DomainEvents.OfType<OrganizationUnassigned>().Single().CustomerId.Should().Be(customer.Id);
+    }
+
+    [Fact]
+    public void Should_Fail_WhenClearingOrganization_ButNotAssigned()
+    {
+        Customer customer = TestData.CreateCustomer();
+
+        var result = customer.ClearOrganization();
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(CrmErrors.OrganizationNotAssigned);
+        customer.DomainEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Should_AllowClearingOrganization_WhenCustomerDeactivated()
+    {
+        Customer customer = TestData.CreateCustomer();
+        customer.AssignOrganization(OrganizationId.New());
+        customer.Deactivate();
+
+        customer.ClearOrganization().IsSuccess.Should().BeTrue();
+        customer.OrganizationId.Should().BeNull();
+    }
 }

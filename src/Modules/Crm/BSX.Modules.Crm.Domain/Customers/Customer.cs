@@ -145,7 +145,23 @@ public sealed class Customer : AggregateRoot<CustomerId>
         return Result.Success();
     }
 
-    /// <summary>Adds an address. The first address becomes the default automatically.</summary>
+    /// <summary>Detaches the customer from its organization. Allowed in any status.</summary>
+    public Result ClearOrganization()
+    {
+        if (OrganizationId is null)
+        {
+            return Result.Failure(CrmErrors.OrganizationNotAssigned);
+        }
+
+        OrganizationId = null;
+        RaiseDomainEvent(new OrganizationUnassigned(Id));
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Adds an address. Uniqueness is enforced per <c>(address, type)</c> so the same physical
+    /// address may be used for multiple purposes. The first address becomes the default.
+    /// </summary>
     /// <param name="id">The address identifier.</param>
     /// <param name="address">The postal address.</param>
     /// <param name="type">The address purpose.</param>
@@ -157,7 +173,7 @@ public sealed class Customer : AggregateRoot<CustomerId>
             return Result.Failure(CrmErrors.AddressLimitReached);
         }
 
-        if (_addresses.Any(existing => existing.Address.Equals(address)))
+        if (_addresses.Any(existing => existing.Address.Equals(address) && existing.Type == type))
         {
             return Result.Failure(CrmErrors.AddressDuplicate);
         }
@@ -217,7 +233,7 @@ public sealed class Customer : AggregateRoot<CustomerId>
         return Result.Success();
     }
 
-    /// <summary>Changes the purpose of an address.</summary>
+    /// <summary>Changes the purpose of an address, enforcing <c>(address, type)</c> uniqueness.</summary>
     /// <param name="addressId">The address identifier.</param>
     /// <param name="type">The new purpose.</param>
     public Result ChangeAddressType(CustomerAddressId addressId, AddressType type)
@@ -229,11 +245,23 @@ public sealed class Customer : AggregateRoot<CustomerId>
             return Result.Failure(CrmErrors.AddressNotFound);
         }
 
+        bool conflict = _addresses.Any(existing => existing.Id != addressId
+            && existing.Address.Equals(address.Address)
+            && existing.Type == type);
+
+        if (conflict)
+        {
+            return Result.Failure(CrmErrors.AddressDuplicate);
+        }
+
         address.ChangeType(type);
         return Result.Success();
     }
 
-    /// <summary>Adds a contact person. The first contact becomes the primary contact automatically.</summary>
+    /// <summary>
+    /// Adds a contact person. A contact must have at least one reachability channel (email or
+    /// phone). The first contact becomes the primary contact automatically.
+    /// </summary>
     /// <param name="id">The contact person identifier.</param>
     /// <param name="name">The person's name.</param>
     /// <param name="email">The optional email address.</param>
@@ -254,6 +282,11 @@ public sealed class Customer : AggregateRoot<CustomerId>
         if (_contacts.Count >= MaxContacts)
         {
             return Result.Failure(CrmErrors.ContactLimitReached);
+        }
+
+        if (email is null && phoneNumber is null)
+        {
+            return Result.Failure(CrmErrors.ContactUnreachable);
         }
 
         if (email is not null && _contacts.Any(existing => existing.Email is not null && existing.Email.Equals(email)))
@@ -318,7 +351,7 @@ public sealed class Customer : AggregateRoot<CustomerId>
         return Result.Success();
     }
 
-    /// <summary>Changes a contact person's details.</summary>
+    /// <summary>Changes a contact person's details, requiring at least one reachability channel.</summary>
     /// <param name="contactId">The contact person identifier.</param>
     /// <param name="name">The new name.</param>
     /// <param name="email">The new email, if any.</param>
@@ -334,6 +367,11 @@ public sealed class Customer : AggregateRoot<CustomerId>
         if (contact is null)
         {
             return Result.Failure(CrmErrors.ContactNotFound);
+        }
+
+        if (email is null && phoneNumber is null)
+        {
+            return Result.Failure(CrmErrors.ContactUnreachable);
         }
 
         bool duplicateEmail = email is not null
