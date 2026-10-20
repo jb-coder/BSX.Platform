@@ -53,7 +53,7 @@ CRM
 - Contacts
 - Categories
 
-Status: Domain implemented and hardened; Application layer implemented (CQRS commands/queries, DTO projections, read repositories, validators, tenant-scoped handlers) with unit tests. Infrastructure, API and UI pending.
+Status: Domain, Application and Infrastructure (EF Core + PostgreSQL, migrations, tenant query filters, auditing, soft delete, concurrency, projection reads) implemented with tests. API and UI pending.
 
 ---
 

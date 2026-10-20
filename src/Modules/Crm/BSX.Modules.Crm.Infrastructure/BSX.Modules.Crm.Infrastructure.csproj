@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.Modules.Crm.Infrastructure</RootNamespace>
+    <AssemblyName>BSX.Modules.Crm.Infrastructure</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Crm.Domain\BSX.Modules.Crm.Domain.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Crm.Application\BSX.Modules.Crm.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BSX.Modules.Crm.Infrastructure.IntegrationTests" />
+  </ItemGroup>
+
+</Project>
