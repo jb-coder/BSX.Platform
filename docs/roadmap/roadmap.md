@@ -71,9 +71,14 @@ Inventory
 
 Sales
 
-- Quotations
-- Orders
-- Invoices
+- [x] Leads and Opportunities (domain)
+- [ ] Quotations
+- [ ] Orders
+- [ ] Invoices
+
+Status: Sales domain (Lead and Opportunity aggregates, value objects, events and repositories)
+implemented and tested. Application, Infrastructure, API and UI are pending; quotations, orders and
+invoices remain out of scope for this slice.
 
 ---
 
