@@ -1,8 +1,8 @@
 # Database Migration Strategy
 
-The platform persists to PostgreSQL via EF Core (ADR-004). Two modules own schemas:
-**Identity** and **CRM**. Migrations are authored per module and applied by the deployment
-pipeline.
+The platform persists to PostgreSQL via EF Core (ADR-004). Three modules own schemas:
+**Identity**, **CRM** and **Sales**. Migrations are authored per module and applied by the
+deployment pipeline.
 
 ## Official strategy: migrations are applied by the deployment pipeline
 
@@ -32,11 +32,19 @@ dotnet ef database update \
   -- --connection "Host=...;Database=bsx_crm;Username=...;Password=..."
 ```
 
+### Sales
+
+```bash
+dotnet ef database update \
+  --project src/Modules/Sales/BSX.Modules.Sales.Infrastructure \
+  -- --connection "Host=...;Database=bsx_sales;Username=...;Password=..."
+```
+
 No `--startup-project` is required: each module's Infrastructure project owns its design-time
 factory, so the EF tools use it directly. The factories accept `--connection` (or
-`--connection-string`) after `--` and also read `ConnectionStrings__Identity` /
-`ConnectionStrings__Crm` from the environment, so build agents can supply the connection without
-changing committed files or command lines.
+`--connection-string`) after `--` and also read `ConnectionStrings__Identity`,
+`ConnectionStrings__Crm` and `ConnectionStrings__Sales` from the environment, so build agents can
+supply the connection without changing committed files or command lines.
 
 Migration bundles are recommended for production:
 
@@ -48,6 +56,10 @@ dotnet ef migrations bundle \
 dotnet ef migrations bundle \
   --project src/Modules/Crm/BSX.Modules.Crm.Infrastructure \
   -o ./artifacts/crm-migrate
+
+dotnet ef migrations bundle \
+  --project src/Modules/Sales/BSX.Modules.Sales.Infrastructure \
+  -o ./artifacts/sales-migrate
 ```
 
 Because a migration step can be destructive, it must be a **gated, explicit deployment step** with
@@ -59,12 +71,13 @@ a backup, never an implicit side effect of application startup.
 | --- | --- | --- | --- | --- |
 | Identity | `IdentityDbContext` | `identity` | `identity.__ef_migrations_history` | Existing Identity migrations |
 | CRM | `CrmDbContext` | `crm` | `crm.__ef_migrations_history` | `InitialCrm` |
+| Sales | `SalesDbContext` | `sales` | `sales.__ef_migrations_history` | `InitialSales` |
 
-`ConnectionStrings:Identity` and `ConnectionStrings:Crm` may point to the **same database** (the
-default: CRM falls back to the Identity connection string) or to dedicated databases. The schemas
-are independent and there are no cross-schema foreign keys, so the order of the two migration
-commands is not significant. Apply both **before** rolling out the application version that needs
-them.
+`ConnectionStrings:Identity`, `ConnectionStrings:Crm` and `ConnectionStrings:Sales` may point to the
+**same database** (the default: CRM falls back to Identity; Sales is configured separately once the
+host composes the module) or to dedicated databases. The schemas are independent and there are no
+cross-schema foreign keys, so the order of the migration commands is not significant. Apply all
+**before** rolling out the application version that needs them.
 
 ## Optional: apply Identity migrations on startup (single instance only)
 
@@ -76,8 +89,8 @@ For single-instance or non-HA environments, Identity supports:
 
 The host then applies pending Identity migrations during startup
 (`IdentityDatabaseMigrationExtensions.ApplyIdentityMigrationsAsync`). Do **not** enable this in a
-multi-instance deployment — concurrent migration runs are unsafe. CRM has no startup-migration
-hook; its migrations are always applied out of band.
+multi-instance deployment — concurrent migration runs are unsafe. CRM and Sales have no
+startup-migration hook; their migrations are always applied out of band.
 
 ## Schema incompatibility detection
 
@@ -92,7 +105,8 @@ Enable the schema readiness checks to detect drift at runtime:
 
 This registers `identity-database-schema` and `crm-database-schema` under the `ready` tag. Each
 reports `Unhealthy` when EF detects pending migrations (or when the schema cannot be inspected),
-so an orchestrator will not route traffic to an instance running against an outdated schema. See
+so an orchestrator will not route traffic to an instance running against an outdated schema. Sales
+does not yet expose a schema readiness check (API/host composition is pending). See
 [health-checks.md](health-checks.md).
 
 ## Guidance
@@ -100,5 +114,6 @@ so an orchestrator will not route traffic to an instance running against an outd
 - Always run migrations **before** rolling out the application version that requires them.
 - Keep migrations backward compatible for the duration of a rolling deployment (expand/contract).
 - Take a database backup before applying destructive migrations.
-- Verify `/health/ready` is green (including both schema checks, when enabled) after deployment.
-- See [crm-operations.md](crm-operations.md) for CRM-specific deployment and operational guidance.
+- Verify `/health/ready` is green (including the schema checks, when enabled) after deployment.
+- See [crm-operations.md](crm-operations.md) for CRM-specific deployment and operational guidance
+  and [sales/persistence.md](../modules/sales/persistence.md) for Sales schema details.

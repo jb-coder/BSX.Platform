@@ -1,6 +1,6 @@
 # Sales - Application Layer
 
-Status: Application implemented. Infrastructure, API and UI are out of scope for this slice.
+Status: Application and Infrastructure implemented. API and UI are out of scope for this slice.
 
 ## Scope
 
@@ -57,10 +57,10 @@ updates; the request must repeat the current title and references, and changing 
 - `CreateOpportunityFromLeadCommandHandler` checks
   `IOpportunityRepository.ExistsByLeadIdAsync(tenant, leadId)` before creating the opportunity and
   returns `SALES.Opportunity.AlreadyExistsForLead` on a duplicate.
-- **Infrastructure enforcement (required):** add a unique index on `(TenantId, LeadId)` (filtered
-  by `IsDeleted = false` once opportunities are soft-deletable) and implement
-  `ExistsByLeadIdAsync` tenant-scoped. The handler check is the friendly pre-check; the unique index
-  closes the race between concurrent conversions.
+- **Implemented in Infrastructure:** the filtered unique index `(TenantId, LeadId)`
+  (`IsDeleted = false`) and the tenant-scoped `ExistsByLeadIdAsync` close the race between
+  concurrent conversions. The handler check remains the friendly pre-check. See
+  [persistence.md](persistence.md).
 
 ### 2. CustomerId is required when creating an opportunity
 
@@ -68,10 +68,11 @@ updates; the request must repeat the current title and references, and changing 
 - `Opportunity.CreateFromLead` requires a `CustomerId` and persists it as a required reference.
 - `UpdateOpportunityCommand` also requires a non-empty `CustomerId`, so the invariant cannot be
   cleared through updates.
-- **Infrastructure enforcement (required):** persist `CustomerId` as non-nullable/required and
-  validate that the referenced CRM customer exists in the tenant through CRM contracts (not by
-  referencing CRM domain/infrastructure). This validation belongs to the future CRM integration
-  path; it must not couple Sales to CRM aggregates.
+- **Implemented in Infrastructure:** `CustomerId` is persisted as a required column. The
+  tenant-aware `ICrmReferenceValidator` seam and `CrmReferenceValidationInterceptor` validate
+  customer/organization references without referencing CRM Domain or tables. The default validator
+  is a pass-through until `CRM.Contracts` is introduced; replacing it activates real validation
+  without changing the Application. See [infrastructure.md](infrastructure.md).
 
 ### 3. Qualification requires the lead to be Contacted first
 
@@ -98,10 +99,11 @@ the handlers create the domain value objects and return their `Result` errors.
 - `ILeadReadRepository` and `IOpportunityReadRepository` are Application-owned ports implemented by
   Infrastructure.
 - Detail and list reads project directly to DTOs; list queries never load aggregates.
-- Leads are searchable by title; opportunities are searchable by title.
+- Leads are searchable by title; opportunities are searchable by title or, when the search term is a
+  GUID, by customer id.
 - Paging is normalized in the query handlers (page ≥ 1; size 1–100, default 20).
-- `OpportunityDto`/`OpportunitySummaryDto` expose `WeightedAmount`; Infrastructure should compute it
-  with the same two-decimal away-from-zero rounding as `Money.ApplyPercentage`.
+- `OpportunityDto`/`OpportunitySummaryDto` expose `WeightedAmount`; the Infrastructure read model
+  computes it with the domain `Money.ApplyPercentage` rule (two decimals, away from zero).
 
 ## Permissions
 
@@ -133,8 +135,9 @@ Domain failures (invalid titles/money/probability/date, lifecycle conflicts) pro
 ## Composition
 
 `AddSalesApplication()` registers the Sales handlers, validators and `SalesTenantResolver` through
-`AddBuildingBlocks`. The host composes it with the Sales Infrastructure and the platform unit of
-work when the Infrastructure slice is available.
+`AddBuildingBlocks`. The host composes it with `AddSalesInfrastructure(connectionString)` and
+`AddCompositeUnitOfWork()`; the composition test resolves Identity, CRM and Sales as three module
+units of work behind one `CompositeUnitOfWork`.
 
 ## Testing
 
@@ -152,6 +155,7 @@ work when the Infrastructure slice is available.
 
 ## Out of scope
 
-- Infrastructure (EF Core, migrations, unique indexes, CRM reference validation).
 - API endpoints and UI.
 - Quotes, orders, invoices, pricing, forecasting engines and reporting.
+- A CRM contracts-backed reference validator (the Infrastructure seam is in place and currently
+  pass-through until `CRM.Contracts` exists).

@@ -16,6 +16,8 @@ using BSX.Modules.Identity.Infrastructure.DependencyInjection;
 using BSX.Modules.Identity.Infrastructure.Persistence;
 using BSX.Modules.Identity.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Identity.Infrastructure.Repositories;
+using BSX.Modules.Sales.Application.DependencyInjection;
+using BSX.Modules.Sales.Infrastructure.DependencyInjection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -84,13 +86,15 @@ public sealed class CompositeCompositionTests
     }
 
     [Fact]
-    public void Should_ResolveCompositeUnitOfWork_WhenBothModulesAreRegistered()
+    public void Should_ResolveCompositeUnitOfWork_WhenAllModulesAreRegistered()
     {
         var services = new ServiceCollection();
         services.AddIdentityApplication();
         services.AddIdentityInfrastructure("Host=localhost;Port=5432;Database=bsx_identity;Username=postgres;Password=postgres");
         services.AddCrmApplication();
         services.AddCrmInfrastructure("Host=localhost;Port=5432;Database=bsx_crm;Username=postgres;Password=postgres");
+        services.AddSalesApplication();
+        services.AddSalesInfrastructure("Host=localhost;Port=5432;Database=bsx_sales;Username=postgres;Password=postgres");
         services.AddCompositeUnitOfWork();
 
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -99,7 +103,7 @@ public sealed class CompositeCompositionTests
         scope.ServiceProvider.GetRequiredService<IUnitOfWork>().Should().BeOfType<CompositeUnitOfWork>();
 
         IModuleUnitOfWork[] modules = scope.ServiceProvider.GetServices<IModuleUnitOfWork>().ToArray();
-        modules.Should().HaveCount(2);
-        modules.Select(module => module.ModuleName).Should().BeEquivalentTo(["Identity", "Crm"]);
+        modules.Should().HaveCount(3);
+        modules.Select(module => module.ModuleName).Should().BeEquivalentTo(["Identity", "Crm", "Sales"]);
     }
 }

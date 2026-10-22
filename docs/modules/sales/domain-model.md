@@ -1,7 +1,7 @@
 # Sales - Domain Model
 
-Status: Domain and Application implemented (see [application.md](application.md)). Infrastructure,
-API and UI are out of scope for this slice.
+Status: Domain, Application and Infrastructure implemented (see [application.md](application.md)
+and [persistence.md](persistence.md)). API and UI are out of scope for this slice.
 
 ## Scope
 
@@ -173,7 +173,6 @@ lifecycle and state conflicts use `Error.Conflict`.
 
 ## Out of scope / next
 
-- Infrastructure (EF Core configuration, migrations, tenant query filters).
 - API endpoints and UI.
 - Quotes, orders, invoices, pricing, forecasting engines and reporting.
 - Persistence enforcement of the one-opportunity-per-lead rule (unique index) belongs to

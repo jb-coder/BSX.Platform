@@ -32,6 +32,8 @@
     <ProjectReference Include="..\..\..\src\Modules\Crm\BSX.Modules.Crm.Domain\BSX.Modules.Crm.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Crm\BSX.Modules.Crm.Application\BSX.Modules.Crm.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Crm\BSX.Modules.Crm.Infrastructure\BSX.Modules.Crm.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Sales\BSX.Modules.Sales.Application\BSX.Modules.Sales.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Sales\BSX.Modules.Sales.Infrastructure\BSX.Modules.Sales.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
