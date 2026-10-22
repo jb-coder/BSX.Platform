@@ -29,7 +29,9 @@ orders and invoices are planned.
 
 ### Inventory
 
-Products and stock.
+Products, warehouses and stock. Domain implemented (`Product`, `Warehouse`, `InventoryItem`); the
+Application, Infrastructure, API and UI layers are planned. See
+[domain-model.md](../modules/inventory/domain-model.md).
 
 ### Purchasing
 

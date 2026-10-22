@@ -61,9 +61,14 @@ Status: Domain, Application, Infrastructure and HTTP API implemented, tested and
 
 Inventory
 
-- Products
-- Warehouses
-- Stock Movements
+- [x] Products (domain)
+- [x] Warehouses (domain)
+- [x] Stock / inventory items (domain)
+
+Status: Domain implemented (`Product`, `Warehouse`, `InventoryItem` with lifecycle, stock
+reservation rules, tenant-owned aggregates, repository contracts, domain events and unit tests).
+Application, Infrastructure, API and UI are not implemented. See
+[domain-model.md](../modules/inventory/domain-model.md).
 
 ---
 

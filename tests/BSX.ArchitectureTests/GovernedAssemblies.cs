@@ -41,7 +41,16 @@ internal static class GovernedAssemblies
         Endpoints: typeof(Modules.Sales.Endpoints.SalesEndpointRouteBuilderExtensions).Assembly,
         Contracts: typeof(Modules.Sales.Contracts.Permissions.SalesPermissionCatalog).Assembly);
 
-    internal static readonly ModuleAssemblies[] Modules = [Identity, Crm, Sales];
+    // Inventory is currently Domain-only; later layers are added without changing the governance model.
+    internal static readonly ModuleAssemblies Inventory = new(
+        Name: "Inventory",
+        Domain: typeof(Modules.Inventory.Domain.Products.Product).Assembly,
+        Application: null,
+        Infrastructure: null,
+        Endpoints: null,
+        Contracts: null);
+
+    internal static readonly ModuleAssemblies[] Modules = [Identity, Crm, Sales, Inventory];
 
     /// <summary>Assemblies subject to naming and sealing conventions (technical platform only).</summary>
     internal static readonly Assembly[] All = Platform;
@@ -55,9 +64,9 @@ internal static class GovernedAssemblies
     internal sealed record ModuleAssemblies(
         string Name,
         Assembly Domain,
-        Assembly Application,
-        Assembly Infrastructure,
-        Assembly Endpoints,
+        Assembly? Application,
+        Assembly? Infrastructure,
+        Assembly? Endpoints,
         Assembly? Contracts)
     {
         public IReadOnlyCollection<Assembly> All => new[] { Domain, Application, Infrastructure, Endpoints, Contracts }

@@ -81,6 +81,11 @@ public sealed class ModuleBoundaryTests
     {
         foreach (GovernedAssemblies.ModuleAssemblies module in GovernedAssemblies.Modules)
         {
+            if (module.Application is null)
+            {
+                continue;
+            }
+
             string[] forbidden =
             [
                 $"BSX.Modules.{module.Name}.Infrastructure",
@@ -91,7 +96,7 @@ public sealed class ModuleBoundaryTests
                     .Where(name => !name.EndsWith(".Contracts", StringComparison.Ordinal)),
             ];
 
-            TestResult result = Types.InAssembly(module.Application)
+            TestResult result = Types.InAssembly(module.Application!)
                 .ShouldNot()
                 .HaveDependencyOnAny(forbidden)
                 .GetResult();
@@ -105,6 +110,11 @@ public sealed class ModuleBoundaryTests
     {
         foreach (GovernedAssemblies.ModuleAssemblies module in GovernedAssemblies.Modules)
         {
+            if (module.Endpoints is null)
+            {
+                continue;
+            }
+
             string[] forbidden =
             [
                 $"BSX.Modules.{module.Name}.Domain",
@@ -112,7 +122,7 @@ public sealed class ModuleBoundaryTests
                     .Where(name => !name.EndsWith(".Contracts", StringComparison.Ordinal)),
             ];
 
-            TestResult result = Types.InAssembly(module.Endpoints)
+            TestResult result = Types.InAssembly(module.Endpoints!)
                 .ShouldNot()
                 .HaveDependencyOnAny(forbidden)
                 .GetResult();
@@ -126,11 +136,16 @@ public sealed class ModuleBoundaryTests
     {
         foreach (GovernedAssemblies.ModuleAssemblies module in GovernedAssemblies.Modules)
         {
+            if (module.Infrastructure is null)
+            {
+                continue;
+            }
+
             string[] forbidden = GovernedAssemblies.OtherModuleNamespaces(module.Name)
                 .Where(name => !name.EndsWith(".Contracts", StringComparison.Ordinal))
                 .ToArray();
 
-            TestResult result = Types.InAssembly(module.Infrastructure)
+            TestResult result = Types.InAssembly(module.Infrastructure!)
                 .ShouldNot()
                 .HaveDependencyOnAny(forbidden)
                 .GetResult();
@@ -175,7 +190,12 @@ public sealed class ModuleBoundaryTests
 
         foreach (GovernedAssemblies.ModuleAssemblies module in GovernedAssemblies.Modules)
         {
-            IEnumerable<string> declared = module.Application
+            if (module.Application is null)
+            {
+                continue;
+            }
+
+            IEnumerable<string> declared = module.Application!
                 .GetTypes()
                 .SelectMany(type => type.GetCustomAttributes<RequirePermissionAttribute>(inherit: true))
                 .Select(attribute => attribute.Permission);

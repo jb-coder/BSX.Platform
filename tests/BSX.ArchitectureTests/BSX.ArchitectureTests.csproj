@@ -41,6 +41,7 @@
     <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Infrastructure\BSX.Modules.Sales.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Contracts\BSX.Modules.Sales.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Endpoints\BSX.Modules.Sales.Endpoints.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Inventory\BSX.Modules.Inventory.Domain\BSX.Modules.Inventory.Domain.csproj" />
   </ItemGroup>
 
 </Project>
