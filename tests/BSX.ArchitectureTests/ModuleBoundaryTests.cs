@@ -213,6 +213,7 @@ public sealed class ModuleBoundaryTests
             new Modules.Identity.Application.Common.IdentityPermissionCatalog(),
             new Modules.Crm.Contracts.Permissions.CrmPermissionCatalog(),
             new Modules.Sales.Contracts.Permissions.SalesPermissionCatalog(),
+            new Modules.Inventory.Application.Common.InventoryPermissionCatalog(),
         };
 
         return new BSX.Contracts.Permissions.PermissionCatalog(sources)

@@ -64,13 +64,16 @@ Inventory
 - [x] Products (domain)
 - [x] Warehouses (domain)
 - [x] Stock / inventory items (domain)
+- [x] Products and warehouses (application commands, queries and permissions)
+- [x] Stock commands, queries and the mandatory application policy
 
-Status: Domain implemented (`Product`, `Warehouse`, `InventoryItem` with lifecycle, stock
-reservation rules, tenant-owned aggregates, repository contracts, domain events and unit tests).
-The Principal Architect review conditions are resolved: stock semantics are formalized, the
-mandatory Application orchestration policy is documented, Inventory v1 is discrete-units only
-(ADR-019) and v1 limitations are recorded. Application, Infrastructure, API and UI are not
-implemented. See [domain-model.md](../modules/inventory/domain-model.md) and
+Status: Domain and Application implemented (`Product`, `Warehouse`, `InventoryItem` with lifecycle,
+stock reservation rules, tenant-owned aggregates, domain events, product/warehouse commands and
+queries, stock commands/queries and the mandatory stock policy). The Principal Architect review
+conditions are resolved: stock semantics are formalized, Inventory v1 is discrete-units only
+(ADR-019) and v1 limitations are recorded. Infrastructure, API and UI are not implemented. See
+[domain-model.md](../modules/inventory/domain-model.md),
+[application.md](../modules/inventory/application.md) and
 [application-policy.md](../modules/inventory/application-policy.md).
 
 ---

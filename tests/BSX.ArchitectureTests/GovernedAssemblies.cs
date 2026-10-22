@@ -41,11 +41,11 @@ internal static class GovernedAssemblies
         Endpoints: typeof(Modules.Sales.Endpoints.SalesEndpointRouteBuilderExtensions).Assembly,
         Contracts: typeof(Modules.Sales.Contracts.Permissions.SalesPermissionCatalog).Assembly);
 
-    // Inventory is currently Domain-only; later layers are added without changing the governance model.
+    // Inventory has no Contracts project yet; its permission catalog is Application-owned, like Identity.
     internal static readonly ModuleAssemblies Inventory = new(
         Name: "Inventory",
         Domain: typeof(Modules.Inventory.Domain.Products.Product).Assembly,
-        Application: null,
+        Application: typeof(Modules.Inventory.Application.Abstractions.InventoryTenantResolver).Assembly,
         Infrastructure: null,
         Endpoints: null,
         Contracts: null);

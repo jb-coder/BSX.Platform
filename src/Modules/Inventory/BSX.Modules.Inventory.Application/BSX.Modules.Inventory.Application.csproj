@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.Modules.Inventory.Application</RootNamespace>
+    <AssemblyName>BSX.Modules.Inventory.Application</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BSX.Contracts\BSX.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Inventory.Domain\BSX.Modules.Inventory.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

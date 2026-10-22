@@ -1,7 +1,7 @@
 # Inventory - Application Orchestration Policy
 
-Status: **Mandatory contract for the future Inventory Application layer.** No Application code
-exists yet.
+Status: **Implemented in `BSX.Modules.Inventory.Application`.** This document remains the
+mandatory contract for every stock-changing use case.
 
 The Inventory domain deliberately owns one aggregate at a time. `InventoryItem` references
 `Product` and `Warehouse` by identifier only and cannot verify their existence, lifecycle status or
@@ -14,10 +14,9 @@ stock-changing domain operation.
 
 This policy applies to every command that creates a stock position or changes stock:
 
-- `CreateInventoryItem`
-- `ReceiveStock`
+- `ReceiveStock` (the v1 stock-position creation path)
 - `ReserveStock`
-- `ReleaseStock`
+- `ReleaseReservation`
 - `AdjustStock`
 
 ---
@@ -55,10 +54,13 @@ Before any stock-changing operation, the Application handler must:
 7. **Resolve the inventory item.**
    - For existing stock operations, load
      `IInventoryItemRepository.GetByProductAndWarehouseAsync(tenantId, productId, warehouseId)`.
-   - A missing item is a `NotFound` failure (unless the command explicitly creates it).
-   - For creation, use
-     `ExistsByProductAndWarehouseAsync(tenantId, productId, warehouseId)` and treat a duplicate as
-     a conflict. The database unique index remains authoritative.
+   - A missing item is a `NotFound` failure for `ReserveStock`, `ReleaseReservation` and
+     `AdjustStock`.
+   - `ReceiveStock` is the explicit v1 creation path: when no position exists it creates an empty
+     `InventoryItem` in memory, applies the receipt, and only then adds it to the repository. A
+     failed receipt (for example a zero quantity) therefore leaves no position behind.
+   - `(TenantId, ProductId, WarehouseId)` uniqueness is enforced by the Infrastructure unique
+     index; the Application pre-check remains advisory and a concurrent insert is a conflict.
 
 ---
 
@@ -66,8 +68,7 @@ Before any stock-changing operation, the Application handler must:
 
 | Operation | Product exists | Warehouse exists | Product active | Warehouse active | Same tenant | Stock item |
 | --- | --- | --- | --- | --- | --- | --- |
-| Create inventory item | Required | Required | Required | Required | Required | Must not exist |
-| Receive | Required | Required | Required | Required | Required | Required |
+| Receive | Required | Required | Required | Required | Required | Created if missing |
 | Reserve | Required | Required | Required | Required | Required | Required |
 | Release | Required | Required | Required | Required | Required | Required |
 | Adjust | Required | Required | Required | Required | Required | Required |
@@ -124,5 +125,5 @@ used as a substitute for stock disposal.
 
 ## Non-goals
 
-This document does not define commands, handlers, DTOs, validation behavior or HTTP mapping. It is
-the rule set those implementations must satisfy.
+This document does not define HTTP mapping or transport concerns. Command/query shapes, DTOs,
+validators and error codes are documented in [application.md](application.md).

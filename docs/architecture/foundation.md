@@ -22,7 +22,7 @@ BSX.Platform
 │   ├── BSX.BuildingBlocks      Technical cross-cutting abstractions
 │   ├── BSX.Persistence         EF Core platform services (transactional outbox)
 │   ├── BSX.Web                 Blazor Web App composition root
-│   └── Modules                 Identity, CRM, Sales and Inventory (domain) modules
+│   └── Modules                 Identity, CRM, Sales and Inventory modules
 │
 ├── tests
 │   ├── BSX.SharedKernel.UnitTests
@@ -38,7 +38,8 @@ BSX.Platform
 ```
 
 `Modules` contains the Identity, CRM and Sales module projects (Domain, Application,
-Infrastructure, Contracts and Endpoints as applicable) and the Inventory Domain project.
+Infrastructure, Contracts and Endpoints as applicable) and the Inventory Domain and Application
+projects. Inventory Infrastructure, Contracts and Endpoints are not implemented yet.
 
 ---
 

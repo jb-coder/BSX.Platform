@@ -1,7 +1,7 @@
 # Inventory - Domain Model
 
-Status: **Domain implemented**. Application, Infrastructure, HTTP API and UI are out of scope for
-this slice.
+Status: **Domain and Application implemented**. Infrastructure, HTTP API and UI are out of scope
+for this slice. See [application.md](application.md).
 
 ## Scope (Inventory v1)
 
@@ -199,5 +199,5 @@ Consequences:
 
 ## Out of Scope
 
-Application layer, Infrastructure, HTTP API, UI, purchasing, suppliers, transfers, picking,
-shipping, orders, invoices, reporting, reservations across warehouses and stock valuation.
+Infrastructure, HTTP API, UI, purchasing, suppliers, transfers, picking, shipping, orders,
+invoices, reporting, reservations across warehouses and stock valuation.
