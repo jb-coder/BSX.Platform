@@ -29,9 +29,11 @@ orders and invoices are planned.
 
 ### Inventory
 
-Products, warehouses and stock. Domain implemented (`Product`, `Warehouse`, `InventoryItem`); the
-Application, Infrastructure, API and UI layers are planned. See
-[domain-model.md](../modules/inventory/domain-model.md).
+Products, warehouses and stock. Domain implemented (`Product`, `Warehouse`, `InventoryItem`);
+Inventory v1 supports discrete units only (ADR-019) and warehouse-level stock. The Application,
+Infrastructure, API and UI layers are planned. See
+[domain-model.md](../modules/inventory/domain-model.md) and the mandatory
+[application policy](../modules/inventory/application-policy.md).
 
 ### Purchasing
 

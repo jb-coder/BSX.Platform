@@ -72,7 +72,7 @@ public sealed class InventoryItemStockTests
     public void Should_RejectReceivingBeyondTheQuantityRange()
     {
         InventoryItem item = TestData.CreateItem();
-        item.Receive(Quantity.From(Quantity.MaxValue)).IsSuccess.Should().BeTrue();
+        item.Receive(Quantity.Create(Quantity.MaxValue).Value).IsSuccess.Should().BeTrue();
         item.ClearDomainEvents();
 
         var result = item.Receive(TestData.QuantityOf(1));
@@ -142,7 +142,7 @@ public sealed class InventoryItemStockTests
     public void Should_RejectAdjustmentBeyondTheQuantityRange()
     {
         InventoryItem item = TestData.CreateItem();
-        item.Receive(Quantity.From(Quantity.MaxValue)).IsSuccess.Should().BeTrue();
+        item.Receive(Quantity.Create(Quantity.MaxValue).Value).IsSuccess.Should().BeTrue();
         item.ClearDomainEvents();
 
         var result = item.Adjust(1);

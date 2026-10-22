@@ -67,8 +67,11 @@ Inventory
 
 Status: Domain implemented (`Product`, `Warehouse`, `InventoryItem` with lifecycle, stock
 reservation rules, tenant-owned aggregates, repository contracts, domain events and unit tests).
-Application, Infrastructure, API and UI are not implemented. See
-[domain-model.md](../modules/inventory/domain-model.md).
+The Principal Architect review conditions are resolved: stock semantics are formalized, the
+mandatory Application orchestration policy is documented, Inventory v1 is discrete-units only
+(ADR-019) and v1 limitations are recorded. Application, Infrastructure, API and UI are not
+implemented. See [domain-model.md](../modules/inventory/domain-model.md) and
+[application-policy.md](../modules/inventory/application-policy.md).
 
 ---
 

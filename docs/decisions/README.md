@@ -23,6 +23,7 @@ affects long-term maintainability, module boundaries, or the technology baseline
 | [ADR-016](ADR-016-Password-Reset-Security-Strategy.md) | Password Reset Security Strategy | Accepted |
 | [ADR-017](ADR-017-Token-Invalidation-And-Session-Strategy.md) | Token Invalidation, Security Stamp and Session Strategy | Accepted |
 | [ADR-018](ADR-018-Role-Lifecycle-And-Permission-Cache-Strategy.md) | Role Lifecycle and Permission Cache Strategy | Accepted |
+| [ADR-019](ADR-019-Inventory-Quantity-Strategy.md) | Inventory Quantity Strategy | Accepted |
 
 ## Conventions
 

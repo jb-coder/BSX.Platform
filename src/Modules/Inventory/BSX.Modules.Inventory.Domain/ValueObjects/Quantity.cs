@@ -7,7 +7,8 @@ namespace BSX.Modules.Inventory.Domain.ValueObjects;
 
 /// <summary>
 /// A non-negative whole-unit stock quantity. Zero is valid (an empty stock position); negative
-/// quantities are rejected.
+/// quantities are rejected. Inventory v1 supports discrete units only (ADR-019); fractional
+/// quantities and units of measure are deferred to a future ADR.
 /// </summary>
 public sealed class Quantity : ValueObject
 {
@@ -35,9 +36,13 @@ public sealed class Quantity : ValueObject
             ? Result.Failure<Quantity>(InventoryErrors.QuantityInvalid)
             : Result.Success(new Quantity(value));
 
-    /// <summary>Creates a validated quantity from a non-negative value.</summary>
-    /// <param name="value">The quantity value.</param>
-    public static Quantity From(int value) => Create(value).Value;
+    /// <summary>
+    /// Creates a quantity from an already-validated value. Internal because it is only used for
+    /// derived arithmetic (for example available stock) whose range has already been checked;
+    /// callers use <see cref="Create"/> so invalid input remains a <c>Result</c> (ADR-011).
+    /// </summary>
+    /// <param name="value">The already-validated quantity value.</param>
+    internal static Quantity From(int value) => Create(value).Value;
 
     /// <inheritdoc />
     public override string ToString() => Value.ToString(CultureInfo.InvariantCulture);

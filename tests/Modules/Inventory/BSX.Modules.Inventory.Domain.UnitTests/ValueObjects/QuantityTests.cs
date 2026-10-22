@@ -1,3 +1,4 @@
+using System.Reflection;
 using BSX.Modules.Inventory.Domain.Errors;
 using BSX.Modules.Inventory.Domain.ValueObjects;
 
@@ -47,5 +48,15 @@ public sealed class QuantityTests
     public void Should_RenderInvariantValue()
     {
         Quantity.Create(1234).Value.ToString().Should().Be("1234");
+    }
+
+    [Fact]
+    public void Should_NotExposeAPublicThrowingFactory()
+    {
+        MethodInfo? method = typeof(Quantity).GetMethod(
+            "From",
+            BindingFlags.Public | BindingFlags.Static);
+
+        method.Should().BeNull("invalid quantities must remain Result failures per ADR-011");
     }
 }

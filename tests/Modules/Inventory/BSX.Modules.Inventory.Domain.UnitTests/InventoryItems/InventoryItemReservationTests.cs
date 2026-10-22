@@ -145,6 +145,50 @@ public sealed class InventoryItemReservationTests
     }
 
     [Fact]
+    public void Should_TreatOnHandAsPhysicalStock_AndAvailableAsFreeStock()
+    {
+        InventoryItem item = TestData.CreateItem();
+        item.Receive(TestData.QuantityOf(100)).IsSuccess.Should().BeTrue();
+        item.Reserve(TestData.QuantityOf(80)).IsSuccess.Should().BeTrue();
+
+        item.OnHandQuantity.Value.Should().Be(100);
+        item.ReservedQuantity.Value.Should().Be(80);
+        item.AvailableQuantity.Value.Should().Be(20);
+        item.ReservedQuantity.Value.Should().BeGreaterThan(item.AvailableQuantity.Value);
+        item.OnHandQuantity.Value.Should().Be(item.ReservedQuantity.Value + item.AvailableQuantity.Value);
+    }
+
+    [Fact]
+    public void Should_KeepAvailableAtZero_WhenReservedEqualsOnHand()
+    {
+        InventoryItem item = TestData.CreateItem();
+        item.Receive(TestData.QuantityOf(10)).IsSuccess.Should().BeTrue();
+
+        item.Reserve(TestData.QuantityOf(10)).IsSuccess.Should().BeTrue();
+
+        item.OnHandQuantity.Value.Should().Be(10);
+        item.ReservedQuantity.Value.Should().Be(10);
+        item.AvailableQuantity.Value.Should().Be(0);
+        item.DomainEvents.Should().Contain(domainEvent => domainEvent is StockReserved);
+    }
+
+    [Fact]
+    public void Should_AllowReleasingExactlyAllReservedStock()
+    {
+        InventoryItem item = TestData.CreateItem();
+        item.Receive(TestData.QuantityOf(10)).IsSuccess.Should().BeTrue();
+        item.Reserve(TestData.QuantityOf(10)).IsSuccess.Should().BeTrue();
+        item.ClearDomainEvents();
+
+        item.Release(TestData.QuantityOf(10)).IsSuccess.Should().BeTrue();
+
+        item.OnHandQuantity.Value.Should().Be(10);
+        item.ReservedQuantity.Value.Should().Be(0);
+        item.AvailableQuantity.Value.Should().Be(10);
+        item.DomainEvents.Should().ContainSingle().Which.Should().BeOfType<StockReleased>();
+    }
+
+    [Fact]
     public void Should_SupportTheFullReservationLifecycle()
     {
         InventoryItem item = TestData.CreateItem();

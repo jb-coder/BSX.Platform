@@ -7,8 +7,31 @@ using BSX.SharedKernel.Results;
 namespace BSX.Modules.Inventory.Domain.InventoryItems;
 
 /// <summary>
-/// The stock of one product in one warehouse. This is the consistency boundary for quantities:
-/// reserved stock can never exceed on-hand stock and on-hand stock can never be negative.
+/// The stock of one product in one warehouse. This is the consistency boundary for quantities.
+/// <para>
+/// Stock semantics (Inventory v1):
+/// </para>
+/// <list type="bullet">
+/// <item><description>
+/// <see cref="OnHandQuantity"/> is the total physical stock in the warehouse, including stock that
+/// is reserved.
+/// </description></item>
+/// <item><description>
+/// <see cref="ReservedQuantity"/> is the portion of <see cref="OnHandQuantity"/> committed to
+/// reservations but not yet removed from stock.
+/// </description></item>
+/// <item><description>
+/// <see cref="AvailableQuantity"/> is the free quantity that can still be reserved:
+/// <c>OnHandQuantity - ReservedQuantity</c>.
+/// </description></item>
+/// </list>
+/// <para>
+/// The enforced invariant is <c>ReservedQuantity &lt;= OnHandQuantity</c>. Therefore
+/// <see cref="AvailableQuantity"/> is never negative. <see cref="ReservedQuantity"/> may be greater
+/// than <see cref="AvailableQuantity"/> when most of the physical stock is already committed; the
+/// original phrase "reserved never exceeds available" is interpreted as "reserved never exceeds
+/// on-hand" (see <c>docs/modules/inventory/domain-model.md</c>).
+/// </para>
 /// The product and warehouse are referenced by identifier only (ADR-003, ADR-013).
 /// </summary>
 public sealed class InventoryItem : AggregateRoot<InventoryItemId>
@@ -40,13 +63,24 @@ public sealed class InventoryItem : AggregateRoot<InventoryItemId>
     /// <summary>Gets the warehouse identifier.</summary>
     public WarehouseId WarehouseId { get; private set; } = null!;
 
-    /// <summary>Gets the total quantity physically on hand.</summary>
+    /// <summary>
+    /// Gets the total physical quantity on hand, including reserved stock. This is the authoritative
+    /// physical count for the product/warehouse pair.
+    /// </summary>
     public Quantity OnHandQuantity { get; private set; } = null!;
 
-    /// <summary>Gets the quantity currently reserved.</summary>
+    /// <summary>
+    /// Gets the quantity committed to reservations. Reserved stock is still part of
+    /// <see cref="OnHandQuantity"/> until it is issued or adjusted out; it only makes the stock
+    /// unavailable for new reservations.
+    /// </summary>
     public Quantity ReservedQuantity { get; private set; } = null!;
 
-    /// <summary>Gets the quantity that can still be reserved.</summary>
+    /// <summary>
+    /// Gets the free quantity available for new reservations:
+    /// <c>OnHandQuantity - ReservedQuantity</c>. It is never negative because
+    /// <see cref="ReservedQuantity"/> can never exceed <see cref="OnHandQuantity"/>.
+    /// </summary>
     public Quantity AvailableQuantity => Quantity.From(OnHandQuantity.Value - ReservedQuantity.Value);
 
     /// <summary>Creates an empty stock position for a product in a warehouse.</summary>
@@ -82,8 +116,11 @@ public sealed class InventoryItem : AggregateRoot<InventoryItemId>
         return Result.Success();
     }
 
-    /// <summary>Reserves stock, moving quantity from available to reserved.</summary>
-    /// <param name="quantity">The reserved quantity; must be positive and not exceed available stock.</param>
+    /// <summary>
+    /// Reserves free stock. The quantity is added to <see cref="ReservedQuantity"/> and must not
+    /// exceed <see cref="AvailableQuantity"/>.
+    /// </summary>
+    /// <param name="quantity">The reserved quantity; must be positive and not exceed free available stock.</param>
     public Result Reserve(Quantity quantity)
     {
         if (quantity.IsZero)
@@ -101,7 +138,10 @@ public sealed class InventoryItem : AggregateRoot<InventoryItemId>
         return Result.Success();
     }
 
-    /// <summary>Releases a reservation, moving quantity from reserved back to available.</summary>
+    /// <summary>
+    /// Releases a reservation. The quantity is removed from <see cref="ReservedQuantity"/> and
+    /// becomes available for new reservations again.
+    /// </summary>
     /// <param name="quantity">The released quantity; must be positive and not exceed reserved stock.</param>
     public Result Release(Quantity quantity)
     {
