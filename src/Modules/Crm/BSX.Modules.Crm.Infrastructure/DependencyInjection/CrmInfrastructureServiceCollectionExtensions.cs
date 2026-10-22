@@ -1,4 +1,5 @@
 using BSX.BuildingBlocks.Persistence;
+using BSX.BuildingBlocks.Persistence.Outbox;
 using BSX.Modules.Crm.Application.Abstractions;
 using BSX.Modules.Crm.Contracts.References;
 using BSX.Modules.Crm.Domain.Customers;
@@ -7,6 +8,7 @@ using BSX.Modules.Crm.Infrastructure.Persistence;
 using BSX.Modules.Crm.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Crm.Infrastructure.References;
 using BSX.Modules.Crm.Infrastructure.Repositories;
+using BSX.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -29,12 +31,16 @@ public static class CrmInfrastructureServiceCollectionExtensions
         services.TryAddScoped<CrmTenantScope>();
         services.TryAddScoped<ICrmTenantScope>(provider => provider.GetRequiredService<CrmTenantScope>());
         services.TryAddScoped<CrmAuditingSaveChangesInterceptor>();
+        services.AddOptions<OutboxOptions>();
+        services.TryAddScoped<OutboxSaveChangesInterceptor>();
 
         services.AddDbContext<CrmDbContext>((provider, options) =>
         {
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", "crm"));
-            options.AddInterceptors(provider.GetRequiredService<CrmAuditingSaveChangesInterceptor>());
+            options.AddInterceptors(
+                provider.GetRequiredService<CrmAuditingSaveChangesInterceptor>(),
+                provider.GetRequiredService<OutboxSaveChangesInterceptor>());
         });
 
         services.TryAddScoped<ICustomerRepository, CustomerRepository>();
@@ -43,6 +49,7 @@ public static class CrmInfrastructureServiceCollectionExtensions
         services.TryAddScoped<IOrganizationReadRepository, OrganizationReadRepository>();
         services.TryAddScoped<ICrmReferenceLookup, CrmReferenceLookup>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, CrmUnitOfWork>());
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IOutboxStore, EfOutboxStore<CrmDbContext>>());
 
         return services;
     }

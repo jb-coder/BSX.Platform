@@ -1,5 +1,7 @@
 using System.Text.Json;
 using BSX.BuildingBlocks.Events;
+using BSX.BuildingBlocks.Persistence.Outbox;
+using BSX.Persistence.Outbox;
 
 namespace BSX.Modules.Identity.Infrastructure.Persistence.Outbox;
 
@@ -26,10 +28,9 @@ internal sealed class OutboxWriter : IOutboxWriter
         var message = new OutboxMessage(
             Guid.NewGuid(),
             integrationEvent.EventId,
-            OutboxMessageStatus.IntegrationKind,
+            OutboxKinds.Integration,
             typeName,
             payload,
-            isSensitive: false,
             integrationEvent.OccurredOnUtc,
             _timeProvider.GetUtcNow());
 

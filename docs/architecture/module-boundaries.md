@@ -69,3 +69,19 @@ Direct access to:
 ## Goal
 
 Maintain low coupling and high cohesion.
+
+---
+
+## Enforcement
+
+`tests/BSX.ArchitectureTests` is the executable form of these rules:
+
+- Domain assemblies cannot reference BuildingBlocks, Persistence, EF Core, FluentValidation or
+  another module.
+- Contracts assemblies can reference only `BSX.Contracts`; they cannot reference implementation
+  layers or another module.
+- Application cannot reference its own Infrastructure/Endpoints or another module's implementation.
+- Endpoints cannot reference their own Domain or another module's implementation.
+- Infrastructure can reference another module only through that module's Contracts.
+- Every `[RequirePermission]` code in an Application assembly must be declared by a permission
+  catalog.

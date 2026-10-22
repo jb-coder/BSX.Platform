@@ -3,6 +3,7 @@ using BSX.Modules.Crm.Application.Addresses.AddAddress;
 using BSX.Modules.Crm.Application.Addresses.RemoveAddress;
 using BSX.Modules.Crm.Application.Addresses.SetDefaultAddress;
 using BSX.Modules.Crm.Application.Addresses.UpdateAddress;
+using BSX.Modules.Crm.Application.Common;
 using BSX.Modules.Crm.Application.Contacts.AddContact;
 using BSX.Modules.Crm.Application.Contacts.RemoveContact;
 using BSX.Modules.Crm.Application.Contacts.SetPrimaryContact;
@@ -121,7 +122,7 @@ public sealed class ContactAddressCommandHandlerTests
 
         var handler = new AddAddressCommandHandler(_customers, _unitOfWork, TenantResolver());
         var result = await handler.HandleAsync(
-            new AddAddressCommand(customerId, TestData.AddressInput(), AddressType.Billing));
+            new AddAddressCommand(customerId, TestData.AddressInput(), CrmAddressType.Billing));
 
         result.IsSuccess.Should().BeTrue();
         customer.Addresses.Should().ContainSingle();
@@ -138,7 +139,7 @@ public sealed class ContactAddressCommandHandlerTests
 
         var handler = new AddAddressCommandHandler(_customers, _unitOfWork, TenantResolver());
         var result = await handler.HandleAsync(
-            new AddAddressCommand(customerId, TestData.AddressInput(city: " "), AddressType.Billing));
+            new AddAddressCommand(customerId, TestData.AddressInput(city: " "), CrmAddressType.Billing));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CRM.Address.Invalid");
@@ -158,7 +159,7 @@ public sealed class ContactAddressCommandHandlerTests
 
         var handler = new UpdateAddressCommandHandler(_customers, _unitOfWork, TenantResolver());
         var result = await handler.HandleAsync(
-            new UpdateAddressCommand(customerId, addressId, TestData.AddressInput("9 New St"), AddressType.Shipping));
+            new UpdateAddressCommand(customerId, addressId, TestData.AddressInput("9 New St"), CrmAddressType.Shipping));
 
         result.IsSuccess.Should().BeTrue();
         customer.Addresses.Single().Address.Line1.Should().Be("9 New St");

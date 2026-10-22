@@ -1,6 +1,8 @@
 using BSX.BuildingBlocks.DependencyInjection;
 using BSX.BuildingBlocks.Persistence;
+using BSX.BuildingBlocks.Persistence.Outbox;
 using BSX.Composition.IntegrationTests.TestDoubles;
+using BSX.Contracts.Permissions;
 using BSX.Modules.Crm.Application.Abstractions;
 using BSX.Modules.Crm.Application.Customers.CreateCustomer;
 using BSX.Modules.Crm.Application.DependencyInjection;
@@ -190,5 +192,14 @@ public sealed class CompositeCompositionTests
         IModuleUnitOfWork[] modules = scope.ServiceProvider.GetServices<IModuleUnitOfWork>().ToArray();
         modules.Should().HaveCount(3);
         modules.Select(module => module.ModuleName).Should().BeEquivalentTo(["Identity", "Crm", "Sales"]);
+
+        IOutboxStore[] outboxStores = scope.ServiceProvider.GetServices<IOutboxStore>().ToArray();
+        outboxStores.Should().HaveCount(3);
+        outboxStores.Select(store => store.ModuleName).Should().BeEquivalentTo(["Identity", "Crm", "Sales"]);
+
+        PermissionCatalog catalog = scope.ServiceProvider.GetRequiredService<PermissionCatalog>();
+        catalog.EnsureValid();
+        catalog.Permissions.Select(permission => permission.Code).Should().Contain(
+            ["identity.users.read", "crm.customers.read", "sales.leads.read"]);
     }
 }

@@ -1,8 +1,10 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Crm.Application.Abstractions;
+using BSX.Modules.Crm.Application.Common;
 using BSX.Modules.Crm.Application.Errors;
 using BSX.Modules.Crm.Domain.Customers;
+using BSX.Modules.Crm.Domain.Enums;
 using BSX.Modules.Crm.Domain.ValueObjects;
 using BSX.SharedKernel.Results;
 
@@ -70,7 +72,7 @@ public sealed class UpdateAddressCommandHandler : ICommandHandler<UpdateAddressC
         Result result = customer.ChangeAddress(
             CustomerAddressId.From(request.AddressId),
             address.Value,
-            request.Type);
+            ToDomain(request.Type));
 
         if (result.IsFailure)
         {
@@ -80,4 +82,11 @@ public sealed class UpdateAddressCommandHandler : ICommandHandler<UpdateAddressC
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
     }
+
+    private static AddressType ToDomain(CrmAddressType type) => type switch
+    {
+        CrmAddressType.Billing => AddressType.Billing,
+        CrmAddressType.Shipping => AddressType.Shipping,
+        _ => AddressType.Other,
+    };
 }

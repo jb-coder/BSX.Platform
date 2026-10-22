@@ -1,12 +1,11 @@
 using BSX.Modules.Crm.Application.Addresses.AddAddress;
+using BSX.Modules.Crm.Application.Common;
 using BSX.Modules.Crm.Application.Contacts.AddContact;
 using BSX.Modules.Crm.Application.Customers.AssignOrganization;
 using BSX.Modules.Crm.Application.Customers.CreateCustomer;
 using BSX.Modules.Crm.Application.Customers.UpdateCustomer;
 using BSX.Modules.Crm.Application.Organizations.CreateOrganization;
 using BSX.Modules.Crm.Application.Organizations.UpdateOrganization;
-using BSX.Modules.Crm.Domain.Enums;
-
 namespace BSX.Modules.Crm.Application.UnitTests.Validators;
 
 public sealed class CrmCommandValidatorTests
@@ -73,7 +72,7 @@ public sealed class CrmCommandValidatorTests
     public async Task AddAddress_Should_BeValid_WhenAddressIsValid()
     {
         var result = await new AddAddressCommandValidator()
-            .ValidateAsync(new AddAddressCommand(Guid.NewGuid(), TestData.AddressInput(), AddressType.Billing));
+            .ValidateAsync(new AddAddressCommand(Guid.NewGuid(), TestData.AddressInput(), CrmAddressType.Billing));
 
         result.IsValid.Should().BeTrue();
     }
@@ -85,7 +84,7 @@ public sealed class CrmCommandValidatorTests
             .ValidateAsync(new AddAddressCommand(
                 Guid.NewGuid(),
                 TestData.AddressInput(city: " "),
-                AddressType.Billing));
+                CrmAddressType.Billing));
 
         result.IsValid.Should().BeFalse();
     }
@@ -97,7 +96,7 @@ public sealed class CrmCommandValidatorTests
             .ValidateAsync(new AddAddressCommand(
                 Guid.NewGuid(),
                 TestData.AddressInput(),
-                (AddressType)999));
+                (CrmAddressType)999));
 
         result.IsValid.Should().BeFalse();
     }

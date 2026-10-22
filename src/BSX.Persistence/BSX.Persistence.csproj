@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.Persistence</RootNamespace>
+    <AssemblyName>BSX.Persistence</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\BSX.Contracts\BSX.Contracts.csproj" />
+    <ProjectReference Include="..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+  </ItemGroup>
+
+</Project>

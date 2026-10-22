@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Diagnostics;
 using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Domain.Roles;
 using BSX.Modules.Identity.Domain.ValueObjects;
@@ -8,10 +9,10 @@ using Microsoft.Extensions.Logging;
 namespace BSX.Modules.Identity.Infrastructure.Permissions;
 
 /// <summary>
-/// Idempotently reconciles the platform system roles (<c>Administrator</c> and <c>Auditor</c>) with
-/// the permissions declared by the registered module catalogs (ADR-018). Reconciliation is
-/// additive: catalog permissions are granted when missing, and existing grants are never removed,
-/// so a partial deployment cannot strip a role's capabilities.
+/// Reconciles the platform system roles (<c>Administrator</c> and <c>Auditor</c>) with the
+/// platform-wide permission catalog (ADR-018). Reconciliation is declarative: catalog permissions
+/// are granted when missing and stale permissions are revoked, so a module removal cannot leave a
+/// system role with capabilities that no longer exist.
 /// </summary>
 public sealed class SystemRolePermissionSynchronizer
 {
@@ -22,38 +23,49 @@ public sealed class SystemRolePermissionSynchronizer
     public const string AuditorRoleName = "Auditor";
 
     private readonly IdentityDbContext _context;
-    private readonly IEnumerable<IPermissionCatalogSource> _catalogSources;
+    private readonly PermissionCatalog _catalog;
     private readonly ILogger<SystemRolePermissionSynchronizer> _logger;
 
     /// <summary>Initializes a new instance of the <see cref="SystemRolePermissionSynchronizer"/> class.</summary>
     /// <param name="context">The Identity persistence context.</param>
-    /// <param name="catalogSources">The permission catalogs published by the composed modules.</param>
+    /// <param name="catalog">The platform-wide permission catalog.</param>
     /// <param name="logger">The logger.</param>
     public SystemRolePermissionSynchronizer(
         IdentityDbContext context,
-        IEnumerable<IPermissionCatalogSource> catalogSources,
+        PermissionCatalog catalog,
         ILogger<SystemRolePermissionSynchronizer> logger)
     {
         _context = context;
-        _catalogSources = catalogSources;
+        _catalog = catalog;
         _logger = logger;
     }
 
-    /// <summary>Synchronizes the system roles with the registered permission catalogs.</summary>
+    /// <summary>Synchronizes the system roles with the platform permission catalog.</summary>
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
-    public async Task SynchronizeAsync(CancellationToken cancellationToken = default)
+    /// <returns>The reconciliation result.</returns>
+    public async Task<PermissionSynchronizationResult> SynchronizeAsync(CancellationToken cancellationToken = default)
     {
-        PermissionDefinition[] catalog = _catalogSources
-            .SelectMany(source => source.Permissions)
-            .GroupBy(permission => permission.Code, StringComparer.Ordinal)
-            .Select(group => group.First())
+        PlatformDiagnostics.PermissionSynchronizations.Add(1);
+
+        try
+        {
+            _catalog.EnsureValid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            PlatformDiagnostics.PermissionSynchronizationFailures.Add(1);
+            _logger.LogCritical(exception, "The platform permission catalog is inconsistent.");
+            throw;
+        }
+
+        PermissionDefinition[] catalog = _catalog.Permissions
             .OrderBy(permission => permission.Code, StringComparer.Ordinal)
             .ToArray();
 
         if (catalog.Length == 0)
         {
             _logger.LogDebug("No module permission catalogs are registered; system roles are unchanged.");
-            return;
+            return PermissionSynchronizationResult.Empty;
         }
 
         List<Role> systemRoles = await _context.Roles
@@ -64,21 +76,35 @@ public sealed class SystemRolePermissionSynchronizer
         Role administrator = GetOrCreate(systemRoles, AdministratorRoleName);
         Role auditor = GetOrCreate(systemRoles, AuditorRoleName);
 
+        int added = 0;
+        var readCodes = new HashSet<string>(StringComparer.Ordinal);
+
         foreach (PermissionDefinition definition in catalog)
         {
-            Grant(administrator, definition);
+            added += Grant(administrator, definition);
 
             if (IsReadPermission(definition.Code))
             {
-                Grant(auditor, definition);
+                readCodes.Add(definition.Code);
+                added += Grant(auditor, definition);
             }
         }
 
+        var allCodes = new HashSet<string>(catalog.Select(permission => permission.Code), StringComparer.Ordinal);
+        int removed = RevokeStale(administrator, allCodes) + RevokeStale(auditor, readCodes);
+
         await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        PlatformDiagnostics.PermissionsAdded.Add(added);
+        PlatformDiagnostics.PermissionsRemoved.Add(removed);
+
         _logger.LogInformation(
-            "Synchronized {PermissionCount} catalog permission(s) into the system roles.",
-            catalog.Length);
+            "Reconciled {PermissionCount} catalog permission(s) into the system roles ({Added} added, {Removed} removed).",
+            catalog.Length,
+            added,
+            removed);
+
+        return new PermissionSynchronizationResult(catalog.Length, added, removed, systemRoles.Count);
     }
 
     private Role GetOrCreate(List<Role> systemRoles, string name)
@@ -105,17 +131,49 @@ public sealed class SystemRolePermissionSynchronizer
         return created;
     }
 
-    private static void Grant(Role role, PermissionDefinition definition)
+    private static int Grant(Role role, PermissionDefinition definition)
     {
         if (role.Permissions.Any(permission => string.Equals(permission.Code, definition.Code, StringComparison.Ordinal)))
         {
-            return;
+            return 0;
         }
 
         Permission permission = Permission.Create(definition.Code, definition.Description).Value;
-        role.Grant(permission);
+        return role.Grant(permission).IsSuccess ? 1 : 0;
+    }
+
+    private static int RevokeStale(Role role, HashSet<string> desiredCodes)
+    {
+        int removed = 0;
+
+        foreach (Permission permission in role.Permissions
+            .Where(permission => !desiredCodes.Contains(permission.Code))
+            .ToArray())
+        {
+            if (role.Revoke(permission).IsSuccess)
+            {
+                removed++;
+            }
+        }
+
+        return removed;
     }
 
     private static bool IsReadPermission(string code)
         => code.EndsWith(".read", StringComparison.Ordinal);
+}
+
+/// <summary>The outcome of a system role permission reconciliation.</summary>
+/// <param name="CatalogCount">The number of permissions in the catalog.</param>
+/// <param name="Added">The number of permissions granted.</param>
+/// <param name="Removed">The number of stale permissions revoked.</param>
+/// <param name="SystemRoleCount">The number of system roles reconciled.</param>
+public sealed record PermissionSynchronizationResult(
+    int CatalogCount,
+    int Added,
+    int Removed,
+    int SystemRoleCount)
+{
+    /// <summary>An empty result used when no catalogs are registered.</summary>
+    public static PermissionSynchronizationResult Empty { get; } = new(0, 0, 0, 0);
 }

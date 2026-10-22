@@ -18,11 +18,11 @@ BSX.Platform
 │
 ├── src
 │   ├── BSX.SharedKernel        Platform kernel (DDD primitives + Result)
-│   ├── BSX.Contracts           Cross-module contract primitives (integration events, shared ids)
+│   ├── BSX.Contracts           Cross-module contract primitives (integration events, permission catalog)
 │   ├── BSX.BuildingBlocks      Technical cross-cutting abstractions
+│   ├── BSX.Persistence         EF Core platform services (transactional outbox)
 │   ├── BSX.Web                 Blazor Web App composition root
-│   ├── Modules                 Business modules (planned, no projects yet)
-│   └── Platform                Platform services (planned, no projects yet)
+│   └── Modules                 Identity, CRM and Sales modules
 │
 ├── tests
 │   ├── BSX.SharedKernel.UnitTests
@@ -37,7 +37,8 @@ BSX.Platform
 └── BSX.Platform.sln
 ```
 
-`Modules` and `Platform` exist as solution folders only.
+`Modules` contains the Identity, CRM and Sales module projects (Domain, Application,
+Infrastructure, Contracts and Endpoints as applicable).
 
 ---
 
@@ -56,8 +57,15 @@ Reusable technical patterns shared by every module. References `BSX.SharedKernel
 `BSX.Contracts`.
 
 Contents: CQRS abstractions and dispatcher, the canonical pipeline behaviors, domain/integration
-event abstractions, persistence abstractions, authorization abstractions and the `IModule`
-composition contract.
+event abstractions, persistence abstractions, authorization abstractions, the platform diagnostics
+meter, distributed-rate-limiting abstractions and the `IModule` composition contract.
+
+### BSX.Persistence
+
+EF Core implementation of platform persistence concerns. It owns the transactional outbox
+(`OutboxMessage`, interceptor, store, serializer and recovery hosted service), so
+`BSX.BuildingBlocks` stays free of EF Core. It depends on the kernel, contracts and building blocks
+and never on a module.
 
 ### BSX.Web
 
@@ -74,12 +82,15 @@ BSX.Web  ──►  BSX.BuildingBlocks  ──►  BSX.SharedKernel
                      │
                      └──►  BSX.Contracts  ──►  BSX.SharedKernel
 
+BSX.Persistence  ──►  BSX.BuildingBlocks, BSX.Contracts, BSX.SharedKernel
+
 <Module>.Contracts  ──►  BSX.Contracts
 ```
 
 - `BSX.SharedKernel` depends on nothing.
 - `BSX.Contracts` owns integration-event primitives and shared identifiers (ADR-015).
 - `BSX.BuildingBlocks` may depend on `BSX.SharedKernel` and `BSX.Contracts`.
+- `BSX.Persistence` may depend on the platform projects and EF Core; it never depends on a module.
 - `BSX.Web` may depend on the platform projects.
 - Modules may depend on the kernel, contracts and building blocks; the internal module direction is
   defined in [module-structure.md](../diagrams/module-structure.md).

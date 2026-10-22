@@ -1,7 +1,7 @@
 using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
+using BSX.Modules.Crm.Application.Common;
 using BSX.Modules.Crm.Application.Dtos;
-using BSX.Modules.Crm.Domain.Enums;
 
 namespace BSX.Modules.Crm.Application.Addresses.UpdateAddress;
 
@@ -15,4 +15,4 @@ public sealed record UpdateAddressCommand(
     Guid CustomerId,
     Guid AddressId,
     AddressInput Address,
-    AddressType Type) : ICommand;
+    CrmAddressType Type) : ICommand;

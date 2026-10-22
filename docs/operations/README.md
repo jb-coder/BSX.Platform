@@ -1,6 +1,7 @@
 # Operations
 
-Operational guidance for running the BSX Platform and its Identity and CRM modules in production.
+Operational guidance for running the BSX Platform and its Identity, CRM and Sales modules in
+production.
 
 | Document | Purpose |
 | --- | --- |
@@ -13,6 +14,7 @@ Operational guidance for running the BSX Platform and its Identity and CRM modul
 | [rate-limiting.md](rate-limiting.md) | Rate limiter behaviour and scaling (D4) |
 | [authentication-deployment.md](authentication-deployment.md) | Authentication deployment guidance (D4) |
 | [health-checks.md](health-checks.md) | Liveness and readiness probes (D6) |
+| [observability.md](observability.md) | Logs, traces, metrics, outbox backlog and alerts |
 | [configuration.md](configuration.md) | Configuration keys and validation (D7) |
 | [ci-cd.md](ci-cd.md) | Build, test and release pipeline (D5) |
 | [security-checklist.md](security-checklist.md) | Security review checklist (D8) |

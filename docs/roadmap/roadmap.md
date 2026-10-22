@@ -67,6 +67,20 @@ Inventory
 
 ---
 
+## Platform Hardening
+
+Status: **v0.4.0 — Done**. Identity, CRM and Sales are released. The foundation was hardened
+without adding business modules:
+
+- [x] ADR-009 transactional outbox (Identity, CRM, Sales): atomic persistence, exactly-once claim,
+      retry/backoff, dead-letter, crash recovery.
+- [x] ADR-018 platform permission catalog and declarative system-role reconciliation (add + remove).
+- [x] Architecture governance (contracts, endpoints, domain isolation, dependency direction).
+- [x] Observability (domain-event, outbox and permission-sync metrics/traces).
+- [x] Distributed rate limiting abstractions (single-instance default; no Redis implementation yet).
+
+---
+
 ## Phase 5
 
 Sales

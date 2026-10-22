@@ -111,3 +111,38 @@ registration conflicts and persistence failures:
 - Cross-module atomicity across separate connections is **not** guaranteed. A command targets a
   single module aggregate; cross-module workflows use integration events / the outbox / a saga.
 
+
+---
+
+## Outbox implementation (v0.4.0)
+
+`BSX.Persistence` provides the EF Core outbox used by every module. Each module `DbContext`
+implements `IOutboxDbContext` and owns an `outbox_messages` table in its schema.
+
+| Component | Responsibility |
+| --- | --- |
+| `OutboxSaveChangesInterceptor` | Collects `IHasDomainEvents` entries and adds outbox rows in the same `SaveChanges`; deduplicates by `EventId`. |
+| `IOutboxStore` / `EfOutboxStore<TContext>` | Atomic claim (`Pending` → `Processing`), read, mark processed, record failure with exponential backoff, dead-letter, count backlog, requeue stale claims. |
+| `DomainEventDispatcher` | Claims the persisted rows before dispatch, isolates each handler, marks processed/failed. Without stores (unit tests) it dispatches directly. |
+| `OutboxRecoveryService` | Hosted loop that requeues stale claims, reads pending rows, reconstructs domain events, dispatches them, and publishes integration rows when a broker is enabled. |
+
+Exactly-once semantics per attempt:
+
+- The claim is a conditional atomic `UPDATE`; only one worker can transition a row out of
+  `Pending`/eligible `Failed`.
+- The dispatcher only dispatches claimed rows when stores are registered, so a concurrent request
+  and recovery loop cannot both dispatch the same event.
+- Retries re-run all handlers, so handlers must be idempotent (at-least-once with an idempotency key
+  derived from `EventId`).
+
+Crash recovery:
+
+1. State and outbox rows commit atomically in the command transaction.
+2. If the process dies after commit, the rows remain `Pending`.
+3. `OutboxRecoveryService` claims and dispatches them on the next poll.
+4. Claims left in `Processing` after `Outbox:StaleProcessingAfter` are requeued.
+
+Integration rows remain pending unless `Outbox:IntegrationPublishingEnabled` is true. Replace the
+default `IEventBus` with a broker-backed publisher before enabling it.
+
+Configuration lives under `Outbox` (see [observability.md](../operations/observability.md)).

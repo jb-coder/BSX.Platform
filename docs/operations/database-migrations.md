@@ -4,6 +4,11 @@ The platform persists to PostgreSQL via EF Core (ADR-004). Three modules own sch
 **Identity**, **CRM** and **Sales**. Migrations are authored per module and applied by the
 deployment pipeline.
 
+Each module migration set includes its `outbox_messages` table (ADR-009). The
+`AddPlatformOutboxDurability` migration adds retry/claim columns and the unique `EventId` index;
+the CRM and Sales migrations create their outbox tables. Apply all pending migrations before
+enabling outbox processing.
+
 ## Official strategy: migrations are applied by the deployment pipeline
 
 The default, recommended strategy is **out-of-band migration**, applied by tooling during

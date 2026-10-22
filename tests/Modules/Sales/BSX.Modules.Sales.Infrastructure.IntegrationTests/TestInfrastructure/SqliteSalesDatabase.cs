@@ -2,8 +2,10 @@ using BSX.BuildingBlocks.Authorization;
 using BSX.Modules.Sales.Infrastructure.Crm;
 using BSX.Modules.Sales.Infrastructure.Persistence;
 using BSX.Modules.Sales.Infrastructure.Persistence.Interceptors;
+using BSX.Persistence.Outbox;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BSX.Modules.Sales.Infrastructure.IntegrationTests.TestInfrastructure;
 
@@ -34,20 +36,29 @@ internal sealed class SqliteSalesDatabase : IAsyncDisposable
         TimeProvider? timeProvider = null,
         Guid? tenantId = null,
         bool isSystem = false,
-        ICrmReferenceValidator? crmReferenceValidator = null)
+        ICrmReferenceValidator? crmReferenceValidator = null,
+        bool outbox = false)
     {
         var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync().ConfigureAwait(false);
 
-        var options = new DbContextOptionsBuilder<SalesDbContext>()
+        var optionsBuilder = new DbContextOptionsBuilder<SalesDbContext>()
             .UseSqlite(connection)
             .AddInterceptors(
                 new SalesAuditingSaveChangesInterceptor(
                     timeProvider ?? TimeProvider.System,
                     currentUser ?? new TestCurrentUser()),
                 new CrmReferenceValidationInterceptor(
-                    crmReferenceValidator ?? new TestCrmReferenceValidator()))
-            .Options;
+                    crmReferenceValidator ?? new TestCrmReferenceValidator()));
+
+        if (outbox)
+        {
+            optionsBuilder.AddInterceptors(new OutboxSaveChangesInterceptor(
+                timeProvider ?? TimeProvider.System,
+                Options.Create(new OutboxOptions())));
+        }
+
+        var options = optionsBuilder.Options;
 
         var context = new SalesDbContext(options, new TestSalesTenantScope(tenantId ?? TestData.TenantA, isSystem));
         await context.Database.EnsureCreatedAsync().ConfigureAwait(false);

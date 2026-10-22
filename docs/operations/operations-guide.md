@@ -11,6 +11,10 @@ Day-2 runbook for the BSX Platform (Identity and CRM modules).
 | Aggregate | `GET /health` | `200` / `503` |
 | Logs | Serilog console (structured JSON-ready) | `Information+`; `Warning+` for `Microsoft.*` |
 | Traces/metrics | OTLP when `OpenTelemetry:OtlpEndpoint` is set | exported to the collector |
+| Outbox backlog | `bsx.outbox.backlog` metric | `0` steady state; non-zero for >5 min alerts |
+| Outbox dead letters | `bsx.outbox.messages.dead_lettered` | investigate immediately |
+
+Platform instrumentation is documented in [observability.md](observability.md).
 
 ## Key operational scenarios
 
@@ -67,7 +71,13 @@ Day-2 runbook for the BSX Platform (Identity and CRM modules).
 - **Schema change:** apply Identity and CRM migrations as gated steps before rollout
   ([database-migrations.md](database-migrations.md)).
 - **Scaling:** ensure shared keys and a distributed rate limiter in HA
-  ([deployment-ha.md](deployment-ha.md)).
+  ([deployment-ha.md](deployment-ha.md), [rate-limiting.md](rate-limiting.md)).
+- **Outbox stalls:** check `bsx.outbox.backlog`, `bsx.outbox.messages.failed` and
+  `bsx.domain.event_handlers.failed`. Pending rows are retried automatically; dead letters require
+  operator intervention. See [observability.md](observability.md).
+- **Permission drift:** startup reconciliation (`Identity:Permissions:SynchronizeOnStartup`) adds
+  new catalog permissions and removes stale ones from system roles. Check
+  `bsx.permissions.synchronization.failures` and the startup log line.
 - **CRM tenant operations:** background/operations code may call `CrmTenantScope.UseTenant` or
   `UseSystemScope`; request paths must never do so
   ([crm-operations.md](crm-operations.md#tenant-scope)).
@@ -76,6 +86,6 @@ Day-2 runbook for the BSX Platform (Identity and CRM modules).
 
 ## Backups & recovery
 
-- Back up PostgreSQL (including the `identity` and `crm` schemas) on the platform's standard
-  schedule.
+- Back up PostgreSQL (including the `identity`, `crm` and `sales` schemas, including each module's
+  `outbox_messages` table) on the platform's standard schedule.
 - Test restore procedures; validate `/health/ready` after restore.

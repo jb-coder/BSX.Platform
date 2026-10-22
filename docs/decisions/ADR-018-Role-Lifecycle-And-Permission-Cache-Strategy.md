@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted — catalog synchronization and stale-permission removal implemented in v0.4.0; Identity,
+CRM and Sales publish `IPermissionCatalogSource` implementations.
 
 **Amends:** `docs/modules/identity/permissions-model.md`.
 

@@ -1,11 +1,12 @@
 using BSX.Modules.Crm.Domain.Customers;
 using BSX.Modules.Crm.Domain.Organizations;
+using BSX.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace BSX.Modules.Crm.Infrastructure.Persistence;
 
 /// <summary>The CRM module persistence context (PostgreSQL; ADR-004).</summary>
-public sealed class CrmDbContext : DbContext
+public sealed class CrmDbContext : DbContext, IOutboxDbContext
 {
     private readonly ICrmTenantScope? _tenantScope;
 
@@ -21,6 +22,12 @@ public sealed class CrmDbContext : DbContext
 
     /// <summary>Gets the organizations.</summary>
     public DbSet<Organization> Organizations => Set<Organization>();
+
+    /// <summary>Gets the transactional outbox (ADR-009).</summary>
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    /// <inheritdoc />
+    public string ModuleName => "Crm";
 
     /// <summary>Gets the tenant used by the global query filters.</summary>
     public Guid? CurrentTenantId => _tenantScope?.TenantId;
@@ -39,6 +46,7 @@ public sealed class CrmDbContext : DbContext
         }
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CrmDbContext).Assembly);
+        modelBuilder.ConfigureOutbox();
 
         // Fail-closed tenant filter plus soft delete. A missing tenant returns no data unless the
         // scope is explicitly privileged (system). TenantKey is constrained to TenantId in the DB.

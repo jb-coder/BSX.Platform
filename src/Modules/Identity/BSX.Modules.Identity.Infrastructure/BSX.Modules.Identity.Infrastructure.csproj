@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
     <ProjectReference Include="..\..\..\BSX.Contracts\BSX.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\BSX.Persistence\BSX.Persistence.csproj" />
     <ProjectReference Include="..\BSX.Modules.Identity.Domain\BSX.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\BSX.Modules.Identity.Application\BSX.Modules.Identity.Application.csproj" />
   </ItemGroup>

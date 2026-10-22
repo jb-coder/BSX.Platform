@@ -1,11 +1,12 @@
 using BSX.Modules.Sales.Domain.Leads;
 using BSX.Modules.Sales.Domain.Opportunities;
+using BSX.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace BSX.Modules.Sales.Infrastructure.Persistence;
 
 /// <summary>The Sales module persistence context (PostgreSQL; ADR-004).</summary>
-public sealed class SalesDbContext : DbContext
+public sealed class SalesDbContext : DbContext, IOutboxDbContext
 {
     private readonly ISalesTenantScope? _tenantScope;
 
@@ -21,6 +22,12 @@ public sealed class SalesDbContext : DbContext
 
     /// <summary>Gets the opportunities.</summary>
     public DbSet<Opportunity> Opportunities => Set<Opportunity>();
+
+    /// <summary>Gets the transactional outbox (ADR-009).</summary>
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    /// <inheritdoc />
+    public string ModuleName => "Sales";
 
     /// <summary>Gets the tenant used by the global query filters.</summary>
     public Guid? CurrentTenantId => _tenantScope?.TenantId;
@@ -39,6 +46,7 @@ public sealed class SalesDbContext : DbContext
         }
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SalesDbContext).Assembly);
+        modelBuilder.ConfigureOutbox();
 
         // Fail-closed tenant filter plus soft delete. A missing tenant returns no data unless the
         // scope is explicitly privileged (system). TenantKey is constrained to TenantId in the DB.

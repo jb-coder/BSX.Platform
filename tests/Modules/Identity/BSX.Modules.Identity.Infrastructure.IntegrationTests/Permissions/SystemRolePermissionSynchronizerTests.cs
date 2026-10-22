@@ -1,3 +1,4 @@
+using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Domain.Roles;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.Modules.Identity.Infrastructure.IntegrationTests.TestInfrastructure;
@@ -20,7 +21,7 @@ public sealed class SystemRolePermissionSynchronizerTests
         await using SqliteIdentityDatabase database = await SqliteIdentityDatabase.CreateAsync();
         var synchronizer = new SystemRolePermissionSynchronizer(
             database.Context,
-            [new SalesPermissionCatalog()],
+            new PermissionCatalog([new SalesPermissionCatalog()]),
             NullLogger<SystemRolePermissionSynchronizer>.Instance);
 
         await synchronizer.SynchronizeAsync();
@@ -46,7 +47,7 @@ public sealed class SystemRolePermissionSynchronizerTests
         await using SqliteIdentityDatabase database = await SqliteIdentityDatabase.CreateAsync();
         var synchronizer = new SystemRolePermissionSynchronizer(
             database.Context,
-            [new SalesPermissionCatalog()],
+            new PermissionCatalog([new SalesPermissionCatalog()]),
             NullLogger<SystemRolePermissionSynchronizer>.Instance);
 
         await synchronizer.SynchronizeAsync();
@@ -58,6 +59,37 @@ public sealed class SystemRolePermissionSynchronizerTests
         List<Role> rolesAfterSecondRun = await database.Context.Roles.ToListAsync();
         rolesAfterSecondRun.Should().HaveCount(rolesAfterFirstRun.Count);
         rolesAfterSecondRun.Sum(role => role.Permissions.Count).Should().Be(grantsAfterFirstRun);
+    }
+
+    [Fact]
+    public async Task Should_RemoveStalePermissions_FromSystemRoles()
+    {
+        await using SqliteIdentityDatabase database = await SqliteIdentityDatabase.CreateAsync();
+        Role administrator = Role.Create(
+            RoleId.New(),
+            tenantId: null,
+            RoleName.Create(SystemRolePermissionSynchronizer.AdministratorRoleName).Value,
+            [
+                Permission.Create(SalesPermissionCodes.LeadsRead, "Read leads.").Value,
+                Permission.Create("legacy.permission.read", "Stale permission.").Value,
+            ],
+            isSystem: true).Value;
+        database.Context.Roles.Add(administrator);
+        await database.Context.SaveChangesAsync();
+
+        var synchronizer = new SystemRolePermissionSynchronizer(
+            database.Context,
+            new PermissionCatalog([new SalesPermissionCatalog()]),
+            NullLogger<SystemRolePermissionSynchronizer>.Instance);
+
+        PermissionSynchronizationResult result = await synchronizer.SynchronizeAsync();
+
+        Role reconciled = await GetSystemRoleAsync(database, SystemRolePermissionSynchronizer.AdministratorRoleName);
+        reconciled.Permissions.Select(permission => permission.Code)
+            .Should().NotContain("legacy.permission.read");
+        reconciled.Permissions.Select(permission => permission.Code)
+            .Should().BeEquivalentTo(new SalesPermissionCatalog().Permissions.Select(permission => permission.Code));
+        result.Removed.Should().Be(1);
     }
 
     private static Task<Role> GetSystemRoleAsync(SqliteIdentityDatabase database, string name)

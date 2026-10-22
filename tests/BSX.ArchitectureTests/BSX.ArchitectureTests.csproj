@@ -25,6 +25,22 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\src\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\BSX.Contracts\BSX.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\BSX.Persistence\BSX.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\BSX.Modules.Identity.Domain\BSX.Modules.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\BSX.Modules.Identity.Application\BSX.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\BSX.Modules.Identity.Infrastructure\BSX.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\BSX.Modules.Identity.Endpoints\BSX.Modules.Identity.Endpoints.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Crm\BSX.Modules.Crm.Domain\BSX.Modules.Crm.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Crm\BSX.Modules.Crm.Application\BSX.Modules.Crm.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Crm\BSX.Modules.Crm.Infrastructure\BSX.Modules.Crm.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Crm\BSX.Modules.Crm.Contracts\BSX.Modules.Crm.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Crm\BSX.Modules.Crm.Endpoints\BSX.Modules.Crm.Endpoints.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Domain\BSX.Modules.Sales.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Application\BSX.Modules.Sales.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Infrastructure\BSX.Modules.Sales.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Contracts\BSX.Modules.Sales.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sales\BSX.Modules.Sales.Endpoints\BSX.Modules.Sales.Endpoints.csproj" />
   </ItemGroup>
 
 </Project>

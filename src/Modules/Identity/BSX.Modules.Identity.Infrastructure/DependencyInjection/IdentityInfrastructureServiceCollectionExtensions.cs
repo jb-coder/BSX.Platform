@@ -1,5 +1,7 @@
 using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Persistence;
+using BSX.BuildingBlocks.Persistence.Outbox;
+using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Roles;
@@ -12,6 +14,7 @@ using BSX.Modules.Identity.Infrastructure.Persistence.Outbox;
 using BSX.Modules.Identity.Infrastructure.Permissions;
 using BSX.Modules.Identity.Infrastructure.Repositories;
 using BSX.Modules.Identity.Infrastructure.Security;
+using BSX.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -32,12 +35,16 @@ public static class IdentityInfrastructureServiceCollectionExtensions
 
         services.TryAddScoped<ICurrentUser, SystemCurrentUser>();
         services.TryAddScoped<AuditingSaveChangesInterceptor>();
+        services.AddOptions<OutboxOptions>();
+        services.TryAddScoped<OutboxSaveChangesInterceptor>();
 
         services.AddDbContext<IdentityDbContext>((provider, options) =>
         {
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", "identity"));
-            options.AddInterceptors(provider.GetRequiredService<AuditingSaveChangesInterceptor>());
+            options.AddInterceptors(
+                provider.GetRequiredService<AuditingSaveChangesInterceptor>(),
+                provider.GetRequiredService<OutboxSaveChangesInterceptor>());
         });
 
         services.TryAddScoped<IUserRepository, UserRepository>();
@@ -49,8 +56,10 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddScoped<IUserReadRepository, UserReadRepository>();
         services.TryAddScoped<IRoleReadRepository, RoleReadRepository>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, IdentityUnitOfWork>());
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IOutboxStore, EfOutboxStore<IdentityDbContext>>());
         services.TryAddScoped<IOutboxWriter, OutboxWriter>();
         services.TryAddScoped<SystemRolePermissionSynchronizer>();
+        services.TryAddSingleton<PermissionCatalog>();
 
         services.TryAddSingleton<IPasswordHasher, PasswordHasher>();
         services.TryAddSingleton<IApiKeyHasher, ApiKeyHasher>();
