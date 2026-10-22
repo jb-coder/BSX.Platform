@@ -1,9 +1,11 @@
 using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Crm.Application.Abstractions;
+using BSX.Modules.Crm.Contracts.References;
 using BSX.Modules.Crm.Domain.Customers;
 using BSX.Modules.Crm.Domain.Organizations;
 using BSX.Modules.Crm.Infrastructure.Persistence;
 using BSX.Modules.Crm.Infrastructure.Persistence.Interceptors;
+using BSX.Modules.Crm.Infrastructure.References;
 using BSX.Modules.Crm.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +16,7 @@ namespace BSX.Modules.Crm.Infrastructure.DependencyInjection;
 /// <summary>Registers the CRM infrastructure layer.</summary>
 public static class CrmInfrastructureServiceCollectionExtensions
 {
-    /// <summary>Registers the CRM DbContext, repositories and unit of work.</summary>
+    /// <summary>Registers the CRM DbContext, repositories, contracts and unit of work.</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="connectionString">The PostgreSQL connection string.</param>
     /// <returns>The same service collection for chaining.</returns>
@@ -39,6 +41,7 @@ public static class CrmInfrastructureServiceCollectionExtensions
         services.TryAddScoped<IOrganizationRepository, OrganizationRepository>();
         services.TryAddScoped<ICustomerReadRepository, CustomerReadRepository>();
         services.TryAddScoped<IOrganizationReadRepository, OrganizationReadRepository>();
+        services.TryAddScoped<ICrmReferenceLookup, CrmReferenceLookup>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, CrmUnitOfWork>());
 
         return services;

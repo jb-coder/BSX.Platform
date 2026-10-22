@@ -1,6 +1,6 @@
 # Sales - Persistence and Infrastructure
 
-Status: Infrastructure implemented. API and UI are out of scope for this slice.
+Status: Infrastructure and HTTP API implemented. UI is out of scope for this slice.
 
 ## Project
 
@@ -29,8 +29,9 @@ Aggregates reference each other and CRM by identifier only: `Opportunity.LeadId`
   `LeadId`, `OpportunityId`, `CustomerId`, `OrganizationId`, `TenantId` → `uuid`;
   `LeadTitle`, `OpportunityTitle` → strings; `Probability` → `integer`;
   `ExpectedCloseDate` → `date`.
-- `Money` is an owned value object stored in the opportunity row as `Amount`
-  (`numeric(18,2)`) and `Currency` (`varchar(3)`).
+- `Money` is an EF Core **complex type** (value object) stored in the opportunity row as `Amount`
+  (`numeric(18,2)`) and `Currency` (`varchar(3)`). Complex-type tracking persists replacements of
+  the value object during updates.
 - Enums (`LeadStatus`, `OpportunityStage`) are stored as strings.
 - Auditing, soft-delete, `TenantKey`, `SearchTitle` and `Version` are shadow properties; no audit
   fields exist in the domain.
@@ -134,18 +135,25 @@ Sales-local identifiers. A `CrmReferenceValidationInterceptor` validates added/m
 Opportunity references before persistence and throws `CrmReferenceValidationException` when a
 reference is rejected.
 
-**Current implementation:** `PassThroughCrmReferenceValidator` accepts every reference. This is an
-explicit temporary seam: Sales must not reference CRM Domain or query CRM tables directly. When
-`CRM.Contracts` is introduced, replace the registration with a tenant-aware implementation that
-checks customer/organization existence through CRM contracts. No Sales domain or application
-change is required; the existing interceptor will enforce the replacement automatically.
+**Implemented contract:** `CrmContractReferenceValidator` calls
+`BSX.Modules.Crm.Contracts.References.ICrmReferenceLookup`, implemented by CRM Infrastructure
+(`CrmReferenceLookup`) over `CrmDbContext`. Sales has no reference to CRM Domain, Application or
+Infrastructure. The lookup is tenant-aware and excludes soft-deleted rows.
 
-Tests use a rejecting fake validator to prove customer and organization validation, including
-tenant propagation through the seam.
+**Fail closed:** `AddSalesInfrastructure` registers `FailClosedCrmReferenceLookup` by default. If
+CRM is not composed, every Customer/Organization reference is rejected. The host registers CRM
+infrastructure before Sales, so the real lookup replaces the fallback.
+
+`SalesCrmReferenceExceptionFilter` maps `CrmReferenceValidationException` to `409 Conflict`
+(`SALES.Customer.NotFound` / `SALES.Organization.NotFound`), never HTTP 500.
+
+Tests cover the interceptor with a rejecting fake, the contract validator with a fake lookup, and
+the full HTTP path against the real CRM contract (missing, cross-tenant and invalid references).
 
 ## Migrations
 
-- Initial migration: `InitialSales` (`Persistence/Migrations`).
+- Initial migration: `InitialSales` (`Persistence/Migrations`). A follow-up model-alignment
+  migration records the `Money` complex-type mapping; it is schema-neutral.
 - Apply out of band:
   ```bash
   dotnet tool restore
@@ -163,7 +171,8 @@ tenant propagation through the seam.
 - Repository round trips; read-model projections.
 - Tenant isolation and fail-closed/system scopes.
 - Unique `(TenantId, LeadId)` and soft-delete reuse.
-- CRM reference validation (customer and organization, tenant-aware).
+- CRM reference validation (customer and organization, tenant-aware; fail-closed fallback).
+- Opportunity detail/forecast updates (complex-type persistence).
 - Search (lead title; opportunity title/customer id).
 - Soft delete, auditing and optimistic concurrency.
 - Domain-event dispatch exactly once.
@@ -188,7 +197,6 @@ skipped when Docker is unavailable and run in CI (`DOCKER_AVAILABLE=true`).
 
 ## Out of scope / next
 
-- API endpoints and UI.
-- Sales health checks (database/schema readiness).
-- A real CRM contracts-backed reference validator.
+- UI.
 - DTO-only search filters beyond title/customer id (status, stage, owner) and reporting.
+- Integration events for downstream modules.

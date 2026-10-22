@@ -71,6 +71,41 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Should_PersistUpdatedOpportunityDetailsAndForecast()
+    {
+        await using SqliteSalesDatabase database = await SqliteSalesDatabase.CreateAsync();
+        Guid customerId = Guid.NewGuid();
+        Lead lead = TestData.CreateQualifiedLead(customerId: customerId);
+        await database.Context.Leads.AddAsync(lead);
+        Opportunity opportunity = TestData.CreateOpportunity(lead, customerId: customerId);
+        await database.Context.Opportunities.AddAsync(opportunity);
+        await database.Context.SaveChangesAsync();
+        database.Context.ChangeTracker.Clear();
+
+        var repository = new OpportunityRepository(database.Context);
+        Opportunity loaded = (await repository.GetByIdAsync(TestData.Tenant(), opportunity.Id))!;
+
+        loaded.UpdateDetails(
+            TestData.OpportunityTitleOf("Updated opportunity"),
+            TestData.Customer(customerId),
+            organizationId: null).IsSuccess.Should().BeTrue();
+        loaded.UpdateForecast(
+            TestData.MoneyOf(2000m, "EUR"),
+            TestData.ProbabilityOf(75),
+            TestData.CloseDateOf(45)).IsSuccess.Should().BeTrue();
+
+        await database.Context.SaveChangesAsync();
+        database.Context.ChangeTracker.Clear();
+
+        Opportunity reloaded = (await repository.GetByIdAsync(TestData.Tenant(), opportunity.Id))!;
+        reloaded.Title.Value.Should().Be("Updated opportunity");
+        reloaded.Amount.Amount.Should().Be(2000m);
+        reloaded.Amount.Currency.Should().Be("EUR");
+        reloaded.Probability.Percent.Should().Be(75);
+        reloaded.ExpectedCloseDate.Value.Should().Be(TestData.Today.AddDays(45));
+    }
+
+    [Fact]
     public async Task Should_NotReturnAggregatesFromAnotherTenant()
     {
         await using SqliteSalesDatabase database = await SqliteSalesDatabase.CreateAsync();

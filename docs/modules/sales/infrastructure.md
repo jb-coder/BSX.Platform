@@ -1,6 +1,6 @@
 # Sales - Infrastructure
 
-Status: Infrastructure implemented. API and UI are out of scope for this slice.
+Status: Infrastructure and HTTP API implemented. UI is out of scope for this slice.
 
 ## Project and dependencies
 
@@ -12,8 +12,10 @@ Status: Infrastructure implemented. API and UI are out of scope for this slice.
 | `BSX.BuildingBlocks` | Persistence seams, authorization context, transaction/event abstractions. |
 | `BSX.Modules.Sales.Domain` | Aggregates and value objects. |
 | `BSX.Modules.Sales.Application` | Read-model ports and DTOs. |
+| `BSX.Modules.Crm.Contracts` | Tenant-aware CRM reference lookup contract. |
 
-It has no reference to CRM Domain, CRM Infrastructure or any other module.
+It has **no** reference to CRM Domain, CRM Application or CRM Infrastructure. Cross-module access
+is restricted to `CRM.Contracts` (ADR-015).
 
 ## Registration
 
@@ -24,7 +26,8 @@ It has no reference to CRM Domain, CRM Infrastructure or any other module.
 - `SalesTenantScope` / `ISalesTenantScope` from `ITenantContext`.
 - `SalesAuditingSaveChangesInterceptor` (auditing, soft delete, search columns, tenant key,
   concurrency).
-- `ICrmReferenceValidator` + `CrmReferenceValidationInterceptor`.
+- `ICrmReferenceValidator` (`CrmContractReferenceValidator`) + `CrmReferenceValidationInterceptor`.
+- A fail-closed `ICrmReferenceLookup` fallback for hosts that compose Sales without CRM.
 - `LeadRepository`, `OpportunityRepository`.
 - `LeadReadRepository`, `OpportunityReadRepository`.
 - `IModuleUnitOfWork` → `SalesUnitOfWork` via `TryAddEnumerable` (never `IUnitOfWork`).
@@ -64,23 +67,28 @@ contracts/interfaces only; they must not reference CRM Domain or query CRM table
 `CrmReferenceValidationInterceptor` runs during `SaveChanges` for added or modified `Lead` and
 `Opportunity` entities. It validates every non-null customer/organization reference and throws
 `CrmReferenceValidationException` with the reference type, id and tenant when validation fails.
-The future API maps this exception to a controlled client error (for example `400`/`409`) rather
-than an unhandled `500`.
+`SalesCrmReferenceExceptionFilter` maps the exception to `409 Conflict` with the stable
+`SALES.Customer.NotFound` / `SALES.Organization.NotFound` code - never an HTTP 500.
 
-### Current state and future integration
+### Implemented integration boundary
 
-The default registration is `PassThroughCrmReferenceValidator`, which accepts all references. This
-is deliberate: CRM currently has no `Contracts` project, and Sales must not couple to the CRM
-Domain or schema. The seam exists, is wired, and is covered by tests with a rejecting fake.
+```text
+ICrmReferenceValidator (Sales)
+  → CrmContractReferenceValidator
+  → CRM.Contracts.References.ICrmReferenceLookup
+  → CRM.Infrastructure.References.CrmReferenceLookup → CrmDbContext
+```
 
-Before Sales writes are exposed in production:
-
-1. Introduce the CRM contract/interface for customer and organization reference lookup.
-2. Implement `ICrmReferenceValidator` in Sales Infrastructure using only that contract.
-3. Replace `PassThroughCrmReferenceValidator` in composition (the interceptor requires no change).
-4. Add integration tests against the CRM contract implementation.
-
-This keeps the dependency direction correct and prepares for future `CRM.Contracts` integration.
+- `CrmReferenceLookup` (CRM Infrastructure) is tenant-aware, excludes soft-deleted rows and is the
+  only implementation of the CRM contract. Sales never sees the CRM domain or schema.
+- `AddSalesInfrastructure` registers `FailClosedCrmReferenceLookup` as the default. When CRM is not
+  composed every reference is rejected, so Sales fails closed instead of persisting unverifiable
+  data.
+- The host composes CRM infrastructure before Sales infrastructure; the real CRM lookup replaces
+  the fallback.
+- Validation is covered at three levels: the interceptor with a rejecting fake, the contract
+  validator using a fake `ICrmReferenceLookup`, and HTTP integration tests against the real CRM
+  contract (missing, cross-tenant and invalid references).
 
 ## Tenant isolation
 
@@ -106,7 +114,8 @@ background code; request paths rely on `ITenantContext`.
 
 ## Migrations
 
-Initial migration: `20261022113527_InitialSales`.
+Initial migration: `20261022113527_InitialSales`; a schema-neutral
+`20261022120451_UpdateSalesMoneyMapping` records the `Money` complex-type model mapping.
 
 ```bash
 dotnet tool restore
@@ -128,7 +137,6 @@ skipped when Docker is unavailable.
 
 ## Next
 
-- API endpoints and UI.
-- CRM contract-backed `ICrmReferenceValidator`.
-- Sales database/schema readiness health checks.
+- UI.
 - Additional list filters (status, stage, customer) and reporting projections.
+- Integration events for downstream modules (quotes, orders, invoicing).

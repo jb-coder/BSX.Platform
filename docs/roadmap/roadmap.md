@@ -71,15 +71,16 @@ Inventory
 
 Sales
 
-- [x] Leads and Opportunities (domain + application + infrastructure)
+- [x] Leads and Opportunities (domain + application + infrastructure + API)
 - [ ] Quotations
 - [ ] Orders
 - [ ] Invoices
 
 Status: Sales domain (Lead and Opportunity aggregates, value objects, events and repositories),
-Application layer (commands, queries, handlers, validators, DTOs and tests) and Infrastructure
+Application layer (commands, queries, handlers, validators, DTOs and tests), Infrastructure
 (PostgreSQL persistence, repositories, tenant isolation, auditing, soft delete, concurrency,
-migrations, CRM reference-validation seam and tests) implemented. API and UI are pending;
+migrations, contract-backed CRM reference validation and tests) and HTTP API (endpoints,
+permission enforcement, health checks, endpoint integration tests) implemented. UI is pending;
 quotations, orders and invoices remain out of scope for this slice.
 
 ---

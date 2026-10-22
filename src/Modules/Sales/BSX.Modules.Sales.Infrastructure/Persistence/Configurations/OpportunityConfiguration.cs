@@ -40,7 +40,9 @@ internal sealed class OpportunityConfiguration : IEntityTypeConfiguration<Opport
             .IsRequired();
         builder.Property(opportunity => opportunity.Stage).HasConversion<string>().HasMaxLength(32).IsRequired();
 
-        builder.OwnsOne(opportunity => opportunity.Amount, money =>
+        // Money is a value object stored in the opportunity row. A complex type is tracked by
+        // value, so replacing the instance during an update persists the new amount and currency.
+        builder.ComplexProperty(opportunity => opportunity.Amount, money =>
         {
             money.Property(value => value.Amount)
                 .HasColumnName("Amount")
@@ -51,7 +53,6 @@ internal sealed class OpportunityConfiguration : IEntityTypeConfiguration<Opport
                 .HasMaxLength(3)
                 .IsRequired();
         });
-        builder.Navigation(opportunity => opportunity.Amount).IsRequired();
 
         builder.Ignore(opportunity => opportunity.DomainEvents);
 

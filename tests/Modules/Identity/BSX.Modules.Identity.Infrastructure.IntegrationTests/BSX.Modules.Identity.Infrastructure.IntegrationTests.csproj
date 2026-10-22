@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\BSX.Modules.Identity.Domain\BSX.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\BSX.Modules.Identity.Application\BSX.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\BSX.Modules.Identity.Infrastructure\BSX.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Modules\Sales\BSX.Modules.Sales.Contracts\BSX.Modules.Sales.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

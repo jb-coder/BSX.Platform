@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
     <ProjectReference Include="..\BSX.Modules.Crm.Domain\BSX.Modules.Crm.Domain.csproj" />
     <ProjectReference Include="..\BSX.Modules.Crm.Application\BSX.Modules.Crm.Application.csproj" />
+    <ProjectReference Include="..\BSX.Modules.Crm.Contracts\BSX.Modules.Crm.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

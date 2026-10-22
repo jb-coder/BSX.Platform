@@ -99,15 +99,23 @@ Enable the schema readiness checks to detect drift at runtime:
 ```json
 {
   "Identity": { "Database": { "VerifySchema": true } },
-  "Crm": { "Database": { "VerifySchema": true } }
+  "Crm": { "Database": { "VerifySchema": true } },
+  "Sales": { "Database": { "VerifySchema": true } }
 }
 ```
 
-This registers `identity-database-schema` and `crm-database-schema` under the `ready` tag. Each
-reports `Unhealthy` when EF detects pending migrations (or when the schema cannot be inspected),
-so an orchestrator will not route traffic to an instance running against an outdated schema. Sales
-does not yet expose a schema readiness check (API/host composition is pending). See
-[health-checks.md](health-checks.md).
+This registers `identity-database-schema`, `crm-database-schema` and `sales-database-schema` under
+the `ready` tag. Each reports `Unhealthy` when EF detects pending migrations (or when the schema
+cannot be inspected), so an orchestrator will not route traffic to an instance running against an
+outdated schema. See [health-checks.md](health-checks.md).
+
+## Permission catalog synchronization
+
+Identity seeds/synchronizes system roles from the registered module permission catalogs
+(`IPermissionCatalogSource`, ADR-018) after startup migrations. It is controlled by
+`Identity:Permissions:SynchronizeOnStartup` (default `true`) and is additive. A missing schema is
+logged and skipped. Ensure the Identity migrations have been applied before enabling it in a
+production rollout.
 
 ## Guidance
 

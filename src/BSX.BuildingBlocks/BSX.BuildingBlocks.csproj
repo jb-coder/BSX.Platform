@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\BSX.Contracts\BSX.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

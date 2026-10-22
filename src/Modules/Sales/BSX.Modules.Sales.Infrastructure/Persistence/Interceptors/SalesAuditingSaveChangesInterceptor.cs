@@ -110,15 +110,6 @@ internal sealed class SalesAuditingSaveChangesInterceptor : SaveChangesIntercept
             }
         }
 
-        // A soft-deleted aggregate becomes Modified; its owned value objects must not be deleted
-        // with it (for example Opportunity.Amount is stored in the same row).
-        foreach (EntityEntry ownedEntry in context.ChangeTracker.Entries())
-        {
-            if (ownedEntry.State == EntityState.Deleted && ownedEntry.Metadata.FindOwnership() is not null)
-            {
-                ownedEntry.State = EntityState.Unchanged;
-            }
-        }
     }
 
     private static void ApplyComputedColumns(EntityEntry entry)

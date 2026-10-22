@@ -1,6 +1,6 @@
 # Sales - Application Layer
 
-Status: Application and Infrastructure implemented. API and UI are out of scope for this slice.
+Status: Application, Infrastructure and HTTP API implemented. UI is out of scope for this slice.
 
 ## Scope
 
@@ -70,9 +70,9 @@ updates; the request must repeat the current title and references, and changing 
   cleared through updates.
 - **Implemented in Infrastructure:** `CustomerId` is persisted as a required column. The
   tenant-aware `ICrmReferenceValidator` seam and `CrmReferenceValidationInterceptor` validate
-  customer/organization references without referencing CRM Domain or tables. The default validator
-  is a pass-through until `CRM.Contracts` is introduced; replacing it activates real validation
-  without changing the Application. See [infrastructure.md](infrastructure.md).
+  customer/organization references through `CRM.Contracts` (`ICrmReferenceLookup`) without
+  referencing CRM Domain or tables. The default is fail-closed when CRM is not composed. See
+  [infrastructure.md](infrastructure.md).
 
 ### 3. Qualification requires the lead to be Contacted first
 
@@ -118,6 +118,9 @@ sales.opportunities.update
 ```
 
 Every command/query declares exactly one `[RequirePermission]`; the application tests lock this.
+The codes are published through `SalesPermissionCatalog` in `BSX.Modules.Sales.Contracts`
+(`IPermissionCatalogSource`), which Identity consumes to seed the system roles. See
+[api-surface.md](api-surface.md#permissions).
 
 ## Errors
 
@@ -155,7 +158,5 @@ units of work behind one `CompositeUnitOfWork`.
 
 ## Out of scope
 
-- API endpoints and UI.
+- UI.
 - Quotes, orders, invoices, pricing, forecasting engines and reporting.
-- A CRM contracts-backed reference validator (the Infrastructure seam is in place and currently
-  pass-through until `CRM.Contracts` exists).

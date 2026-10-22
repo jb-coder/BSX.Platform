@@ -9,6 +9,7 @@ using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Infrastructure.Persistence;
 using BSX.Modules.Identity.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Identity.Infrastructure.Persistence.Outbox;
+using BSX.Modules.Identity.Infrastructure.Permissions;
 using BSX.Modules.Identity.Infrastructure.Repositories;
 using BSX.Modules.Identity.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
@@ -49,6 +50,7 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddScoped<IRoleReadRepository, RoleReadRepository>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, IdentityUnitOfWork>());
         services.TryAddScoped<IOutboxWriter, OutboxWriter>();
+        services.TryAddScoped<SystemRolePermissionSynchronizer>();
 
         services.TryAddSingleton<IPasswordHasher, PasswordHasher>();
         services.TryAddSingleton<IApiKeyHasher, ApiKeyHasher>();

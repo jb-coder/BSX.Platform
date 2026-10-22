@@ -15,6 +15,7 @@ using BSX.Modules.Sales.Application.Opportunities.ListOpportunities;
 using BSX.Modules.Sales.Application.Opportunities.MarkOpportunityLost;
 using BSX.Modules.Sales.Application.Opportunities.MarkOpportunityWon;
 using BSX.Modules.Sales.Application.Opportunities.UpdateOpportunity;
+using BSX.Modules.Sales.Contracts.Permissions;
 
 namespace BSX.Modules.Sales.Application.UnitTests.Permissions;
 
@@ -68,5 +69,26 @@ public sealed class SalesPermissionTests
         codes.Should().OnlyHaveUniqueItems();
         codes.Should().OnlyContain(code => code.StartsWith("sales.", StringComparison.Ordinal));
         codes.Should().BeEquivalentTo(Expected.Values.Distinct());
+    }
+
+    [Fact]
+    public void PermissionCatalog_ShouldDeclareEveryStableCode()
+    {
+        string[] codes =
+        [
+            SalesPermissions.LeadsRead,
+            SalesPermissions.LeadsCreate,
+            SalesPermissions.LeadsUpdate,
+            SalesPermissions.OpportunitiesRead,
+            SalesPermissions.OpportunitiesCreate,
+            SalesPermissions.OpportunitiesUpdate,
+        ];
+
+        var catalog = new SalesPermissionCatalog();
+
+        catalog.Permissions.Select(permission => permission.Code)
+            .Should().BeEquivalentTo(codes);
+
+        catalog.Permissions.Should().OnlyContain(permission => !string.IsNullOrWhiteSpace(permission.Description));
     }
 }

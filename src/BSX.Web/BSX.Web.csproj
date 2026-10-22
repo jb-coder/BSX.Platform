@@ -26,6 +26,9 @@
     <ProjectReference Include="..\Modules\Crm\BSX.Modules.Crm.Application\BSX.Modules.Crm.Application.csproj" />
     <ProjectReference Include="..\Modules\Crm\BSX.Modules.Crm.Infrastructure\BSX.Modules.Crm.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Crm\BSX.Modules.Crm.Endpoints\BSX.Modules.Crm.Endpoints.csproj" />
+    <ProjectReference Include="..\Modules\Sales\BSX.Modules.Sales.Application\BSX.Modules.Sales.Application.csproj" />
+    <ProjectReference Include="..\Modules\Sales\BSX.Modules.Sales.Infrastructure\BSX.Modules.Sales.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Sales\BSX.Modules.Sales.Endpoints\BSX.Modules.Sales.Endpoints.csproj" />
   </ItemGroup>
 
   <ItemGroup>

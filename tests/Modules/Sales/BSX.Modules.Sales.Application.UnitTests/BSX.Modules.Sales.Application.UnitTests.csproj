@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\..\..\src\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Sales\BSX.Modules.Sales.Domain\BSX.Modules.Sales.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Sales\BSX.Modules.Sales.Application\BSX.Modules.Sales.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Modules\Sales\BSX.Modules.Sales.Contracts\BSX.Modules.Sales.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

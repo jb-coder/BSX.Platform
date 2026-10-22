@@ -1,4 +1,5 @@
 using BSX.BuildingBlocks.Persistence;
+using BSX.Modules.Crm.Contracts.References;
 using BSX.Modules.Sales.Application.Abstractions;
 using BSX.Modules.Sales.Domain.Leads;
 using BSX.Modules.Sales.Domain.Opportunities;
@@ -28,7 +29,11 @@ public static class SalesInfrastructureServiceCollectionExtensions
         services.TryAddScoped<SalesTenantScope>();
         services.TryAddScoped<ISalesTenantScope>(provider => provider.GetRequiredService<SalesTenantScope>());
         services.TryAddScoped<SalesAuditingSaveChangesInterceptor>();
-        services.TryAddScoped<ICrmReferenceValidator, PassThroughCrmReferenceValidator>();
+
+        // Fail closed when CRM is not composed: the lookup rejects every reference. CRM registers
+        // its tenant-aware implementation first, so TryAdd keeps the real contract in the host.
+        services.TryAddScoped<ICrmReferenceLookup, FailClosedCrmReferenceLookup>();
+        services.TryAddScoped<ICrmReferenceValidator, CrmContractReferenceValidator>();
         services.TryAddScoped<CrmReferenceValidationInterceptor>();
 
         services.AddDbContext<SalesDbContext>((provider, options) =>

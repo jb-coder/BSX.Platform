@@ -10,6 +10,10 @@ using BSX.Modules.Identity.Endpoints.HealthChecks;
 using BSX.Modules.Identity.Endpoints.Persistence;
 using BSX.Modules.Identity.Infrastructure.DependencyInjection;
 using BSX.Modules.Identity.Infrastructure.Jwt;
+using BSX.Modules.Sales.Application.DependencyInjection;
+using BSX.Modules.Sales.Endpoints;
+using BSX.Modules.Sales.Endpoints.HealthChecks;
+using BSX.Modules.Sales.Infrastructure.DependencyInjection;
 using BSX.Web.Components;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
@@ -74,6 +78,18 @@ if (builder.Configuration.GetValue("Crm:Database:VerifySchema", false))
     builder.Services.AddCrmSchemaHealthCheck();
 }
 
+// Sales module: leads and opportunities. It shares the platform database by default (separate
+// `sales` schema); configure ConnectionStrings:Sales for a dedicated database.
+string salesConnectionString = builder.Configuration.GetConnectionString("Sales") ?? identityConnectionString;
+builder.Services.AddSalesApplication();
+builder.Services.AddSalesInfrastructure(salesConnectionString);
+builder.Services.AddSalesHealthChecks();
+
+if (builder.Configuration.GetValue("Sales:Database:VerifySchema", false))
+{
+    builder.Services.AddSalesSchemaHealthCheck();
+}
+
 // One module-aware unit of work composes every module context (ADR-009).
 builder.Services.AddCompositeUnitOfWork();
 
@@ -109,6 +125,7 @@ builder.Services
 WebApplication app = builder.Build();
 
 await app.ApplyIdentityMigrationsAsync();
+await app.SynchronizeIdentityPermissionsAsync();
 
 app.UseSerilogRequestLogging();
 
@@ -136,6 +153,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 });
 app.MapIdentityEndpoints();
 app.MapCrmEndpoints();
+app.MapSalesEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

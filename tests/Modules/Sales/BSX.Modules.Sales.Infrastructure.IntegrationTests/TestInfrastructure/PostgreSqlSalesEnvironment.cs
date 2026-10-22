@@ -1,4 +1,3 @@
-using BSX.Modules.Sales.Infrastructure.Crm;
 using BSX.Modules.Sales.Infrastructure.Persistence;
 using BSX.Modules.Sales.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
@@ -49,7 +48,7 @@ internal sealed class PostgreSqlSalesEnvironment
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "sales"))
             .AddInterceptors(
                 new SalesAuditingSaveChangesInterceptor(TimeProvider.System, new TestCurrentUser()),
-                new CrmReferenceValidationInterceptor(new PassThroughCrmReferenceValidator()))
+                new CrmReferenceValidationInterceptor(new TestCrmReferenceValidator()))
             .Options;
 
         await using (var context = new SalesDbContext(options, new TestSalesTenantScope(null, isSystem: true)))

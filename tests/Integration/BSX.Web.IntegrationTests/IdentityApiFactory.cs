@@ -10,6 +10,8 @@ using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.Modules.Identity.Infrastructure.Persistence;
 using BSX.Modules.Identity.Infrastructure.Persistence.Interceptors;
+using BSX.Modules.Sales.Infrastructure.Persistence;
+using BSX.Modules.Sales.Infrastructure.Persistence.Interceptors;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -57,10 +59,17 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         "crm.organizations.read",
         "crm.organizations.create",
         "crm.organizations.update",
+        "sales.leads.read",
+        "sales.leads.create",
+        "sales.leads.update",
+        "sales.opportunities.read",
+        "sales.opportunities.create",
+        "sales.opportunities.update",
     ];
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly SqliteConnection _crmConnection = new("DataSource=:memory:");
+    private readonly SqliteConnection _salesConnection = new("DataSource=:memory:");
     private readonly CapturingPasswordResetNotifier _notifier = new();
 
     /// <summary>Initializes a new instance of the <see cref="IdentityApiFactory"/> class.</summary>
@@ -72,6 +81,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         Rsa = RSA.Create(2048);
         _connection.Open();
         _crmConnection.Open();
+        _salesConnection.Open();
         _ = CreateClient();
         Seed();
     }
@@ -153,6 +163,8 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             ["Identity:Jwt:Audience"] = "bsx-tests",
             ["Identity:Jwt:SigningKeys:0:Kid"] = "test",
             ["Identity:Jwt:SigningKeys:0:PrivateKeyPem"] = SigningKeyPem,
+            // The test factory seeds its own system role after the schema exists.
+            ["Identity:Permissions:SynchronizeOnStartup"] = "false",
         }));
 
         builder.ConfigureServices(services =>
@@ -177,6 +189,19 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
                 options.AddInterceptors(
                     provider.GetRequiredService<CrmAuditingSaveChangesInterceptor>(),
                     new ForcedConcurrencySaveChangesInterceptor());
+            });
+
+            services.RemoveAll<DbContextOptions<SalesDbContext>>();
+            services.RemoveAll<SalesDbContext>();
+            services.RemoveAll<IDbContextOptionsConfiguration<SalesDbContext>>();
+
+            services.AddDbContext<SalesDbContext>((provider, options) =>
+            {
+                options.UseSqlite(_salesConnection);
+                options.AddInterceptors(
+                    provider.GetRequiredService<SalesAuditingSaveChangesInterceptor>(),
+                    provider.GetRequiredService<CrmReferenceValidationInterceptor>(),
+                    new ForcedSalesConcurrencySaveChangesInterceptor());
             });
 
             // The fail-closed limiter is real and correct; raise the thresholds so the test suite
@@ -206,6 +231,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         {
             _connection.Dispose();
             _crmConnection.Dispose();
+            _salesConnection.Dispose();
             Rsa.Dispose();
         }
     }
@@ -237,6 +263,10 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         using IServiceScope crmScope = Services.CreateScope();
         var crmContext = crmScope.ServiceProvider.GetRequiredService<CrmDbContext>();
         crmContext.Database.EnsureCreated();
+
+        using IServiceScope salesScope = Services.CreateScope();
+        var salesContext = salesScope.ServiceProvider.GetRequiredService<SalesDbContext>();
+        salesContext.Database.EnsureCreated();
     }
 
     private static Guid AddUser(

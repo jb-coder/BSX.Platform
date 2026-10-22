@@ -1,7 +1,8 @@
 # Sales - Domain Model
 
-Status: Domain, Application and Infrastructure implemented (see [application.md](application.md)
-and [persistence.md](persistence.md)). API and UI are out of scope for this slice.
+Status: Domain, Application, Infrastructure and HTTP API implemented (see
+[application.md](application.md), [persistence.md](persistence.md) and
+[api-surface.md](api-surface.md)). UI is out of scope for this slice.
 
 ## Scope
 

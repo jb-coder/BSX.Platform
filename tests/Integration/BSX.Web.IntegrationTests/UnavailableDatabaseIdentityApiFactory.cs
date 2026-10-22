@@ -30,6 +30,7 @@ public sealed class UnavailableDatabaseIdentityApiFactory : WebApplicationFactor
             ["Identity:Jwt:Audience"] = "bsx-tests",
             ["Identity:Jwt:SigningKeys:0:Kid"] = "test",
             ["Identity:Jwt:SigningKeys:0:PrivateKeyPem"] = _rsa.ExportRSAPrivateKeyPem(),
+            ["Identity:Permissions:SynchronizeOnStartup"] = "false",
         }));
     }
 

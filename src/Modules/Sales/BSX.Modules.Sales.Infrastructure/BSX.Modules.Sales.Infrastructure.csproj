@@ -22,11 +22,13 @@
     <ProjectReference Include="..\..\..\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
     <ProjectReference Include="..\BSX.Modules.Sales.Domain\BSX.Modules.Sales.Domain.csproj" />
     <ProjectReference Include="..\BSX.Modules.Sales.Application\BSX.Modules.Sales.Application.csproj" />
+    <ProjectReference Include="..\..\Crm\BSX.Modules.Crm.Contracts\BSX.Modules.Crm.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="BSX.Modules.Sales.Infrastructure.IntegrationTests" />
     <InternalsVisibleTo Include="BSX.Composition.IntegrationTests" />
+    <InternalsVisibleTo Include="BSX.Web.IntegrationTests" />
   </ItemGroup>
 
 </Project>

@@ -67,8 +67,40 @@ model auditable and avoids drift.
 | `identity.sessions.read` | `ListUserSessionsQuery` |
 | `identity.sessions.revoke` | Admin session revocation |
 
+### CRM permissions
+
+| Permission | Guards |
+| --- | --- |
+| `crm.customers.read` | Customer queries |
+| `crm.customers.create` | `CreateCustomerCommand` |
+| `crm.customers.update` | Customer updates, contacts, addresses and organization assignment |
+| `crm.organizations.read` | Organization queries |
+| `crm.organizations.create` | `CreateOrganizationCommand` |
+| `crm.organizations.update` | `UpdateOrganizationCommand` |
+
+### Sales permissions
+
+| Permission | Guards |
+| --- | --- |
+| `sales.leads.read` | `GetLeadByIdQuery`, `ListLeadsQuery` |
+| `sales.leads.create` | `CreateLeadCommand` |
+| `sales.leads.update` | Lead updates, contacted, qualify and disqualify |
+| `sales.opportunities.read` | `GetOpportunityByIdQuery`, `ListOpportunitiesQuery` |
+| `sales.opportunities.create` | `CreateOpportunityFromLeadCommand` |
+| `sales.opportunities.update` | Opportunity updates, advance, won and lost |
+
 Self-service operations (`me/*`) and authentication operations require authentication but declare
 no permission.
+
+### Module catalogs and seeding
+
+Modules publish their codes through `IPermissionCatalogSource` (`BSX.Contracts.Permissions`);
+`SalesPermissionCatalog` is the Sales implementation. `AddSalesApplication` registers it.
+`SystemRolePermissionSynchronizer` (Identity Infrastructure) reconciles the `Administrator` and
+`Auditor` system roles from every registered catalog on startup
+(`Identity:Permissions:SynchronizeOnStartup`, default `true`). Synchronization is additive and
+idempotent; a missing Identity schema is logged and skipped. Additional modules can publish a
+catalog without Identity referencing their implementation.
 
 ---
 

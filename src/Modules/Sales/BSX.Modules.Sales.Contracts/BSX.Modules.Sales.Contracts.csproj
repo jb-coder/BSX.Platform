@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BSX.Modules.Sales.Contracts</RootNamespace>
+    <AssemblyName>BSX.Modules.Sales.Contracts</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BSX.Contracts\BSX.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

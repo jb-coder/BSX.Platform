@@ -38,4 +38,22 @@ public static class SalesApplicationErrors
     public static Error OpportunityAlreadyExistsForLead => Error.Conflict(
         "SALES.Opportunity.AlreadyExistsForLead",
         "The lead has already been converted into an opportunity.");
+
+    /// <summary>
+    /// A CRM customer or organization reference does not exist in the active tenant. Referential
+    /// integrity failures are conflicts, never server errors.
+    /// </summary>
+    /// <param name="referenceType">The invalid reference type (Customer or Organization).</param>
+    /// <param name="referenceId">The invalid reference identifier.</param>
+    public static Error CrmReferenceNotFound(string referenceType, Guid referenceId) => Error.Conflict(
+        $"SALES.{referenceType}.NotFound",
+        $"The {referenceType} reference '{referenceId}' does not exist in the active tenant.");
+
+    /// <summary>
+    /// A concurrent modification was detected while persisting the aggregate. The caller should
+    /// re-read the resource and retry (optimistic concurrency, ADR-010).
+    /// </summary>
+    public static Error ConcurrencyConflict => Error.Conflict(
+        "SALES.ConcurrencyConflict",
+        "The resource was modified by another request. Reload it and retry.");
 }

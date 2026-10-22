@@ -7,8 +7,8 @@ Review before every production release. Each item should have an owner and evide
 - [ ] `Identity:Jwt:SigningKeys` are provided from a secret store and are **shared** across
       instances (no ephemeral keys).
 - [ ] `ConnectionStrings:Identity` is provided from a secret store; no default credentials.
-- [ ] `ConnectionStrings:Crm` (when used) is provided from a secret store; it may be omitted to
-      share the Identity database.
+- [ ] `ConnectionStrings:Crm` and `ConnectionStrings:Sales` (when used) are provided from a secret
+      store; they may be omitted to share the Identity database.
 - [ ] `AllowedHosts` is set to the production host name(s); not `*`.
 - [ ] No secrets are committed to source control; no secrets appear in logs.
 
@@ -23,9 +23,13 @@ Review before every production release. Each item should have an owner and evide
 
 - [ ] Permission checks are enforced (fail-closed); new endpoints declare `[RequirePermission]`.
 - [ ] Tenant-scoped endpoints resolve the tenant from the token and enforce `TenantGuard`.
-- [ ] CRM tenant filters are fail-closed; a request without a tenant sees no CRM data.
-- [ ] `CrmTenantScope.UseSystemScope()` is restricted to trusted background/operations code.
+- [ ] CRM and Sales tenant filters are fail-closed; a request without a tenant sees no module data.
+- [ ] `CrmTenantScope.UseSystemScope()` / `SalesTenantScope.UseSystemScope()` are restricted to
+      trusted background/operations code.
 - [ ] Privileged endpoints require explicit permissions (no implicit admin).
+- [ ] Sales validates CRM references through `CRM.Contracts` and fails closed when CRM is absent.
+- [ ] System-role permission synchronization is enabled or the roles are seeded by the deployment
+      process.
 
 ## Password reset
 
@@ -42,10 +46,12 @@ Review before every production release. Each item should have an owner and evide
 
 ## Data
 
-- [ ] Identity and CRM migrations are applied via gated deployment steps; a backup exists before
-      destructive changes.
-- [ ] Auditing and soft-delete are active (ADR-010) for Identity and CRM.
+- [ ] Identity, CRM and Sales migrations are applied via gated deployment steps; a backup exists
+      before destructive changes.
+- [ ] Auditing and soft-delete are active (ADR-010) for Identity, CRM and Sales.
 - [ ] The CRM `(TenantId, Code)` filtered unique index and `TenantKey = TenantId` check
+      constraints are present after migration (verified by the PostgreSQL parity tests).
+- [ ] The Sales `(TenantId, LeadId)` filtered unique index and `TenantKey = TenantId` check
       constraints are present after migration (verified by the PostgreSQL parity tests).
 
 ## Observability & operations
