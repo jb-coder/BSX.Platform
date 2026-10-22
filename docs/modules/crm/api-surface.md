@@ -1,6 +1,7 @@
 # CRM - API Surface
 
-Status: API implemented (v0.3.0 development). Blazor UI, reporting and analytics are out of scope.
+Status: API implemented and release-hardened (v0.3.0 development). Blazor UI, reporting and
+analytics are out of scope.
 
 ## Conventions
 
@@ -90,14 +91,22 @@ Status: API implemented (v0.3.0 development). Blazor UI, reporting and analytics
 | Missing permission / cross-tenant guard | `403` |
 | Not found | `404` |
 | Conflict (duplicate code, invalid transition, duplicate email/address) | `409` |
+| Concurrency conflict (stale aggregate version) | `409` `CRM.ConcurrencyConflict` |
 | Unavailable | `503` |
 
 Errors are returned as RFC 9457 problem details with the stable `CRM.*` code as the title.
+
+Concurrency conflicts are raised by the unit of work as `ConcurrencyConflictException` and mapped
+by the CRM endpoint filter to the standard problem body. The stale write is not persisted; clients
+re-read the resource and retry.
 
 ## Health
 
 `AddCrmHealthChecks()` registers `crm-database` with the `ready` tag. `/health/ready` includes the
 CRM database alongside the Identity checks; `/health` aggregates all checks.
+
+`AddCrmSchemaHealthCheck()` (enabled by `Crm:Database:VerifySchema=true`) additionally registers
+`crm-database-schema`, which reports `Unhealthy` when CRM migrations are pending.
 
 ## Integration notes
 

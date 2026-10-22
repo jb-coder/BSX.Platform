@@ -21,6 +21,20 @@ every push and pull request, plus tags.
 3. **Release job is tag-gated.** Artifacts are only produced for `v*` tags after build and tests
    pass.
 
+## PostgreSQL parity
+
+The CRM infrastructure test project contains Testcontainers-based parity tests. GitHub-hosted
+Ubuntu runners provide a Docker daemon, so these tests run in CI and validate the production
+provider (migrations, indexes, constraints, tenant filters, search, soft delete, concurrency).
+
+When Docker is not available the tests are reported as **skipped** with an explanatory message,
+keeping the default local suite green. Set `DOCKER_AVAILABLE=true` to require Docker and fail
+loudly when it is missing:
+
+```bash
+DOCKER_AVAILABLE=true dotnet test BSX.Platform.sln -c Release
+```
+
 ## Recommended branch protection
 
 On `main` (and `develop`):
@@ -31,6 +45,8 @@ On `main` (and `develop`):
 
 ## Extending the pipeline
 
-- Add PostgreSQL-backed (Testcontainers) tests to the test job when provider parity is required.
 - Add container build/push steps to the release job when an image registry is adopted.
-- Add a deployment job (environment-gated) that applies migrations and rolls out the artifact.
+- Add a deployment job (environment-gated) that applies Identity and CRM migrations and rolls out
+  the artifact.
+- Set `DOCKER_AVAILABLE=true` in CI once Docker is guaranteed, so provider parity can never be
+  skipped silently.

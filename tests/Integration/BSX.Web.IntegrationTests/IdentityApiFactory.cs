@@ -174,7 +174,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<CrmDbContext>((provider, options) =>
             {
                 options.UseSqlite(_crmConnection);
-                options.AddInterceptors(provider.GetRequiredService<CrmAuditingSaveChangesInterceptor>());
+                options.AddInterceptors(
+                    provider.GetRequiredService<CrmAuditingSaveChangesInterceptor>(),
+                    new ForcedConcurrencySaveChangesInterceptor());
             });
 
             // The fail-closed limiter is real and correct; raise the thresholds so the test suite

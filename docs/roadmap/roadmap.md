@@ -53,7 +53,7 @@ CRM
 - Contacts
 - Categories
 
-Status: Domain, Application, Infrastructure and HTTP API implemented and tested (CQRS, tenant isolation, auditing, soft delete, concurrency, projections, health). Blazor UI, reporting and analytics pending.
+Status: Domain, Application, Infrastructure and HTTP API implemented, tested and release-hardened (CQRS, tenant isolation, auditing, soft delete, optimistic concurrency mapped to `409`, projections, health, PostgreSQL parity suite). Blazor UI, reporting and analytics pending.
 
 ---
 

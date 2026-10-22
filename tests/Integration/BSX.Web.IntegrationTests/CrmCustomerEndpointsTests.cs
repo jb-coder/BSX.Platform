@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using BSX.Modules.Crm.Application.Dtos;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BSX.Web.IntegrationTests;
 
@@ -107,6 +108,26 @@ public sealed class CrmCustomerEndpointsTests : IClassFixture<IdentityApiFactory
         HttpResponseMessage clear = await client.DeleteAsync($"/crm/customers/{customerId}/organization");
         clear.StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await CrmTestData.GetCustomerAsync(client, customerId)).OrganizationId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Update_Should_ReturnConflict_WhenConcurrentModificationIsDetected()
+    {
+        HttpClient client = await AdminClientAsync();
+        Guid id = await CrmTestData.CreateCustomerAsync(client);
+        string originalName = (await CrmTestData.GetCustomerAsync(client, id)).Name;
+
+        HttpResponseMessage response = await client.PutAsJsonAsync(
+            $"/crm/customers/{id}",
+            new { name = ForcedConcurrencySaveChangesInterceptor.TriggerName, taxIdentifier = (string?)null });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+
+        ProblemDetails? problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problem!.Title.Should().Be("CRM.ConcurrencyConflict");
+
+        (await CrmTestData.GetCustomerAsync(client, id)).Name.Should().Be(originalName);
     }
 
     [Fact]

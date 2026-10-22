@@ -69,6 +69,11 @@ builder.Services.AddCrmApplication();
 builder.Services.AddCrmInfrastructure(crmConnectionString);
 builder.Services.AddCrmHealthChecks();
 
+if (builder.Configuration.GetValue("Crm:Database:VerifySchema", false))
+{
+    builder.Services.AddCrmSchemaHealthCheck();
+}
+
 // One module-aware unit of work composes every module context (ADR-009).
 builder.Services.AddCompositeUnitOfWork();
 

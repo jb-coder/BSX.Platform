@@ -17,4 +17,8 @@
     <ProjectReference Include="..\BSX.Modules.Crm.Infrastructure\BSX.Modules.Crm.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="BSX.Web.IntegrationTests" />
+  </ItemGroup>
+
 </Project>
