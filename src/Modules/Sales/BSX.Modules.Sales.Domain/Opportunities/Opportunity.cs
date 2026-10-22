@@ -20,7 +20,7 @@ public sealed class Opportunity : AggregateRoot<OpportunityId>
         TenantId tenantId,
         LeadId leadId,
         OpportunityTitle title,
-        CustomerId? customerId,
+        CustomerId customerId,
         OrganizationId? organizationId,
         Money amount,
         Probability probability,
@@ -51,8 +51,8 @@ public sealed class Opportunity : AggregateRoot<OpportunityId>
     /// <summary>Gets the opportunity title.</summary>
     public OpportunityTitle Title { get; private set; } = null!;
 
-    /// <summary>Gets the optional CRM customer reference (identifier only).</summary>
-    public CustomerId? CustomerId { get; private set; }
+    /// <summary>Gets the required CRM customer reference (identifier only).</summary>
+    public CustomerId CustomerId { get; private set; } = null!;
 
     /// <summary>Gets the optional CRM organization reference (identifier only).</summary>
     public OrganizationId? OrganizationId { get; private set; }
@@ -79,6 +79,7 @@ public sealed class Opportunity : AggregateRoot<OpportunityId>
     /// <param name="id">The opportunity identifier.</param>
     /// <param name="tenantId">The tenant identifier; must match the lead's tenant.</param>
     /// <param name="qualifiedLead">The qualified source lead.</param>
+    /// <param name="customerId">The required CRM customer reference for the opportunity.</param>
     /// <param name="title">The opportunity title.</param>
     /// <param name="amount">The potential revenue amount.</param>
     /// <param name="probability">The probability of winning.</param>
@@ -88,6 +89,7 @@ public sealed class Opportunity : AggregateRoot<OpportunityId>
         OpportunityId id,
         TenantId tenantId,
         Lead qualifiedLead,
+        CustomerId customerId,
         OpportunityTitle title,
         Money amount,
         Probability probability,
@@ -110,7 +112,7 @@ public sealed class Opportunity : AggregateRoot<OpportunityId>
             tenantId,
             qualifiedLead.Id,
             title,
-            qualifiedLead.CustomerId,
+            customerId,
             qualifiedLead.OrganizationId,
             amount,
             probability,
@@ -122,11 +124,11 @@ public sealed class Opportunity : AggregateRoot<OpportunityId>
 
     /// <summary>Updates the title and CRM references while the opportunity is open.</summary>
     /// <param name="title">The new title.</param>
-    /// <param name="customerId">The new optional CRM customer reference.</param>
+    /// <param name="customerId">The required CRM customer reference.</param>
     /// <param name="organizationId">The new optional CRM organization reference.</param>
     public Result UpdateDetails(
         OpportunityTitle title,
-        CustomerId? customerId,
+        CustomerId customerId,
         OrganizationId? organizationId)
     {
         if (IsTerminal)

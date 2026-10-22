@@ -73,6 +73,7 @@ internal static class TestData
 
     internal static Opportunity CreateOpportunity(
         Lead? lead = null,
+        CustomerId? customerId = null,
         OpportunityTitle? title = null,
         Money? amount = null,
         Probability? probability = null,
@@ -80,11 +81,13 @@ internal static class TestData
         TenantId? tenantId = null)
     {
         Lead source = lead ?? CreateQualifiedLead();
+        CustomerId customer = customerId ?? source.CustomerId ?? Customer();
 
         Opportunity opportunity = Opportunity.CreateFromLead(
             OpportunityId.New(),
             tenantId ?? Tenant,
             source,
+            customer,
             title ?? OpportunityTitleOf(),
             amount ?? MoneyOf(),
             probability ?? ProbabilityOf(),

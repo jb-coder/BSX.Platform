@@ -25,6 +25,7 @@ public sealed class OpportunityCreationTests
             id,
             TestData.Tenant,
             lead,
+            customer,
             title,
             amount,
             probability,
@@ -97,6 +98,7 @@ public sealed class OpportunityCreationTests
             OpportunityId.New(),
             TestData.Tenant,
             lead,
+            TestData.Customer(),
             TestData.OpportunityTitleOf(),
             TestData.MoneyOf(),
             TestData.ProbabilityOf(),
@@ -113,6 +115,7 @@ public sealed class OpportunityCreationTests
             OpportunityId.New(),
             TestData.Tenant,
             null!,
+            TestData.Customer(),
             TestData.OpportunityTitleOf(),
             TestData.MoneyOf(),
             TestData.ProbabilityOf(),
@@ -122,23 +125,25 @@ public sealed class OpportunityCreationTests
     }
 
     [Fact]
-    public void Should_CopyIntegrationReferencesFromLead()
+    public void Should_UseTheSuppliedCustomer_AndCopyOrganizationReference()
     {
-        CustomerId customer = TestData.Customer();
+        CustomerId leadCustomer = TestData.Customer();
+        CustomerId opportunityCustomer = TestData.Customer();
         OrganizationId organization = TestData.Organization();
-        Lead lead = TestData.CreateQualifiedLead(customerId: customer, organizationId: organization);
+        Lead lead = TestData.CreateQualifiedLead(customerId: leadCustomer, organizationId: organization);
 
-        Opportunity opportunity = CreateFrom(lead).Value;
+        Opportunity opportunity = CreateFrom(lead, opportunityCustomer).Value;
 
-        opportunity.CustomerId.Should().Be(customer);
+        opportunity.CustomerId.Should().Be(opportunityCustomer);
         opportunity.OrganizationId.Should().Be(organization);
     }
 
-    private static BSX.SharedKernel.Results.Result<Opportunity> CreateFrom(Lead lead)
+    private static BSX.SharedKernel.Results.Result<Opportunity> CreateFrom(Lead lead, CustomerId? customerId = null)
         => Opportunity.CreateFromLead(
             OpportunityId.New(),
             lead.TenantId,
             lead,
+            customerId ?? TestData.Customer(),
             TestData.OpportunityTitleOf(),
             TestData.MoneyOf(),
             TestData.ProbabilityOf(),

@@ -32,6 +32,16 @@ public sealed class RepositoryContractTests
     }
 
     [Fact]
+    public void Opportunity_LeadLookup_Should_BeTenantScoped()
+    {
+        MethodInfo method = typeof(IOpportunityRepository).GetMethod(nameof(IOpportunityRepository.ExistsByLeadIdAsync))!;
+        ParameterInfo[] parameters = method.GetParameters();
+
+        parameters[0].ParameterType.Should().Be(typeof(TenantId));
+        parameters[1].ParameterType.Should().Be(typeof(LeadId));
+    }
+
+    [Fact]
     public void Repositories_Should_BeAggregateSpecific()
     {
         typeof(ILeadRepository).GetMethods().Should().Contain(method => method.Name == "AddAsync");

@@ -50,7 +50,7 @@ public sealed class OpportunityDetailsTests
         Opportunity opportunity = TestData.CreateWonOpportunity();
         OpportunityTitle originalTitle = opportunity.Title;
 
-        var result = opportunity.UpdateDetails(TestData.OpportunityTitleOf("Changed"), null, null);
+        var result = opportunity.UpdateDetails(TestData.OpportunityTitleOf("Changed"), opportunity.CustomerId, null);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(SalesErrors.OpportunityTerminal);
@@ -94,7 +94,7 @@ public sealed class OpportunityDetailsTests
         opportunity.AdvanceStage().IsSuccess.Should().BeTrue();
         opportunity.ClearDomainEvents();
 
-        opportunity.UpdateDetails(TestData.OpportunityTitleOf("Updated"), null, null);
+        opportunity.UpdateDetails(TestData.OpportunityTitleOf("Updated"), opportunity.CustomerId, null);
 
         opportunity.Stage.Should().Be(OpportunityStage.Qualification);
     }

@@ -1,7 +1,7 @@
 # Sales - Domain Model
 
-Status: Domain implemented. Application, Infrastructure, API and UI are out of scope for this
-slice.
+Status: Domain and Application implemented (see [application.md](application.md)). Infrastructure,
+API and UI are out of scope for this slice.
 
 ## Scope
 
@@ -66,7 +66,7 @@ A qualified commercial opportunity. It always originates from a qualified lead.
 | `TenantId` | Tenant identifier; must match the source lead. |
 | `LeadId` | Source lead identifier. |
 | `Title` | Opportunity title (`OpportunityTitle`). |
-| `CustomerId?` | CRM customer reference copied from the lead. |
+| `CustomerId` | Required CRM customer reference supplied at conversion. |
 | `OrganizationId?` | CRM organization reference copied from the lead. |
 | `Amount` | Potential revenue (`Money`). |
 | `Probability` | Probability of winning (`Probability`). |
@@ -93,6 +93,10 @@ Stage transitions:
 Invariants:
 
 - An opportunity can only be created from a **qualified** lead in the same tenant.
+- An opportunity requires a CRM customer reference; the Application supplies it at conversion.
+- A qualified lead may produce **only one** opportunity. The Application checks
+  `IOpportunityRepository.ExistsByLeadIdAsync`; Infrastructure must enforce a unique
+  `(TenantId, LeadId)` index.
 - `AdvanceStage` moves one stage at a time and raises `OpportunityStageChanged`.
 - `Negotiation` cannot be advanced; it must be marked won or lost.
 - `MarkWon` is only valid from `Negotiation`; it sets the probability to 100%.
@@ -117,8 +121,9 @@ The identifiers are value objects owned by Sales (`BSX.Modules.Sales.Domain.Valu
 mapped to the CRM identifiers by the Application layer. There is no cross-module navigation, no
 shared domain type and no database dependency.
 
-`Opportunity.CreateFromLead` copies the lead's optional customer and organization references. A
-lead or opportunity may therefore be unlinked from CRM until the Application layer associates it.
+`Opportunity.CreateFromLead` requires a CRM customer reference supplied by the caller and copies
+the lead's optional organization reference. A lead may still be unlinked from CRM while it is a
+prospect; the Application requires a customer at conversion so every opportunity is commercial.
 
 ---
 
@@ -144,7 +149,8 @@ boundaries.
 Aggregate-specific, tenant-scoped reads:
 
 - `ILeadRepository`: `GetByIdAsync(TenantId, LeadId)`, `AddAsync`.
-- `IOpportunityRepository`: `GetByIdAsync(TenantId, OpportunityId)`, `AddAsync`.
+- `IOpportunityRepository`: `GetByIdAsync(TenantId, OpportunityId)`, `ExistsByLeadIdAsync(TenantId, LeadId)`,
+  `AddAsync`.
 
 ## Errors
 
@@ -167,9 +173,8 @@ lifecycle and state conflicts use `Error.Conflict`.
 
 ## Out of scope / next
 
-- Application commands, queries and FluentValidation.
 - Infrastructure (EF Core configuration, migrations, tenant query filters).
 - API endpoints and UI.
 - Quotes, orders, invoices, pricing, forecasting engines and reporting.
-- Enforcing a single opportunity per qualified lead (an Application/Infrastructure concern for a
-  later slice).
+- Persistence enforcement of the one-opportunity-per-lead rule (unique index) belongs to
+  Infrastructure; the Application already checks `ExistsByLeadIdAsync`.

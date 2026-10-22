@@ -24,7 +24,7 @@ Customer management.
 
 ### Sales
 
-Leads and opportunities (domain implemented); quotations, orders and invoices are planned.
+Leads and opportunities (domain and application implemented); quotations, orders and invoices are planned.
 
 ### Inventory
 
