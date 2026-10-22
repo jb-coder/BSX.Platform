@@ -1,6 +1,7 @@
 # CRM - Persistence and Infrastructure
 
-Status: Infrastructure implemented (v0.3.0 development). API and UI are out of scope.
+Status: Domain, Application, Infrastructure and HTTP API implemented and release-hardened
+(v0.3.0 development). UI, reporting and analytics are out of scope.
 
 ## Project
 
@@ -90,7 +91,10 @@ Search is case-insensitive and partial, and is implemented with lower-cased deno
 | Customers | `CustomerCode` **or** `CustomerName` | `(TenantId, SearchCode)`, `(TenantId, SearchName)` |
 | Organizations | `OrganizationName` **or** `TaxIdentifier` | `(TenantId, SearchName)`, `(TenantId, SearchTaxIdentifier)` |
 
-Empty/whitespace search returns all rows (subject to tenant and soft-delete filters).
+Empty/whitespace search returns all rows (subject to tenant and soft-delete filters). The pattern
+is a leading wildcard (`%term%`), so PostgreSQL cannot use the B-tree indexes for the match itself;
+these indexes remain useful for tenant scoping and ordering. For large datasets, add `pg_trgm` GIN
+indexes or switch to prefix search (see [crm-operations.md](../../operations/crm-operations.md#search)).
 
 ## Read models
 
@@ -121,21 +125,53 @@ Modules remain isolated; commands resolve the composite through `TransactionBeha
 Each aggregate has a shadow `Version` column marked as a concurrency token. The interceptor sets it
 to 1 on insert and increments it on update; EF includes the original value in `UPDATE ... WHERE`, so
 a stale write affects zero rows. The unit of work converts this into
-`ConcurrencyConflictException` for the caller to surface as a conflict.
+`ConcurrencyConflictException`.
+
+The CRM endpoint filter (`CrmConcurrencyConflictFilter`) maps that exception to the platform's
+RFC 9457 contract: `409 Conflict` with `title = "CRM.ConcurrencyConflict"` and the standard
+`application/problem+json` body. The rejected write is not persisted; clients re-read and retry.
+This keeps exceptions from leaking as HTTP 500 while preserving the Result/ProblemDetails
+convention (ADR-011).
 
 ## Migrations
 
 - Initial migration: `InitialCrm` (`Persistence/Migrations`).
-- Apply out of band per [database-migrations.md](../../operations/database-migrations.md); do not
-  enable `ApplyMigrationsOnStartup` in multi-instance deployments.
-- Design-time factory: `CrmDbContextFactory` (Npgsql).
+- Apply out of band per [database-migrations.md](../../operations/database-migrations.md); there is
+  no CRM startup-migration hook.
+- Design-time factory: `CrmDbContextFactory` (Npgsql), pinned to
+  `crm.__ef_migrations_history`, accepting `--connection` or `ConnectionStrings__Crm`.
+- Readiness: `crm-database` (always) and `crm-database-schema` (opt-in via
+  `Crm:Database:VerifySchema`).
+
+## Provider parity: SQLite vs PostgreSQL
+
+Integration tests run on SQLite in memory for speed; the production provider is PostgreSQL. The
+Testcontainers suite (`PostgreSqlParityTests`) validates the differences that matter:
+
+| Concern | SQLite tests | PostgreSQL parity |
+| --- | --- | --- |
+| Migrations | `EnsureCreated` (model only) | `database update`/`MigrateAsync` applies `InitialCrm` |
+| Schema | No schema (SQLite has none) | `crm` schema + `crm.__ef_migrations_history` |
+| Unique index | Relational index enforced | Filtered unique index `(TenantId, Code)` with `"IsDeleted" = false` |
+| Check constraints | Not evaluated by SQLite | `CK_*_tenant_key` enforced by PostgreSQL |
+| Search | `LIKE` on lower-cased columns | Same semantics (`LIKE` with lower-cased columns) |
+| Soft delete | Interceptor + query filter | Same, verified against the real database |
+| Concurrency | `Version` token | Same, verified with PostgreSQL row updates |
+| `DateTimeOffset`/UUID | SQLite text storage | Native `timestamptz`/`uuid` |
+
+The PostgreSQL tests are skipped when Docker is unavailable and run in CI (GitHub-hosted runners
+provide Docker). Set `DOCKER_AVAILABLE=true` to require them.
 
 ## Testing
 
 `tests/Modules/Crm/BSX.Modules.Crm.Infrastructure.IntegrationTests` runs against SQLite in-memory
 (provider-compatible) and covers repository round trips, tenant isolation, fail-closed tenant query
 filters (missing/wrong/correct/system), customer-code uniqueness, search, soft delete, auditing,
-optimistic concurrency, domain-event dispatch and read-model projections.
+optimistic concurrency, domain-event dispatch and read-model projections. The same project contains
+`PostgreSqlParityTests` for the production provider.
+
+`tests/Integration/BSX.Web.IntegrationTests` exercises the HTTP surface, including concurrency
+conflict mapping (`409 CRM.ConcurrencyConflict`) and CRM schema readiness detection.
 
 `tests/Composition/BSX.Composition.IntegrationTests` proves the module unit-of-work composition:
 Identity and CRM commands persist through the same `IUnitOfWork`, each domain event dispatches

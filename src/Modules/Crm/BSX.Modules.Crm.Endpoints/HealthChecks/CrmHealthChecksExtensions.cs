@@ -19,6 +19,22 @@ public static class CrmHealthChecksExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Adds the CRM schema readiness check that detects pending EF Core migrations. Enable it with
+    /// <c>Crm:Database:VerifySchema</c> in deployments that own the schema.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The same service collection for chaining.</returns>
+    public static IServiceCollection AddCrmSchemaHealthCheck(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddHealthChecks()
+            .AddCheck<CrmSchemaHealthCheck>("crm-database-schema", tags: ["ready"]);
+
+        return services;
+    }
 }
 
 /// <summary>Verifies that the CRM database is reachable.</summary>

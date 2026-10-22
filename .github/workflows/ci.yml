@@ -24,6 +24,8 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
   SOLUTION: BSX.Platform.sln
   CONFIGURATION: Release
+  # GitHub-hosted Ubuntu runners provide Docker; require the PostgreSQL parity tests to run.
+  DOCKER_AVAILABLE: 'true'
 
 jobs:
   build:

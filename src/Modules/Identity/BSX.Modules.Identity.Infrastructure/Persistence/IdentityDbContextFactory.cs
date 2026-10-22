@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -9,8 +10,15 @@ public sealed class IdentityDbContextFactory : IDesignTimeDbContextFactory<Ident
     /// <inheritdoc />
     public IdentityDbContext CreateDbContext(string[] args)
     {
+        string connectionString = DesignTimeConnection.Resolve(
+            args,
+            "Identity",
+            "Host=localhost;Port=5432;Database=bsx_identity;Username=postgres;Password=postgres");
+
         var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseNpgsql("Host=localhost;Port=5432;Database=bsx_identity;Username=postgres;Password=postgres")
+            .UseNpgsql(
+                connectionString,
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "identity"))
             .Options;
 
         return new IdentityDbContext(options);

@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -9,8 +10,15 @@ public sealed class CrmDbContextFactory : IDesignTimeDbContextFactory<CrmDbConte
     /// <inheritdoc />
     public CrmDbContext CreateDbContext(string[] args)
     {
+        string connectionString = DesignTimeConnection.Resolve(
+            args,
+            "Crm",
+            "Host=localhost;Port=5432;Database=bsx_crm;Username=postgres;Password=postgres");
+
         var options = new DbContextOptionsBuilder<CrmDbContext>()
-            .UseNpgsql("Host=localhost;Port=5432;Database=bsx_crm;Username=postgres;Password=postgres")
+            .UseNpgsql(
+                connectionString,
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "crm"))
             .Options;
 
         return new CrmDbContext(options);

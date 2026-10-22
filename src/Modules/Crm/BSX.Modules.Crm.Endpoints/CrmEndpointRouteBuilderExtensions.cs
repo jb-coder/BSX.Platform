@@ -39,7 +39,8 @@ public static class CrmEndpointRouteBuilderExtensions
 
         RouteGroupBuilder group = endpoints.MapGroup("/crm")
             .WithTags("Crm")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .AddEndpointFilter<CrmConcurrencyConflictFilter>();
 
         MapCustomers(group);
         MapContacts(group);

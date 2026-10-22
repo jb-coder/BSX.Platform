@@ -1,11 +1,12 @@
 # Operations
 
-Operational guidance for running the BSX Platform and the Identity module in production.
+Operational guidance for running the BSX Platform and its Identity and CRM modules in production.
 
 | Document | Purpose |
 | --- | --- |
 | [jwt-key-management.md](jwt-key-management.md) | Signing key configuration and rotation (D1) |
-| [database-migrations.md](database-migrations.md) | Schema strategy and readiness (D2) |
+| [database-migrations.md](database-migrations.md) | Identity and CRM schema strategy and readiness (D2) |
+| [crm-operations.md](crm-operations.md) | CRM deployment, tenancy, concurrency, search and troubleshooting |
 | [password-reset-delivery.md](password-reset-delivery.md) | Reset delivery and the Notifications seam (D3) |
 | [deployment-single-instance.md](deployment-single-instance.md) | Single-instance topology (D4) |
 | [deployment-ha.md](deployment-ha.md) | High-availability topology (D4) |

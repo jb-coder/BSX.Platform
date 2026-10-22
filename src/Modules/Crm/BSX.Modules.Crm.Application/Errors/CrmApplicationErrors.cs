@@ -30,4 +30,12 @@ public static class CrmApplicationErrors
 
     /// <summary>The address identifier is invalid.</summary>
     public static Error InvalidAddressId => Error.Validation("CRM.Address.InvalidId", "The address identifier is invalid.");
+
+    /// <summary>
+    /// A concurrent modification was detected while persisting the aggregate. The caller should
+    /// re-read the resource and retry (optimistic concurrency, ADR-010).
+    /// </summary>
+    public static Error ConcurrencyConflict => Error.Conflict(
+        "CRM.ConcurrencyConflict",
+        "The resource was modified by another request. Reload it and retry.");
 }

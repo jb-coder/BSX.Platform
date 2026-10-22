@@ -32,5 +32,11 @@ public sealed class ConcurrencyTests
         Func<Task> act = async () => await unitOfWork.SaveChangesAsync();
 
         await act.Should().ThrowAsync<ConcurrencyConflictException>();
+
+        // The stale write must not replace the winning write.
+        second.ChangeTracker.Clear();
+        Customer persisted = await second.Customers.SingleAsync();
+        persisted.Name.Value.Should().Be("First");
+        second.Entry(persisted).Property("Version").CurrentValue.Should().Be(2);
     }
 }

@@ -18,13 +18,18 @@ Clients ──TLS──▶ LB │ BSX.Web xN │──▶ PostgreSQL (primary)
    from a shared secret store. An instance with a different or ephemeral key would reject tokens
    issued by its peers. See [jwt-key-management.md](jwt-key-management.md).
 2. **Migrations applied out-of-band.** Do **not** set `ApplyMigrationsOnStartup=true`. Apply
-   migrations as a single, gated deployment step before rolling out the new version. See
+   **both Identity and CRM** migrations as gated deployment steps before rolling out the new
+   version. CRM has no startup-migration hook. See
    [database-migrations.md](database-migrations.md).
 3. **Sticky independence.** Access tokens are stateless and validated locally; refresh tokens and
    sessions are in PostgreSQL, so no session affinity is required. Any instance can serve any
    request.
 4. **Health-gated rollout.** Wire `/health/live` (liveness) and `/health/ready` (readiness) so the
-   orchestrator only routes to instances whose database and (optionally) schema are ready.
+   orchestrator only routes to instances whose Identity and CRM databases and (optionally) schemas
+   are ready.
+5. **CRM is stateless.** CRM state lives in PostgreSQL; any instance can serve any request. A
+   concurrent update is rejected with `409 Conflict` and the client re-reads/retries
+   ([crm-operations.md](crm-operations.md#concurrency)).
 
 ## Rate limiting in HA
 
@@ -45,6 +50,9 @@ register it in place of the default. See [rate-limiting.md](rate-limiting.md).
 {
   "Identity": {
     "Database": { "ApplyMigrationsOnStartup": false, "VerifySchema": true }
+  },
+  "Crm": {
+    "Database": { "VerifySchema": true }
   },
   "AllowedHosts": "your.domain.example"
 }
