@@ -43,6 +43,22 @@ production gates. They are resolved before API exposure.
 | S5 | Sales health checks | Medium | **Resolved** | `sales-database` and opt-in `sales-database-schema` readiness checks. |
 | S6 | API surface | High | **Resolved** | `BSX.Modules.Sales.Endpoints` exposes the lead and opportunity endpoints under `/sales`. |
 
+## Platform hardening (v0.4.0)
+
+The platform foundation was hardened for the next business modules. No new business module was
+introduced.
+
+| Objective | Outcome |
+| --- | --- |
+| Outbox durability (ADR-009) | `BSX.Persistence` transactional outbox in Identity, CRM and Sales; atomic persistence, atomic claim (exactly-once per attempt), handler isolation, exponential retry, dead-letter, stale-claim recovery and background recovery loop. |
+| Permission catalogs (ADR-018) | Platform `PermissionCatalog`; Identity, CRM and Sales publish catalogs; system roles are reconciled declaratively, including **removal of stale permissions**; conflicts fail fast. |
+| Architecture governance | Domain/Contracts/Application/Endpoints/Infrastructure dependency tests, module isolation, platform assembly isolation and a test that every `[RequirePermission]` is declared in a catalog. |
+| Observability | `BSX.Platform` meter/activity source with domain-event, outbox and permission-sync counters/histograms/backlog; OTLP wiring. See [observability.md](observability.md). |
+| Rate limiting | Platform `IRateLimitStore` / `IDistributedRateLimitStore` abstraction with a single-instance default and documented HA path. See [rate-limiting.md](rate-limiting.md). |
+
+Verification: Release build with warnings-as-errors; full unit, architecture, infrastructure,
+PostgreSQL parity (when Docker is available) and endpoint integration suites green.
+
 ## Verification
 
 - `dotnet build BSX.Platform.sln -c Release` → 0 warnings, 0 errors (warnings-as-errors).
@@ -57,9 +73,9 @@ production gates. They are resolved before API exposure.
 
 - **Password-reset email delivery** requires the Notifications module; until then the endpoint
   returns `503` by design (safe and explicit).
-- **Rate limiting** is per-instance; a distributed `IRateLimiter` is required for strict cluster-wide
-  limits in HA. CRM and Sales business endpoints are authenticated/permissioned but not individually
-  throttled.
+- **Rate limiting** is per-instance by default; implement `IDistributedRateLimitStore` (for example
+  Redis) for strict cluster-wide limits in HA. CRM and Sales business endpoints are
+  authenticated/permissioned but not individually throttled.
 - **CRM search** uses lower-cased `LIKE` columns. It is portable and case-insensitive, but a
   leading-wildcard search cannot use the B-tree indexes; introduce `pg_trgm`/prefix search if data
   volume requires it.
@@ -67,8 +83,8 @@ production gates. They are resolved before API exposure.
   separately. Keep commands module-scoped; use outbox/saga for future cross-module workflows.
 - **CRM and Sales optimistic concurrency** is server-side (no `ETag`/`If-Match`); clients re-read
   on `409`.
-- **Integration events / Outbox emission** for cross-module communication (ADR-015 `BSX.Contracts`)
-  is future work owned by downstream phases.
+- **Integration event publishing** is fully persisted but remains dormant until a broker-backed
+  `IEventBus` is registered and `Outbox:IntegrationPublishingEnabled` is turned on.
 - **Service account / API key HTTP endpoints** and the **Blazor UI** are not part of this release.
 
 None of the above block a single-instance production release. For HA, complete

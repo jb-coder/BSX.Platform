@@ -24,10 +24,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\BSX.SharedKernel\BSX.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\..\src\BSX.Contracts\BSX.Contracts.csproj" />
     <ProjectReference Include="..\..\..\..\src\BSX.BuildingBlocks\BSX.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\..\src\BSX.Persistence\BSX.Persistence.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\BSX.Modules.Identity.Domain\BSX.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\BSX.Modules.Identity.Application\BSX.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\BSX.Modules.Identity.Infrastructure\BSX.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Modules\Crm\BSX.Modules.Crm.Contracts\BSX.Modules.Crm.Contracts.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Sales\BSX.Modules.Sales.Contracts\BSX.Modules.Sales.Contracts.csproj" />
   </ItemGroup>
 

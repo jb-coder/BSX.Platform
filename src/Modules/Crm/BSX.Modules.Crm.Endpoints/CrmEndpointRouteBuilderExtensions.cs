@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.Modules.Crm.Application.Addresses.AddAddress;
+using BSX.Modules.Crm.Application.Common;
 using BSX.Modules.Crm.Application.Addresses.RemoveAddress;
 using BSX.Modules.Crm.Application.Addresses.SetDefaultAddress;
 using BSX.Modules.Crm.Application.Addresses.UpdateAddress;
@@ -20,7 +21,6 @@ using BSX.Modules.Crm.Application.Organizations.CreateOrganization;
 using BSX.Modules.Crm.Application.Organizations.GetOrganizationById;
 using BSX.Modules.Crm.Application.Organizations.ListOrganizations;
 using BSX.Modules.Crm.Application.Organizations.UpdateOrganization;
-using BSX.Modules.Crm.Domain.Enums;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -154,7 +154,7 @@ public static class CrmEndpointRouteBuilderExtensions
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            if (!TryParseAddressType(request.Type, out AddressType type))
+            if (!TryParseAddressType(request.Type, out CrmAddressType type))
             {
                 return InvalidAddressType();
             }
@@ -171,7 +171,7 @@ public static class CrmEndpointRouteBuilderExtensions
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            if (!TryParseAddressType(request.Type, out AddressType type))
+            if (!TryParseAddressType(request.Type, out CrmAddressType type))
             {
                 return InvalidAddressType();
             }
@@ -229,7 +229,7 @@ public static class CrmEndpointRouteBuilderExtensions
                 cancellationToken)));
     }
 
-    private static bool TryParseAddressType(string? value, out AddressType type)
+    private static bool TryParseAddressType(string? value, out CrmAddressType type)
     {
         type = default;
         return !string.IsNullOrWhiteSpace(value)

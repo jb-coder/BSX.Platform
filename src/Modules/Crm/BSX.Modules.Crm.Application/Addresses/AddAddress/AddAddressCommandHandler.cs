@@ -1,8 +1,10 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Crm.Application.Abstractions;
+using BSX.Modules.Crm.Application.Common;
 using BSX.Modules.Crm.Application.Errors;
 using BSX.Modules.Crm.Domain.Customers;
+using BSX.Modules.Crm.Domain.Enums;
 using BSX.Modules.Crm.Domain.ValueObjects;
 using BSX.SharedKernel.Results;
 
@@ -62,7 +64,7 @@ public sealed class AddAddressCommandHandler : ICommandHandler<AddAddressCommand
             return Result.Failure(CrmApplicationErrors.CustomerNotFound);
         }
 
-        Result result = customer.AddAddress(CustomerAddressId.New(), address.Value, request.Type);
+        Result result = customer.AddAddress(CustomerAddressId.New(), address.Value, ToDomain(request.Type));
         if (result.IsFailure)
         {
             return result;
@@ -71,4 +73,11 @@ public sealed class AddAddressCommandHandler : ICommandHandler<AddAddressCommand
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
     }
+
+    private static AddressType ToDomain(CrmAddressType type) => type switch
+    {
+        CrmAddressType.Billing => AddressType.Billing,
+        CrmAddressType.Shipping => AddressType.Shipping,
+        _ => AddressType.Other,
+    };
 }

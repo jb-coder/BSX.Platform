@@ -16,6 +16,8 @@ stateDiagram-v2
     Dispatched --> Failed: any handler fails
     Failed --> Retry: exponential backoff
     Retry --> Dispatched
+    Persisted --> Recovered: crash after commit (background loop)
+    Recovered --> Dispatched
     Failed --> DeadLettered: max attempts exceeded
     Handled --> Completed: outbox row marked processed
     Completed --> [*]
@@ -124,7 +126,10 @@ erDiagram
         timestamptz OccurredOnUtc
         timestamptz CreatedOnUtc
         timestamptz ProcessedOnUtc
-        string  Status "Pending | Processed | Failed | DeadLettered"
+        timestamptz LastAttemptOnUtc
+        timestamptz NextAttemptOnUtc
+        timestamptz ProcessingStartedOnUtc
+        string  Status "Pending | Processing | Processed | Failed | DeadLettered"
         int     RetryCount
         string  LastError
         uuid    CorrelationId

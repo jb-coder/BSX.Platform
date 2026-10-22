@@ -23,6 +23,14 @@ environment or a secret store, never from committed files.
 | `Identity:Permissions:SynchronizeOnStartup` | No | `true` | Seeds/synchronizes system roles from the registered module permission catalogs. Missing schema is logged and skipped. |
 | `AllowedHosts` | Yes | `localhost;127.0.0.1` | Set to your public host name(s) in production. |
 | `OpenTelemetry:OtlpEndpoint` | No | `""` | Enables OTLP export when set. |
+| `Outbox:Enabled` | No | `true` | Writes domain events to each module outbox. |
+| `Outbox:ProcessingEnabled` | No | `true` | Runs the background crash-recovery loop. |
+| `Outbox:IntegrationPublishingEnabled` | No | `false` | Publishes integration rows through `IEventBus`; enable only with a broker. |
+| `Outbox:PollInterval` | No | `00:00:05` | Recovery poll interval. |
+| `Outbox:BatchSize` | No | `100` | Rows per module per poll. |
+| `Outbox:MaxRetryCount` | No | `10` | Failed attempts before dead-lettering. |
+| `Outbox:BaseBackoff` | No | `00:00:05` | Exponential retry base. |
+| `Outbox:StaleProcessingAfter` | No | `00:05:00` | Requeue claims older than this after a crash. |
 
 ## Security-sensitive defaults
 

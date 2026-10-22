@@ -3,13 +3,13 @@ using BSX.Modules.Identity.Domain.Roles;
 using BSX.Modules.Identity.Domain.ServiceAccounts;
 using BSX.Modules.Identity.Domain.Sessions;
 using BSX.Modules.Identity.Domain.Users;
-using BSX.Modules.Identity.Infrastructure.Persistence.Outbox;
+using BSX.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace BSX.Modules.Identity.Infrastructure.Persistence;
 
 /// <summary>The Identity module persistence context (PostgreSQL; ADR-004).</summary>
-public sealed class IdentityDbContext : DbContext
+public sealed class IdentityDbContext : DbContext, IOutboxDbContext
 {
     /// <summary>Initializes a new instance of the <see cref="IdentityDbContext"/> class.</summary>
     /// <param name="options">The context options.</param>
@@ -40,6 +40,9 @@ public sealed class IdentityDbContext : DbContext
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     /// <inheritdoc />
+    public string ModuleName => "Identity";
+
+    /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -50,6 +53,7 @@ public sealed class IdentityDbContext : DbContext
         }
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
+        modelBuilder.ConfigureOutbox();
         base.OnModelCreating(modelBuilder);
     }
 }

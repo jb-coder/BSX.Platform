@@ -2,8 +2,10 @@ using BSX.BuildingBlocks.Authorization;
 using BSX.Modules.Identity.Infrastructure.Persistence;
 using BSX.Modules.Identity.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Identity.Infrastructure.Security;
+using BSX.Persistence.Outbox;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BSX.Modules.Identity.Infrastructure.IntegrationTests.TestInfrastructure;
 
@@ -24,15 +26,27 @@ internal sealed class SqliteIdentityDatabase : IAsyncDisposable
 
     internal IdentityDbContext Context { get; }
 
-    internal static async Task<SqliteIdentityDatabase> CreateAsync(ICurrentUser? currentUser = null)
+    internal static async Task<SqliteIdentityDatabase> CreateAsync(
+        ICurrentUser? currentUser = null,
+        bool outbox = false,
+        TimeProvider? timeProvider = null,
+        OutboxOptions? outboxOptions = null)
     {
         var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync().ConfigureAwait(false);
 
-        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+        var optionsBuilder = new DbContextOptionsBuilder<IdentityDbContext>()
             .UseSqlite(connection)
-            .AddInterceptors(new AuditingSaveChangesInterceptor(TimeProvider.System, currentUser ?? new SystemCurrentUser()))
-            .Options;
+            .AddInterceptors(new AuditingSaveChangesInterceptor(TimeProvider.System, currentUser ?? new SystemCurrentUser()));
+
+        if (outbox)
+        {
+            optionsBuilder.AddInterceptors(new OutboxSaveChangesInterceptor(
+                timeProvider ?? TimeProvider.System,
+                Options.Create(outboxOptions ?? new OutboxOptions())));
+        }
+
+        var options = optionsBuilder.Options;
 
         var context = new IdentityDbContext(options);
         await context.Database.EnsureCreatedAsync().ConfigureAwait(false);

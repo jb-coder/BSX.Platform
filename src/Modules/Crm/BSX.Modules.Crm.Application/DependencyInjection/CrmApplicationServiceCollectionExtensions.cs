@@ -1,5 +1,7 @@
 using BSX.BuildingBlocks.DependencyInjection;
+using BSX.Contracts.Permissions;
 using BSX.Modules.Crm.Application.Abstractions;
+using BSX.Modules.Crm.Contracts.Permissions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -17,6 +19,8 @@ public static class CrmApplicationServiceCollectionExtensions
 
         services.AddBuildingBlocks(typeof(CrmApplicationServiceCollectionExtensions).Assembly);
         services.TryAddScoped<CrmTenantResolver>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IPermissionCatalogSource, CrmPermissionCatalog>());
         return services;
     }
 }

@@ -3,6 +3,7 @@ using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Behaviors;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Events;
+using BSX.BuildingBlocks.RateLimiting;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -29,9 +30,11 @@ public static class BuildingBlocksServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<ISender, Sender>();
         services.TryAddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.TryAddScoped<IEventBus, NoOpEventBus>();
         services.TryAddScoped<ICurrentUser, AnonymousCurrentUser>();
         services.TryAddScoped<ITenantContext, CurrentUserTenantContext>();
         services.TryAddScoped<IPermissionChecker, ClaimsPermissionChecker>();
+        services.TryAddSingleton<IRateLimitStore, InMemoryRateLimitStore>();
 
         // Canonical pipeline order (outermost first): Logging, Validation, Authorization, Transaction.
         services.TryAddEnumerable(ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));

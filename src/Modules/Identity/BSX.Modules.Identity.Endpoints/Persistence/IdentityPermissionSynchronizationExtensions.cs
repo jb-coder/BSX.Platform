@@ -35,7 +35,13 @@ public static class IdentityPermissionSynchronizationExtensions
 
         try
         {
-            await synchronizer.SynchronizeAsync().ConfigureAwait(false);
+            PermissionSynchronizationResult result = await synchronizer.SynchronizeAsync().ConfigureAwait(false);
+            logger.LogInformation(
+                "Permission synchronization completed: {CatalogCount} catalog permission(s), {Added} added, {Removed} removed across {RoleCount} system role(s).",
+                result.CatalogCount,
+                result.Added,
+                result.Removed,
+                result.SystemRoleCount);
         }
         catch (DbException exception)
         {

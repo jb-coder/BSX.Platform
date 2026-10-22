@@ -1,8 +1,10 @@
 using BSX.BuildingBlocks.Authorization;
 using BSX.Modules.Crm.Infrastructure.Persistence;
 using BSX.Modules.Crm.Infrastructure.Persistence.Interceptors;
+using BSX.Persistence.Outbox;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BSX.Modules.Crm.Infrastructure.IntegrationTests.TestInfrastructure;
 
@@ -29,17 +31,26 @@ internal sealed class SqliteCrmDatabase : IAsyncDisposable
         ICurrentUser? currentUser = null,
         TimeProvider? timeProvider = null,
         Guid? tenantId = null,
-        bool isSystem = false)
+        bool isSystem = false,
+        bool outbox = false)
     {
         var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync().ConfigureAwait(false);
 
-        var options = new DbContextOptionsBuilder<CrmDbContext>()
+        var optionsBuilder = new DbContextOptionsBuilder<CrmDbContext>()
             .UseSqlite(connection)
             .AddInterceptors(new CrmAuditingSaveChangesInterceptor(
                 timeProvider ?? TimeProvider.System,
-                currentUser ?? new TestCurrentUser()))
-            .Options;
+                currentUser ?? new TestCurrentUser()));
+
+        if (outbox)
+        {
+            optionsBuilder.AddInterceptors(new OutboxSaveChangesInterceptor(
+                timeProvider ?? TimeProvider.System,
+                Options.Create(new OutboxOptions())));
+        }
+
+        var options = optionsBuilder.Options;
 
         var context = new CrmDbContext(options, new TestCrmTenantScope(tenantId ?? TestData.TenantA, isSystem));
         await context.Database.EnsureCreatedAsync().ConfigureAwait(false);

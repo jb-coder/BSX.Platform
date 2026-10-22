@@ -1,5 +1,7 @@
 using BSX.BuildingBlocks.DependencyInjection;
+using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Application.Authentication;
+using BSX.Modules.Identity.Application.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -21,6 +23,8 @@ public static class IdentityApplicationServiceCollectionExtensions
         services.AddBuildingBlocks(typeof(IdentityApplicationServiceCollectionExtensions).Assembly);
         services.TryAddScoped<PermissionResolver>();
         services.TryAddScoped<TenantGuard>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IPermissionCatalogSource, IdentityPermissionCatalog>());
         return services;
     }
 }

@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted — implemented in v0.4.0 by `BSX.Persistence` (outbox interceptor, store, dispatcher claim
+and recovery service) across Identity, CRM and Sales.
 
 ---
 

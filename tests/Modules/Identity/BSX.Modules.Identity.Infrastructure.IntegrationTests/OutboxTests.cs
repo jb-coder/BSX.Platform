@@ -1,5 +1,7 @@
+using BSX.BuildingBlocks.Persistence.Outbox;
 using BSX.Modules.Identity.Infrastructure.IntegrationTests.TestInfrastructure;
 using BSX.Modules.Identity.Infrastructure.Persistence.Outbox;
+using BSX.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace BSX.Modules.Identity.Infrastructure.IntegrationTests;
@@ -18,7 +20,7 @@ public sealed class OutboxTests
         List<OutboxMessage> messages = await database.Context.OutboxMessages.ToListAsync();
 
         messages.Should().ContainSingle();
-        messages[0].Kind.Should().Be(OutboxMessageStatus.IntegrationKind);
+        messages[0].Kind.Should().Be(OutboxKinds.Integration);
         messages[0].Status.Should().Be(OutboxMessageStatus.Pending);
         messages[0].Payload.Should().NotBeNullOrWhiteSpace();
     }

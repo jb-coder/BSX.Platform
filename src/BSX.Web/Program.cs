@@ -1,4 +1,5 @@
 using BSX.BuildingBlocks.DependencyInjection;
+using BSX.BuildingBlocks.Diagnostics;
 using BSX.Modules.Crm.Application.DependencyInjection;
 using BSX.Modules.Crm.Endpoints;
 using BSX.Modules.Crm.Endpoints.HealthChecks;
@@ -14,6 +15,7 @@ using BSX.Modules.Sales.Application.DependencyInjection;
 using BSX.Modules.Sales.Endpoints;
 using BSX.Modules.Sales.Endpoints.HealthChecks;
 using BSX.Modules.Sales.Infrastructure.DependencyInjection;
+using BSX.Persistence.DependencyInjection;
 using BSX.Web.Components;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
@@ -93,6 +95,9 @@ if (builder.Configuration.GetValue("Sales:Database:VerifySchema", false))
 // One module-aware unit of work composes every module context (ADR-009).
 builder.Services.AddCompositeUnitOfWork();
 
+// Transactional outbox persistence and crash-recovery processing (ADR-009).
+builder.Services.AddPlatformOutbox(builder.Configuration);
+
 const string ServiceName = "BSX.Platform";
 string? otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
 
@@ -102,6 +107,7 @@ builder.Services
     .WithTracing(tracing =>
     {
         tracing
+            .AddSource(PlatformDiagnostics.ActivitySourceName)
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation();
 
@@ -113,6 +119,7 @@ builder.Services
     .WithMetrics(metrics =>
     {
         metrics
+            .AddMeter(PlatformDiagnostics.MeterName)
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation();
 

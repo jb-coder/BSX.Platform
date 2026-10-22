@@ -118,3 +118,34 @@ Namespace: `BSX.BuildingBlocks.DependencyInjection`
   default authorization services, validators and handlers found in the supplied assemblies.
 
 Modules register themselves through `IModule`, passing their assembly to `AddBuildingBlocks`.
+
+---
+
+## Diagnostics
+
+Namespace: `BSX.BuildingBlocks.Diagnostics`
+
+- `PlatformDiagnostics` owns the `BSX.Platform` meter and activity source.
+- Domain event, outbox and permission synchronization instruments are defined once and consumed by
+  `BSX.Persistence` and Identity. See [observability.md](../operations/observability.md).
+
+## Rate Limiting
+
+Namespace: `BSX.BuildingBlocks.RateLimiting`
+
+- `IRateLimitStore`, `IDistributedRateLimitStore`, `RateLimitPolicy`, `RateLimitRequest`,
+  `RateLimitDecision` and the default `InMemoryRateLimitStore`.
+- The default is single-instance and fail-closed; HA replaces it with a shared-store implementation.
+  See [rate-limiting.md](../operations/rate-limiting.md).
+
+## Persistence (EF Core)
+
+Project: `src/BSX.Persistence` (namespace `BSX.Persistence`)
+
+`BSX.BuildingBlocks` stays EF-free. `BSX.Persistence` owns the EF Core implementation of the
+transactional outbox: `OutboxMessage`, `OutboxSaveChangesInterceptor`, `EfOutboxStore<TContext>`,
+`DomainEventSerializer`, `OutboxRecoveryService` and `OutboxOptions`. Module Infrastructure
+references it; no module owns a private outbox implementation.
+
+`BSX.Persistence` depends on `BSX.BuildingBlocks`, `BSX.Contracts` and `BSX.SharedKernel` and never
+on a module.

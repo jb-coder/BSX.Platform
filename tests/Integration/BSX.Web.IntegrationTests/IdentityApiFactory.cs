@@ -12,6 +12,7 @@ using BSX.Modules.Identity.Infrastructure.Persistence;
 using BSX.Modules.Identity.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Sales.Infrastructure.Persistence;
 using BSX.Modules.Sales.Infrastructure.Persistence.Interceptors;
+using BSX.Persistence.Outbox;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -165,6 +166,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             ["Identity:Jwt:SigningKeys:0:PrivateKeyPem"] = SigningKeyPem,
             // The test factory seeds its own system role after the schema exists.
             ["Identity:Permissions:SynchronizeOnStartup"] = "false",
+            // Outbox rows are still written so tests can assert durability; the recovery loop is
+            // driven explicitly by outbox tests instead of racing the request pipeline.
+            ["Outbox:ProcessingEnabled"] = "false",
         }));
 
         builder.ConfigureServices(services =>
@@ -176,7 +180,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<IdentityDbContext>((provider, options) =>
             {
                 options.UseSqlite(_connection);
-                options.AddInterceptors(provider.GetRequiredService<AuditingSaveChangesInterceptor>());
+                options.AddInterceptors(
+                    provider.GetRequiredService<AuditingSaveChangesInterceptor>(),
+                    provider.GetRequiredService<OutboxSaveChangesInterceptor>());
             });
 
             services.RemoveAll<DbContextOptions<CrmDbContext>>();
@@ -188,6 +194,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
                 options.UseSqlite(_crmConnection);
                 options.AddInterceptors(
                     provider.GetRequiredService<CrmAuditingSaveChangesInterceptor>(),
+                    provider.GetRequiredService<OutboxSaveChangesInterceptor>(),
                     new ForcedConcurrencySaveChangesInterceptor());
             });
 
@@ -201,6 +208,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
                 options.AddInterceptors(
                     provider.GetRequiredService<SalesAuditingSaveChangesInterceptor>(),
                     provider.GetRequiredService<CrmReferenceValidationInterceptor>(),
+                    provider.GetRequiredService<OutboxSaveChangesInterceptor>(),
                     new ForcedSalesConcurrencySaveChangesInterceptor());
             });
 
