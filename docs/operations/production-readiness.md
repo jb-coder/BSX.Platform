@@ -85,10 +85,9 @@ PostgreSQL parity (when Docker is available) and endpoint integration suites gre
   on `409`.
 - **Integration event publishing** is fully persisted but remains dormant until a broker-backed
   `IEventBus` is registered and `Outbox:IntegrationPublishingEnabled` is turned on.
-- **Service account / API key HTTP endpoints** and the **Sales business screens** are not part of
-  this release. Web authentication, workspace selection, the shell, customers, organizations,
-  organization assignment, contacts and addresses are implemented
-  ([foundation.md](../web/foundation.md), [crm.md](../web/crm.md)).
+- **Service account / API key HTTP endpoints** are not part of this release. Web authentication,
+  workspace selection, the shell, CRM and Sales workflows are implemented
+  ([foundation.md](../web/foundation.md), [crm.md](../web/crm.md), [sales.md](../web/sales.md)).
 
 None of the above block a single-instance production release. For HA, complete
 [deployment-ha.md](deployment-ha.md) prerequisites (shared keys, distributed limiter).

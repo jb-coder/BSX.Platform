@@ -1,0 +1,195 @@
+@page "/app/sales/opportunities/new"
+@attribute [Authorize(Policy = PermissionPolicies.SalesOpportunitiesCreate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Leads.GetLeadById
+@using BSX.Modules.Sales.Application.Opportunities.CreateOpportunityFromLead
+@using BSX.Modules.Sales.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Sales
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>New opportunity - BSX Platform</PageTitle>
+
+<PageHeader Title="New opportunity"
+            Subtitle="Convert a qualified lead into a tracked revenue opportunity.">
+    <Actions>
+        <a class="button button-secondary" href="/app/sales/opportunities">Cancel</a>
+    </Actions>
+</PageHeader>
+
+<div class="content-medium">
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>Opportunity could not be created.</strong>
+            <span>@_error</span>
+            @if (_errorCode == "SALES.ConcurrencyConflict")
+            {
+                <a href="@($"/app/sales/opportunities/new?leadId={LeadId}")">Reload</a>
+            }
+        </div>
+    }
+
+    <Card>
+        @if (_loadingLead)
+        {
+            <LoadingState Label="Loading lead..." />
+        }
+
+        @if (!_canReadLeads)
+        {
+            <EmptyState Title="Lead access is required"
+                        Description="Your role can create opportunities but cannot read leads. Ask an administrator for sales lead read access." />
+        }
+        else
+        {
+            <LeadLookupPicker Value="LeadId"
+                              ValueChanged="LoadLeadAsync"
+                              CanRead="_canReadLeads" />
+        }
+
+        @if (_canReadLeads && LeadId is not null && _lead is not null)
+        {
+            <EditForm Model="Form" OnValidSubmit="CreateAsync" class="form-stack">
+                <DataAnnotationsValidator />
+                <OpportunityFormFields Model="Form"
+                                       ShowOrganization="false"
+                                       CanReadCustomers="_canReadCustomers"
+                                       CanReadOrganizations="_canReadOrganizations" />
+
+                @if (_lead?.OrganizationId is not null)
+                {
+                    <p class="field-hint">
+                        The organization from the source lead will be copied to the opportunity.
+                    </p>
+                }
+
+                <div class="form-actions">
+                    <button type="submit" class="button button-primary" disabled="@(_saving || !_canReadCustomers)">
+                        @(_saving ? "Creating..." : "Create opportunity")
+                    </button>
+                    <a class="button button-secondary" href="/app/sales/opportunities">Cancel</a>
+                </div>
+            </EditForm>
+        }
+    </Card>
+</div>
+
+@code {
+    private LeadDto? _lead;
+    private string? _error;
+    private string? _errorCode;
+    private bool _loadingLead;
+    private bool _saving;
+    private bool _canReadLeads;
+    private bool _canReadCustomers;
+    private bool _canReadOrganizations;
+
+    /// <summary>The optional source lead from the query string.</summary>
+    [SupplyParameterFromQuery(Name = "leadId")]
+    public Guid? LeadId { get; set; }
+
+    /// <summary>The opportunity form model.</summary>
+    public OpportunityFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canReadLeads = permissions.Contains(SalesPermissionCodes.LeadsRead, StringComparer.Ordinal);
+        _canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
+        _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
+
+        if (LeadId is not null)
+        {
+            await LoadLeadAsync(LeadId);
+        }
+    }
+
+    private async Task LoadLeadAsync(Guid? leadId)
+    {
+        LeadId = leadId;
+        _lead = null;
+        _error = null;
+        _errorCode = null;
+
+        if (leadId is null)
+        {
+            return;
+        }
+
+        _loadingLead = true;
+        Result<LeadDto> result = await Sender.SendAsync(new GetLeadByIdQuery(leadId.Value));
+        _loadingLead = false;
+
+        if (result.IsFailure)
+        {
+            _error = SalesMessages.For(result.Error);
+            _errorCode = result.Error.Code;
+            return;
+        }
+
+        if (result.Value.Status != "Qualified")
+        {
+            _error = "Only a qualified lead can be converted into an opportunity.";
+            _errorCode = "SALES.Opportunity.LeadNotQualified";
+            return;
+        }
+
+        _lead = result.Value;
+        Form = new OpportunityFormModel
+        {
+            Title = _lead.Title,
+            CustomerId = _lead.CustomerId,
+            OrganizationId = _lead.OrganizationId,
+            Amount = 0m,
+            Currency = "USD",
+            Probability = 25,
+            ExpectedCloseDate = DateOnly.FromDateTime(DateTime.Today.AddDays(30)),
+        };
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_saving || LeadId is not { } leadId || Form.CustomerId is not { } customerId)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        _errorCode = null;
+
+        Result<Guid> result = await SalesWebResults.ExecuteAsync(() => Sender.SendAsync(
+            new CreateOpportunityFromLeadCommand(
+                leadId,
+                customerId,
+                Form.Title,
+                Form.Amount,
+                Form.Currency,
+                Form.Probability,
+                Form.ExpectedCloseDate)));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _error = SalesMessages.For(result.Error);
+            _errorCode = result.Error.Code;
+            return;
+        }
+
+        Toasts.Success("Opportunity created", "The qualified lead is now tracked as an opportunity.");
+        Navigation.NavigateTo($"/app/sales/opportunities/{result.Value}");
+    }
+}

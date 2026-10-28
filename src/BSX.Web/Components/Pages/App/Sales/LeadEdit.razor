@@ -1,0 +1,160 @@
+@page "/app/sales/leads/{Id:guid}/edit"
+@attribute [Authorize(Policy = PermissionPolicies.SalesLeadsUpdate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Leads.GetLeadById
+@using BSX.Modules.Sales.Application.Leads.UpdateLead
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Sales
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Edit lead - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading lead..." />
+}
+else if (_lead is null)
+{
+    <PageHeader Title="Lead not found"
+                Subtitle="The lead may have been removed or may belong to another workspace." />
+
+    <Card>
+        <EmptyState Title="Lead not found"
+                    Description="Return to the lead list to choose another record.">
+            <Action>
+                <a class="button button-primary" href="/app/sales/leads">Back to leads</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@($"Edit {_lead.Title}")"
+                Subtitle="Update the lead details or notes.">
+        <Actions>
+            <a class="button button-secondary" href="@($"/app/sales/leads/{_lead.Id}")">Cancel</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="content-medium">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>Changes could not be saved.</strong>
+                <span>@_error</span>
+                @if (_conflict)
+                {
+                    <a href="@($"/app/sales/leads/{_lead.Id}/edit")">Reload lead</a>
+                }
+            </div>
+        }
+
+        <Card>
+            <EditForm Model="Form" OnValidSubmit="UpdateAsync">
+                <DataAnnotationsValidator />
+                <LeadFormFields Model="Form"
+                                DetailsEditable="@_detailsEditable"
+                                CanReadCustomers="_canReadCustomers"
+                                CanReadOrganizations="_canReadOrganizations" />
+
+                <div class="form-actions">
+                    <button type="submit" class="button button-primary" disabled="@_saving">
+                        @(_saving ? "Saving..." : "Save changes")
+                    </button>
+                    <a class="button button-secondary" href="@($"/app/sales/leads/{_lead.Id}")">Cancel</a>
+                </div>
+            </EditForm>
+        </Card>
+    </div>
+}
+
+@code {
+    private LeadDto? _lead;
+    private string? _error;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _conflict;
+    private bool _detailsEditable = true;
+    private bool _canReadCustomers;
+    private bool _canReadOrganizations;
+
+    /// <summary>The lead identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    /// <summary>The lead form model.</summary>
+    public LeadFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
+        _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
+
+        Result<LeadDto> result = await Sender.SendAsync(new GetLeadByIdQuery(Id));
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "SALES.Lead.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        _lead = result.Value;
+        _detailsEditable = _lead.Status is "New" or "Contacted";
+        Form = new LeadFormModel
+        {
+            Title = _lead.Title,
+            CustomerId = _lead.CustomerId,
+            OrganizationId = _lead.OrganizationId,
+            Notes = _lead.Notes,
+        };
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (_saving || _lead is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        _conflict = false;
+
+        Result result = await SalesWebResults.ExecuteAsync(() => Sender.SendAsync(
+            new UpdateLeadCommand(
+                _lead.Id,
+                Form.Title,
+                Form.CustomerId,
+                Form.OrganizationId,
+                Form.Notes)));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _conflict = result.Error.Code == "SALES.ConcurrencyConflict";
+            _error = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Lead saved", "The lead details were updated.");
+        Navigation.NavigateTo($"/app/sales/leads/{_lead.Id}");
+    }
+}

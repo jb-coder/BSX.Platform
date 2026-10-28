@@ -122,8 +122,8 @@ token is exposed to browser JavaScript or stored in component state.
 - Edit-page prefill and immutable-code context.
 - Permission-aware actions and route protection.
 - Access denied, unauthenticated redirects and not-found behavior.
-- Sales placeholder remaining unchanged; organization, contact and address workflows are covered
-  by [crm.md](crm.md).
+- Organization, contact and address workflows are covered by [crm.md](crm.md); Sales is covered
+  by [sales.md](sales.md).
 
 The existing CRM API and application test suites continue to cover command/query behavior,
 validation, tenant isolation, concurrency and persistence.

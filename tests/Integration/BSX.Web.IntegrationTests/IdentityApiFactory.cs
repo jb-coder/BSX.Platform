@@ -43,6 +43,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
     /// <summary>The email of a user with read-only CRM permissions.</summary>
     public const string CrmReaderEmail = "crm-reader@example.com";
 
+    /// <summary>The email of a user with read-only Sales and CRM permissions.</summary>
+    public const string SalesReaderEmail = "sales-reader@example.com";
+
     /// <summary>The email of a user who belongs to both seeded tenants.</summary>
     public const string TenantAdminEmail = "tenant-admin@example.com";
 
@@ -76,6 +79,15 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
     [
         "crm.customers.read",
         "crm.organizations.read",
+    ];
+
+    /// <summary>The read-only Sales and CRM permissions granted to the seeded Sales reader.</summary>
+    public static readonly string[] SalesReaderPermissions =
+    [
+        "crm.customers.read",
+        "crm.organizations.read",
+        "sales.leads.read",
+        "sales.opportunities.read",
     ];
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
@@ -117,6 +129,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
 
     /// <summary>Gets the read-only CRM user's identifier.</summary>
     public Guid CrmReaderUserId { get; private set; }
+
+    /// <summary>Gets the read-only Sales user's identifier.</summary>
+    public Guid SalesReaderUserId { get; private set; }
 
     /// <summary>Gets the two-tenant user's identifier.</summary>
     public Guid TenantAdminUserId { get; private set; }
@@ -285,6 +300,16 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         AdminUserId = AddUser(context, passwordHasher, AdminEmail, "Administrator", now, platformRoleId: role.Id.Value, memberships: [TenantId]);
         RestrictedUserId = AddUser(context, passwordHasher, RestrictedEmail, "Restricted User", now, platformRoleId: null, memberships: [TenantId]);
         CrmReaderUserId = AddUser(context, passwordHasher, CrmReaderEmail, "CRM Reader", now, platformRoleId: crmReaderRole.Id.Value, memberships: [TenantId]);
+
+        Role salesReaderRole = Role.Create(
+            RoleId.New(),
+            null,
+            RoleName.Create("Sales Reader").Value,
+            SalesReaderPermissions.Select(code => Permission.Create(code).Value),
+            isSystem: true).Value;
+        context.Roles.Add(salesReaderRole);
+
+        SalesReaderUserId = AddUser(context, passwordHasher, SalesReaderEmail, "Sales Reader", now, platformRoleId: salesReaderRole.Id.Value, memberships: [TenantId]);
         TenantAdminUserId = AddUser(context, passwordHasher, TenantAdminEmail, "Tenant Admin", now, platformRoleId: role.Id.Value, memberships: [TenantId, OtherTenantId]);
         InviteeUserId = AddUser(context, passwordHasher, InviteeEmail, "Invitee", now, platformRoleId: null, memberships: []);
 

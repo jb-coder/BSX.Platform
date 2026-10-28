@@ -29,8 +29,20 @@ public static class PermissionPolicies
     /// <summary>Policy for reading Sales leads.</summary>
     public const string SalesLeadsRead = Prefix + "sales.leads.read";
 
+    /// <summary>Policy for creating Sales leads.</summary>
+    public const string SalesLeadsCreate = Prefix + "sales.leads.create";
+
+    /// <summary>Policy for updating Sales leads and their lifecycle.</summary>
+    public const string SalesLeadsUpdate = Prefix + "sales.leads.update";
+
     /// <summary>Policy for reading Sales opportunities.</summary>
     public const string SalesOpportunitiesRead = Prefix + "sales.opportunities.read";
+
+    /// <summary>Policy for creating Sales opportunities.</summary>
+    public const string SalesOpportunitiesCreate = Prefix + "sales.opportunities.create";
+
+    /// <summary>Policy for updating Sales opportunities and their lifecycle.</summary>
+    public const string SalesOpportunitiesUpdate = Prefix + "sales.opportunities.update";
 
     /// <summary>Builds a policy name for a permission code.</summary>
     /// <param name="permission">The permission code.</param>

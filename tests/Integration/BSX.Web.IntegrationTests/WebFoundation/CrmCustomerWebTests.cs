@@ -114,17 +114,6 @@ public sealed class CrmCustomerWebTests : IClassFixture<IdentityApiFactory>
         WebFoundationTestHelper.LocationPath(response).Should().StartWith("/access-denied");
     }
 
-    [Fact]
-    public async Task SalesPage_ShouldRemainPlaceholder()
-    {
-        HttpClient client = await SignInAsync();
-
-        HttpResponseMessage leads = await client.GetAsync("/app/sales/leads");
-        leads.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await leads.Content.ReadAsStringAsync())
-            .Should().Contain("Lead workspace is ready");
-    }
-
     private Task<HttpClient> SignInAsync()
         => WebFoundationTestHelper.SignInAsync(
             _factory,

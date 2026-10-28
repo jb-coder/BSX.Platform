@@ -1,0 +1,102 @@
+@using BSX.Web.Sales
+
+<FormSection Title="Opportunity details"
+             Description="A customer is required. The amount, probability and close date drive the forecast.">
+    <div class="field">
+        <label for="opportunity-title">Opportunity title</label>
+        <InputText id="opportunity-title"
+                   @bind-Value="Model.Title"
+                   disabled="@Disabled"
+                   placeholder="Northwind enterprise renewal" />
+        <ValidationMessage For="@(() => Model.Title)" />
+    </div>
+
+    <CrmLookupPicker Kind="CrmLookupKind.Customer"
+                     Label="Customer"
+                     @bind-Value="Model.CustomerId"
+                     CanRead="CanReadCustomers"
+                     AllowClear="false"
+                     Disabled="@Disabled" />
+
+    @if (ShowOrganization)
+    {
+        <CrmLookupPicker Kind="CrmLookupKind.Organization"
+                         Label="Organization"
+                         @bind-Value="Model.OrganizationId"
+                         CanRead="CanReadOrganizations"
+                         Disabled="@Disabled" />
+    }
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="opportunity-amount">Amount</label>
+            <InputNumber id="opportunity-amount"
+                         @bind-Value="Model.Amount"
+                         disabled="@Disabled"
+                         min="0"
+                         step="0.01" />
+            <span class="field-hint">Non-negative, maximum two decimal places.</span>
+            <ValidationMessage For="@(() => Model.Amount)" />
+        </div>
+
+        <div class="field">
+            <label for="opportunity-currency">Currency</label>
+            <InputText id="opportunity-currency"
+                       @bind-Value="Model.Currency"
+                       disabled="@Disabled"
+                       maxlength="3"
+                       placeholder="USD" />
+            <span class="field-hint">Three-letter ISO currency code.</span>
+            <ValidationMessage For="@(() => Model.Currency)" />
+        </div>
+
+        <div class="field">
+            <label for="opportunity-probability">Probability (%)</label>
+            <InputNumber id="opportunity-probability"
+                         @bind-Value="Model.Probability"
+                         disabled="@Disabled"
+                         min="0"
+                         max="100" />
+            <ValidationMessage For="@(() => Model.Probability)" />
+        </div>
+
+        <div class="field">
+            <label for="opportunity-close-date">Expected close date</label>
+            <InputDate id="opportunity-close-date"
+                       @bind-Value="Model.ExpectedCloseDate"
+                       disabled="@Disabled" />
+            <ValidationMessage For="@(() => Model.ExpectedCloseDate)" />
+        </div>
+    </div>
+
+    <div class="forecast-preview" aria-live="polite">
+        <span>Weighted forecast</span>
+        <strong>@SalesDisplay.Money(WeightedAmount, Model.Currency)</strong>
+        <span>@Model.Probability% of @SalesDisplay.Money(Model.Amount, Model.Currency)</span>
+    </div>
+</FormSection>
+
+@code {
+    /// <summary>The opportunity form model.</summary>
+    [Parameter, EditorRequired]
+    public OpportunityFormModel Model { get; set; } = new();
+
+    /// <summary>Whether the form controls are disabled.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Whether the organization picker is shown (edit mode).</summary>
+    [Parameter]
+    public bool ShowOrganization { get; set; }
+
+    /// <summary>Whether CRM customer lookup is available.</summary>
+    [Parameter]
+    public bool CanReadCustomers { get; set; }
+
+    /// <summary>Whether CRM organization lookup is available.</summary>
+    [Parameter]
+    public bool CanReadOrganizations { get; set; }
+
+    private decimal WeightedAmount
+        => decimal.Round(Model.Amount * Model.Probability / 100m, 2, MidpointRounding.AwayFromZero);
+}

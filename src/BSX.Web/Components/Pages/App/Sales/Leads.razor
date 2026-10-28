@@ -1,12 +1,172 @@
 @page "/app/sales/leads"
 @attribute [Authorize(Policy = PermissionPolicies.SalesLeadsRead)]
+@using System.Globalization
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Leads.ListLeads
+@using BSX.Modules.Sales.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@using BSX.Web.Sales
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Leads - BSX Platform</PageTitle>
 
 <PageHeader Title="Leads"
-            Subtitle="Incoming leads and qualification." />
+            Subtitle="Search prospects and move them through contact and qualification.">
+    <Actions>
+        @if (_canCreate)
+        {
+            <a class="button button-primary" href="/app/sales/leads/new">New lead</a>
+        }
+    </Actions>
+</PageHeader>
 
 <Card>
-    <EmptyState Title="Lead workspace is ready"
-                Description="The shell, workspace context and permissions are in place. Lead management screens will be added in the next slice." />
+    <div class="list-toolbar">
+        <form method="get" action="/app/sales/leads" role="search" class="list-search">
+            <SearchBox Name="search"
+                       @bind-Value="Search"
+                       Label="Search leads"
+                       Placeholder="Search by lead title"
+                       ShowClearButton="false" />
+            <input type="hidden" name="size" value="@PageSize" />
+            <button type="submit" class="button button-secondary">Search</button>
+            @if (!string.IsNullOrWhiteSpace(Search))
+            {
+                <a class="button button-quiet" href="/app/sales/leads">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingState Label="Loading leads..." />
+    }
+    else if (_error is not null)
+    {
+        <ErrorState Title="Leads could not be loaded" Message="@_error">
+            <Action>
+                <a class="button button-secondary" href="@CurrentUrl">Try again</a>
+            </Action>
+        </ErrorState>
+    }
+    else if (_result is not null)
+    {
+        <p class="result-summary" aria-live="polite">@ResultSummary</p>
+
+        @if (_result.Items.Count == 0)
+        {
+            <EmptyState Title="@EmptyTitle" Description="@EmptyDescription">
+                <Action>
+                    @if (_canCreate)
+                    {
+                        <a class="button button-primary" href="/app/sales/leads/new">Create a lead</a>
+                    }
+                </Action>
+            </EmptyState>
+        }
+        else
+        {
+            <DataTable Items="_result.Items" Caption="Lead results">
+                <HeaderTemplate>
+                    <th scope="col">Lead</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Organization</th>
+                </HeaderTemplate>
+                <RowTemplate Context="lead">
+                    <td>
+                        <a class="table-link" href="@($"/app/sales/leads/{lead.Id}")">@lead.Title</a>
+                    </td>
+                    <td><span class="@SalesDisplay.LeadStatusClass(lead.Status)">@lead.Status</span></td>
+                    <td>@SalesDisplay.Reference(lead.CustomerId)</td>
+                    <td>@SalesDisplay.Reference(lead.OrganizationId)</td>
+                </RowTemplate>
+            </DataTable>
+
+            <Pagination Page="_result.Page"
+                        PageSize="_result.Size"
+                        TotalCount="_result.TotalCount"
+                        PageHrefFactory="BuildPageUrl" />
+        }
+    }
 </Card>
+
+@code {
+    private PagedResult<LeadSummaryDto>? _result;
+    private string? _error;
+    private bool _loading = true;
+    private bool _canCreate;
+
+    /// <summary>The requested one-based page.</summary>
+    [SupplyParameterFromQuery(Name = "page")]
+    public int Page { get; set; } = 1;
+
+    /// <summary>The requested page size.</summary>
+    [SupplyParameterFromQuery(Name = "size")]
+    public int PageSize { get; set; } = 20;
+
+    /// <summary>The optional title search term.</summary>
+    [SupplyParameterFromQuery(Name = "search")]
+    public string? Search { get; set; }
+
+    private string CurrentUrl => BuildPageUrl(Page);
+
+    private string ResultSummary => _result!.TotalCount == 1 ? "1 lead" : $"{_result.TotalCount:N0} leads";
+
+    private string EmptyTitle => string.IsNullOrWhiteSpace(Search) ? "No leads yet" : "No leads match your search";
+
+    private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
+        ? "Create the first lead to start the sales pipeline."
+        : $"No lead title contains \"{Search.Trim()}\".";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        _loading = true;
+        _error = null;
+        _canCreate = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(SalesPermissionCodes.LeadsCreate, StringComparer.Ordinal);
+
+        Result<PagedResult<LeadSummaryDto>> result = await Sender.SendAsync(
+            new ListLeadsQuery(Page, PageSize, Search));
+
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _error = SalesMessages.For(result.Error);
+            return;
+        }
+
+        _result = result.Value;
+        Page = result.Value.Page;
+        PageSize = result.Value.Size;
+    }
+
+    private string BuildPageUrl(int page)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["page"] = page.ToString(CultureInfo.InvariantCulture),
+        };
+
+        if (!string.IsNullOrWhiteSpace(Search))
+        {
+            query["search"] = Search.Trim();
+        }
+
+        if (PageSize > 0)
+        {
+            query["size"] = PageSize.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return QueryHelpers.AddQueryString("/app/sales/leads", query);
+    }
+}

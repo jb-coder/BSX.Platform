@@ -1,0 +1,378 @@
+@page "/app/sales/opportunities/{Id:guid}"
+@attribute [Authorize(Policy = PermissionPolicies.SalesOpportunitiesRead)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.GetCustomerById
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.Modules.Crm.Application.Organizations.GetOrganizationById
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Leads.GetLeadById
+@using BSX.Modules.Sales.Application.Opportunities.AdvanceOpportunityStage
+@using BSX.Modules.Sales.Application.Opportunities.GetOpportunityById
+@using BSX.Modules.Sales.Application.Opportunities.MarkOpportunityLost
+@using BSX.Modules.Sales.Application.Opportunities.MarkOpportunityWon
+@using BSX.Modules.Sales.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Sales
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(_opportunity?.Title ?? "Opportunity") - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading opportunity..." />
+}
+else if (_opportunity is null)
+{
+    <PageHeader Title="Opportunity not found"
+                Subtitle="The opportunity may have been removed or may belong to another workspace." />
+
+    <Card>
+        <EmptyState Title="Opportunity not found"
+                    Description="Return to the opportunity list to choose another record.">
+            <Action>
+                <a class="button button-primary" href="/app/sales/opportunities">Back to opportunities</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@_opportunity.Title"
+                Subtitle="Revenue, forecast and pipeline stage.">
+        <Actions>
+            <a class="button button-secondary" href="/app/sales/opportunities">Back to opportunities</a>
+            @if (!IsTerminal && _canUpdate)
+            {
+                <a class="button button-primary" href="@($"/app/sales/opportunities/{_opportunity.Id}/edit")">
+                    Edit opportunity
+                </a>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (_actionError is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>The opportunity could not be updated.</strong>
+            <span>@_actionError</span>
+            <button type="button" class="link-button" @onclick="ReloadAsync">Reload opportunity</button>
+        </div>
+    }
+
+    <div class="detail-grid">
+        <Card Title="Revenue" Subtitle="Potential value and weighted forecast.">
+            <dl class="definition-list">
+                <div>
+                    <dt>Amount</dt>
+                    <dd>@SalesDisplay.Money(_opportunity.Amount, _opportunity.Currency)</dd>
+                </div>
+                <div>
+                    <dt>Weighted forecast</dt>
+                    <dd>@SalesDisplay.Money(_opportunity.WeightedAmount, _opportunity.Currency)</dd>
+                </div>
+                <div>
+                    <dt>Probability</dt>
+                    <dd>@_opportunity.Probability%</dd>
+                </div>
+                <div>
+                    <dt>Expected close</dt>
+                    <dd>@SalesDisplay.Date(_opportunity.ExpectedCloseDate)</dd>
+                </div>
+            </dl>
+        </Card>
+
+        <Card Title="CRM context" Subtitle="The customer and organization behind the opportunity.">
+            <dl class="definition-list">
+                <div>
+                    <dt>Customer</dt>
+                    <dd>
+                        @if (_canReadCustomers)
+                        {
+                            <a href="@($"/app/crm/customers/{_opportunity.CustomerId}")">
+                                @(_customerName ?? SalesDisplay.Reference(_opportunity.CustomerId))
+                            </a>
+                        }
+                        else
+                        {
+                            @SalesDisplay.Reference(_opportunity.CustomerId)
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt>Organization</dt>
+                    <dd>
+                        @if (_opportunity.OrganizationId is { } organizationId)
+                        {
+                            @if (_canReadOrganizations)
+                            {
+                                <a href="@($"/app/crm/organizations/{organizationId}")">
+                                    @(_organizationName ?? SalesDisplay.Reference(organizationId))
+                                </a>
+                            }
+                            else
+                            {
+                                @SalesDisplay.Reference(organizationId)
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not linked</span>
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt>Source lead</dt>
+                    <dd>
+                        @if (_canReadLeads)
+                        {
+                            <a href="@($"/app/sales/leads/{_opportunity.LeadId}")">
+                                @(_leadTitle ?? SalesDisplay.Reference(_opportunity.LeadId))
+                            </a>
+                        }
+                        else
+                        {
+                            @SalesDisplay.Reference(_opportunity.LeadId)
+                        }
+                    </dd>
+                </div>
+            </dl>
+        </Card>
+    </div>
+
+    <Card Title="Pipeline" Subtitle="Stage history and lifecycle actions." CssClass="detail-card-spaced">
+        <div class="stage-header">
+            <span class="@SalesDisplay.StageClass(_opportunity.Stage)">@_opportunity.Stage</span>
+            @if (IsTerminal)
+            {
+                <span class="field-hint">This opportunity is closed and cannot change.</span>
+            }
+        </div>
+
+        <OpportunityStageTimeline Stage="_opportunity.Stage" />
+
+        @if (_canUpdate && !IsTerminal)
+        {
+            <div class="action-row lifecycle-actions">
+                @if (_opportunity.Stage != "Negotiation")
+                {
+                    <button type="button" class="button button-primary" disabled="@_busy" @onclick="AdvanceAsync">
+                        @(_busy ? "Updating..." : $"Advance to {NextStage}")
+                    </button>
+                }
+                @if (_opportunity.Stage == "Negotiation")
+                {
+                    <button type="button" class="button button-primary" disabled="@_busy" @onclick="() => _confirmWon = true">
+                        Mark won
+                    </button>
+                }
+                <button type="button" class="button button-danger-ghost" disabled="@_busy" @onclick="() => _confirmLost = true">
+                    Mark lost
+                </button>
+            </div>
+        }
+    </Card>
+}
+
+<ConfirmDialog Open="_confirmWon"
+               Title="Mark opportunity as won?"
+               Message="Won is terminal. The probability will be set to 100% and the opportunity can no longer be edited."
+               ConfirmText="Mark won"
+               Busy="_busy"
+               Confirm="MarkWonAsync"
+               Cancel="() => _confirmWon = false" />
+
+<ConfirmDialog Open="_confirmLost"
+               Title="Mark opportunity as lost?"
+               Message="Lost is terminal. The probability will be set to 0% and the opportunity can no longer be edited."
+               ConfirmText="Mark lost"
+               Busy="_busy"
+               Confirm="MarkLostAsync"
+               Cancel="() => _confirmLost = false" />
+
+@code {
+    private OpportunityDto? _opportunity;
+    private string? _customerName;
+    private string? _organizationName;
+    private string? _leadTitle;
+    private string? _actionError;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _confirmWon;
+    private bool _confirmLost;
+    private bool _canUpdate;
+    private bool _canReadCustomers;
+    private bool _canReadOrganizations;
+    private bool _canReadLeads;
+
+    /// <summary>The opportunity identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private bool IsTerminal => _opportunity?.Stage is "Won" or "Lost";
+
+    private string NextStage => _opportunity?.Stage switch
+    {
+        "Discovery" => "Qualification",
+        "Qualification" => "Proposal",
+        "Proposal" => "Negotiation",
+        _ => "next stage",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canUpdate = permissions.Contains(SalesPermissionCodes.OpportunitiesUpdate, StringComparer.Ordinal);
+        _canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
+        _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
+        _canReadLeads = permissions.Contains(SalesPermissionCodes.LeadsRead, StringComparer.Ordinal);
+
+        if (!await LoadAsync())
+        {
+            if (HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+        }
+    }
+
+    private async Task<bool> LoadAsync()
+    {
+        _loading = true;
+        Result<OpportunityDto> result = await Sender.SendAsync(new GetOpportunityByIdQuery(Id));
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return false;
+        }
+
+        _opportunity = result.Value;
+        await LoadCrmNamesAsync(_opportunity);
+        return true;
+    }
+
+    private async Task LoadCrmNamesAsync(OpportunityDto opportunity)
+    {
+        _customerName = null;
+        _organizationName = null;
+        _leadTitle = null;
+
+        if (_canReadCustomers)
+        {
+            Result<CustomerDto> customer = await Sender.SendAsync(
+                new GetCustomerByIdQuery(opportunity.CustomerId));
+            if (customer.IsSuccess)
+            {
+                _customerName = customer.Value.Name;
+            }
+        }
+
+        if (opportunity.OrganizationId is { } organizationId && _canReadOrganizations)
+        {
+            Result<OrganizationDto> organization = await Sender.SendAsync(
+                new GetOrganizationByIdQuery(organizationId));
+            if (organization.IsSuccess)
+            {
+                _organizationName = organization.Value.Name;
+            }
+        }
+
+        if (_canReadLeads)
+        {
+            Result<LeadDto> lead = await Sender.SendAsync(new GetLeadByIdQuery(opportunity.LeadId));
+            if (lead.IsSuccess)
+            {
+                _leadTitle = lead.Value.Title;
+            }
+        }
+    }
+
+    private async Task AdvanceAsync()
+    {
+        if (_busy || _opportunity is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await SalesWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new AdvanceOpportunityStageCommand(_opportunity.Id)));
+
+        _busy = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Stage advanced", $"The opportunity moved to {NextStage}.");
+        await ReloadAsync();
+    }
+
+    private async Task MarkWonAsync()
+    {
+        if (_busy || _opportunity is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await SalesWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new MarkOpportunityWonCommand(_opportunity.Id)));
+
+        _busy = false;
+        _confirmWon = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Opportunity won", "The opportunity is closed as won.");
+        await ReloadAsync();
+    }
+
+    private async Task MarkLostAsync()
+    {
+        if (_busy || _opportunity is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await SalesWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new MarkOpportunityLostCommand(_opportunity.Id)));
+
+        _busy = false;
+        _confirmLost = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Opportunity lost", "The opportunity is closed as lost.");
+        await ReloadAsync();
+    }
+
+    private Task ReloadAsync() => LoadAsync();
+}

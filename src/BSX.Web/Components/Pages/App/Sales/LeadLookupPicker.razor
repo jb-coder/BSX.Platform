@@ -1,0 +1,186 @@
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Leads.GetLeadById
+@using BSX.Modules.Sales.Application.Leads.ListLeads
+@using BSX.SharedKernel.Results
+@inject ISender Sender
+
+<fieldset class="lookup-picker">
+    <legend>Qualified lead</legend>
+
+    <div class="lookup-selection">
+        <div>
+            @if (Value is not null)
+            {
+                <strong>@(_selectedTitle ?? "Selected lead")</strong>
+                @if (!string.IsNullOrWhiteSpace(_selectedStatus))
+                {
+                    <span class="@SalesDisplay.LeadStatusClass(_selectedStatus)">@_selectedStatus</span>
+                }
+            }
+            else
+            {
+                <span class="text-muted">No lead selected</span>
+            }
+        </div>
+        <div class="action-row">
+            <button type="button" class="button button-secondary button-small" @onclick="TogglePicker">
+                @(Value is null ? "Choose lead" : "Change")
+            </button>
+        </div>
+    </div>
+
+    @if (_open)
+    {
+        <section class="selector-panel" aria-label="Choose a qualified lead">
+            <form class="selector-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                <SearchBox @bind-Value="_search"
+                           Label="Search leads"
+                           Placeholder="Search by lead title"
+                           Disabled="@_searching" />
+                <button type="submit" class="button button-secondary" disabled="@_searching">Search</button>
+            </form>
+
+            @if (_searching)
+            {
+                <LoadingState Label="Searching leads..." />
+            }
+            else if (_error is not null)
+            {
+                <ErrorState Title="Leads could not be loaded" Message="@_error" />
+            }
+            else if (_leads.Count == 0)
+            {
+                <EmptyState Title="No leads found"
+                            Description="Try a different title, or qualify a lead first." />
+            }
+            else
+            {
+                <ul class="selector-list" aria-live="polite">
+                    @foreach (LeadSummaryDto lead in _leads)
+                    {
+                        <li>
+                            <button type="button"
+                                    class="selector-option @(Value == lead.Id ? "is-selected" : null)"
+                                    aria-pressed="@(Value == lead.Id ? "true" : "false")"
+                                    disabled="@(lead.Status != "Qualified")"
+                                    @onclick="() => SelectAsync(lead)">
+                                <span>
+                                    <strong>@lead.Title</strong>
+                                    <span>@lead.Status lead · customer @SalesDisplay.Reference(lead.CustomerId)</span>
+                                </span>
+                                <span class="@SalesDisplay.LeadStatusClass(lead.Status)">@lead.Status</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+                <p class="field-hint">Only qualified leads can be converted into an opportunity.</p>
+            }
+
+            <div class="form-actions">
+                <button type="button" class="button button-secondary" @onclick="ClosePicker">Cancel</button>
+            </div>
+        </section>
+    }
+</fieldset>
+
+@code {
+    private string? _selectedTitle;
+    private string? _selectedStatus;
+    private string? _search;
+    private string? _error;
+    private IReadOnlyList<LeadSummaryDto> _leads = [];
+    private Guid? _loadedValue;
+    private bool _open;
+    private bool _searching;
+
+    /// <summary>The selected qualified lead identifier.</summary>
+    [Parameter]
+    public Guid? Value { get; set; }
+
+    /// <summary>Raised when the selected lead changes.</summary>
+    [Parameter]
+    public EventCallback<Guid?> ValueChanged { get; set; }
+
+    /// <summary>Whether the user may read leads.</summary>
+    [Parameter]
+    public bool CanRead { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedValue == Value)
+        {
+            return;
+        }
+
+        _loadedValue = Value;
+        _selectedTitle = null;
+        _selectedStatus = null;
+
+        if (Value is not { } id || !CanRead)
+        {
+            return;
+        }
+
+        Result<LeadDto> result = await Sender.SendAsync(new GetLeadByIdQuery(id));
+        if (result.IsSuccess)
+        {
+            _selectedTitle = result.Value.Title;
+            _selectedStatus = result.Value.Status;
+        }
+    }
+
+    private async Task TogglePicker()
+    {
+        _open = !_open;
+        if (_open)
+        {
+            await SearchAsync();
+        }
+    }
+
+    private void ClosePicker()
+    {
+        _open = false;
+        _error = null;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (_searching)
+        {
+            return;
+        }
+
+        _searching = true;
+        _error = null;
+
+        Result<PagedResult<LeadSummaryDto>> result = await Sender.SendAsync(
+            new ListLeadsQuery(1, 10, _search));
+
+        _searching = false;
+
+        if (result.IsFailure)
+        {
+            _error = SalesMessages.For(result.Error);
+            _leads = [];
+            return;
+        }
+
+        _leads = result.Value.Items;
+    }
+
+    private async Task SelectAsync(LeadSummaryDto lead)
+    {
+        if (lead.Status != "Qualified")
+        {
+            return;
+        }
+
+        _loadedValue = lead.Id;
+        _selectedTitle = lead.Title;
+        _selectedStatus = lead.Status;
+        _open = false;
+        await ValueChanged.InvokeAsync(lead.Id);
+    }
+}

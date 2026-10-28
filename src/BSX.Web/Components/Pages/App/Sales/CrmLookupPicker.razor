@@ -1,0 +1,266 @@
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.GetCustomerById
+@using BSX.Modules.Crm.Application.Customers.ListCustomers
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.Modules.Crm.Application.Organizations.GetOrganizationById
+@using BSX.Modules.Crm.Application.Organizations.ListOrganizations
+@using BSX.SharedKernel.Results
+@inject ISender Sender
+
+<fieldset class="lookup-picker" disabled="@Disabled">
+    <legend>@Label</legend>
+
+    @if (!CanRead)
+    {
+        <p class="field-hint">
+            CRM read permission is required to search for a @KindLabel.
+        </p>
+    }
+    else
+    {
+        <div class="lookup-selection">
+            <div>
+                @if (Value is not null)
+                {
+                    <strong>@(_selectedName ?? $"Selected {KindLabel}")</strong>
+                    @if (!string.IsNullOrWhiteSpace(_selectedDetail))
+                    {
+                        <span>@_selectedDetail</span>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">No @KindLabel selected</span>
+                }
+            </div>
+            <div class="action-row">
+                @if (!Disabled)
+                {
+                    <button type="button" class="button button-secondary button-small" @onclick="TogglePicker">
+                        @(Value is null ? $"Choose {KindLabel}" : "Change")
+                    </button>
+                    @if (AllowClear && Value is not null)
+                    {
+                        <button type="button" class="button button-quiet button-small" @onclick="ClearAsync">
+                            Clear
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+
+        @if (_open)
+        {
+            <section class="selector-panel" aria-label="@($"Choose {KindLabel}")">
+                <form class="selector-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                    <SearchBox @bind-Value="_search"
+                               Label="@($"Search {KindLabel}s")"
+                               Placeholder="@($"Search {KindLabel}s")"
+                               Disabled="@_searching" />
+                    <button type="submit" class="button button-secondary" disabled="@_searching">Search</button>
+                </form>
+
+                @if (_searching)
+                {
+                    <LoadingState Label="@($"Searching {KindLabel}s...")" />
+                }
+                else if (_error is not null)
+                {
+                    <ErrorState Title="@($"{KindLabel}s could not be loaded")" Message="@_error" />
+                }
+                else if (_items.Count == 0)
+                {
+                    <EmptyState Title="@($"No {KindLabel}s found")"
+                                Description="Try a different search term." />
+                }
+                else
+                {
+                    <ul class="selector-list" aria-live="polite">
+                        @foreach (LookupItem item in _items)
+                        {
+                            <li>
+                                <button type="button"
+                                        class="selector-option @(Value == item.Id ? "is-selected" : null)"
+                                        aria-pressed="@(Value == item.Id ? "true" : "false")"
+                                        @onclick="() => SelectAsync(item)">
+                                    <span>
+                                        <strong>@item.Name</strong>
+                                        <span>@item.Detail</span>
+                                    </span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <div class="form-actions">
+                    <button type="button" class="button button-secondary" @onclick="ClosePicker">Cancel</button>
+                </div>
+            </section>
+        }
+    }
+</fieldset>
+
+@code {
+    private string? _selectedName;
+    private string? _selectedDetail;
+    private string? _search;
+    private string? _error;
+    private IReadOnlyList<LookupItem> _items = [];
+    private Guid? _loadedValue;
+    private bool _open;
+    private bool _searching;
+
+    /// <summary>The CRM lookup kind.</summary>
+    [Parameter, EditorRequired]
+    public CrmLookupKind Kind { get; set; }
+
+    /// <summary>The selected CRM entity identifier.</summary>
+    [Parameter]
+    public Guid? Value { get; set; }
+
+    /// <summary>Raised when the selection changes.</summary>
+    [Parameter]
+    public EventCallback<Guid?> ValueChanged { get; set; }
+
+    /// <summary>The field label.</summary>
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>Whether the user may read the CRM entity type.</summary>
+    [Parameter]
+    public bool CanRead { get; set; }
+
+    /// <summary>Whether the selection may be cleared.</summary>
+    [Parameter]
+    public bool AllowClear { get; set; } = true;
+
+    /// <summary>Whether the picker is read-only.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private string KindLabel => Kind == CrmLookupKind.Customer ? "customer" : "organization";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedValue == Value)
+        {
+            return;
+        }
+
+        _loadedValue = Value;
+        _selectedName = null;
+        _selectedDetail = null;
+
+        if (Value is not { } id || !CanRead)
+        {
+            return;
+        }
+
+        if (Kind == CrmLookupKind.Customer)
+        {
+            Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(id));
+            if (result.IsSuccess)
+            {
+                _selectedName = result.Value.Name;
+                _selectedDetail = result.Value.Code;
+            }
+        }
+        else
+        {
+            Result<OrganizationDto> result = await Sender.SendAsync(new GetOrganizationByIdQuery(id));
+            if (result.IsSuccess)
+            {
+                _selectedName = result.Value.Name;
+                _selectedDetail = OrganizationDisplay.Location(result.Value.Address);
+            }
+        }
+    }
+
+    private async Task TogglePicker()
+    {
+        _open = !_open;
+
+        if (_open)
+        {
+            await SearchAsync();
+        }
+    }
+
+    private void ClosePicker()
+    {
+        _open = false;
+        _error = null;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (_searching)
+        {
+            return;
+        }
+
+        _searching = true;
+        _error = null;
+
+        if (Kind == CrmLookupKind.Customer)
+        {
+            Result<PagedResult<CustomerSummaryDto>> result = await Sender.SendAsync(
+                new ListCustomersQuery(1, 10, _search));
+
+            _searching = false;
+
+            if (result.IsFailure)
+            {
+                _error = CrmCustomerMessages.For(result.Error);
+                _items = [];
+                return;
+            }
+
+            _items = result.Value.Items
+                .Select(customer => new LookupItem(customer.Id, customer.Name, customer.Code))
+                .ToArray();
+        }
+        else
+        {
+            Result<PagedResult<OrganizationDto>> result = await Sender.SendAsync(
+                new ListOrganizationsQuery(1, 10, _search));
+
+            _searching = false;
+
+            if (result.IsFailure)
+            {
+                _error = CrmCustomerMessages.For(result.Error);
+                _items = [];
+                return;
+            }
+
+            _items = result.Value.Items
+                .Select(organization => new LookupItem(
+                    organization.Id,
+                    organization.Name,
+                    OrganizationDisplay.Location(organization.Address)))
+                .ToArray();
+        }
+    }
+
+    private async Task SelectAsync(LookupItem item)
+    {
+        _loadedValue = item.Id;
+        _selectedName = item.Name;
+        _selectedDetail = item.Detail;
+        _open = false;
+        await ValueChanged.InvokeAsync(item.Id);
+    }
+
+    private async Task ClearAsync()
+    {
+        _loadedValue = null;
+        _selectedName = null;
+        _selectedDetail = null;
+        _open = false;
+        await ValueChanged.InvokeAsync(null);
+    }
+
+    private sealed record LookupItem(Guid Id, string Name, string Detail);
+}

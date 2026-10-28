@@ -24,7 +24,6 @@ Implemented:
 
 Not implemented:
 
-- Sales screens.
 - Inventory screens.
 - Customer activation/deactivation UI.
 - Organization deletion or organization-to-customer lists.

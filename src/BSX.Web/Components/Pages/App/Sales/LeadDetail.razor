@@ -1,0 +1,354 @@
+@page "/app/sales/leads/{Id:guid}"
+@attribute [Authorize(Policy = PermissionPolicies.SalesLeadsRead)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.GetCustomerById
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.Modules.Crm.Application.Organizations.GetOrganizationById
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Leads.DisqualifyLead
+@using BSX.Modules.Sales.Application.Leads.GetLeadById
+@using BSX.Modules.Sales.Application.Leads.MarkLeadContacted
+@using BSX.Modules.Sales.Application.Leads.QualifyLead
+@using BSX.Modules.Sales.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Sales
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(_lead?.Title ?? "Lead") - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading lead..." />
+}
+else if (_lead is null)
+{
+    <PageHeader Title="Lead not found"
+                Subtitle="The lead may have been removed or may belong to another workspace." />
+
+    <Card>
+        <EmptyState Title="Lead not found"
+                    Description="Return to the lead list to choose another record.">
+            <Action>
+                <a class="button button-primary" href="/app/sales/leads">Back to leads</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@_lead.Title"
+                Subtitle="Lead lifecycle and CRM context.">
+        <Actions>
+            <a class="button button-secondary" href="/app/sales/leads">Back to leads</a>
+            @if (_canUpdate)
+            {
+                <a class="button button-secondary" href="@($"/app/sales/leads/{_lead.Id}/edit")">Edit lead</a>
+            }
+            @if (_lead.Status == "Qualified" && _canCreateOpportunity)
+            {
+                <a class="button button-primary" href="@($"/app/sales/opportunities/new?leadId={_lead.Id}")">
+                    Create opportunity
+                </a>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (_actionError is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>The lead could not be updated.</strong>
+            <span>@_actionError</span>
+            <button type="button" class="link-button" @onclick="ReloadAsync">Reload lead</button>
+        </div>
+    }
+
+    <div class="detail-grid">
+        <Card Title="Overview" Subtitle="Lead status and CRM context.">
+            <dl class="definition-list">
+                <div>
+                    <dt>Status</dt>
+                    <dd><span class="@SalesDisplay.LeadStatusClass(_lead.Status)">@_lead.Status</span></dd>
+                </div>
+                <div>
+                    <dt>Customer</dt>
+                    <dd>
+                        @if (_lead.CustomerId is { } customerId)
+                        {
+                            @if (_canReadCustomers)
+                            {
+                                <a href="@($"/app/crm/customers/{customerId}")">@(_customerName ?? SalesDisplay.Reference(customerId))</a>
+                            }
+                            else
+                            {
+                                @SalesDisplay.Reference(customerId)
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not linked</span>
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt>Organization</dt>
+                    <dd>
+                        @if (_lead.OrganizationId is { } organizationId)
+                        {
+                            @if (_canReadOrganizations)
+                            {
+                                <a href="@($"/app/crm/organizations/{organizationId}")">@(_organizationName ?? SalesDisplay.Reference(organizationId))</a>
+                            }
+                            else
+                            {
+                                @SalesDisplay.Reference(organizationId)
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not linked</span>
+                        }
+                    </dd>
+                </div>
+            </dl>
+        </Card>
+
+        <Card Title="Lifecycle" Subtitle="Contact and qualification progress.">
+            <ol class="lead-status-timeline" aria-label="Lead status timeline">
+                @foreach (string status in new[] { "New", "Contacted", "Qualified" })
+                {
+                    bool current = _lead.Status == status;
+                    bool complete = SalesDisplay.LeadStatusRank(_lead.Status) > SalesDisplay.LeadStatusRank(status)
+                        || _lead.Status == "Qualified";
+
+                    <li class="@(current ? "is-current" : complete ? "is-completed" : "is-pending")"
+                        aria-current="@(current ? "step" : null)">
+                        <span class="stage-marker" aria-hidden="true"></span>
+                        <span class="stage-label">@status</span>
+                    </li>
+                }
+            </ol>
+
+            @if (_lead.Status == "Disqualified")
+            {
+                <p class="status-closed-note">
+                    <span class="status-badge status-lead-disqualified">Disqualified</span>
+                    This lead is terminal. Only notes can be changed.
+                </p>
+            }
+
+            <div class="action-row lifecycle-actions">
+                @if (_canUpdate && _lead.Status == "New")
+                {
+                    <button type="button" class="button button-primary" disabled="@_busy" @onclick="ContactAsync">
+                        @(_busy ? "Updating..." : "Mark contacted")
+                    </button>
+                }
+                @if (_canUpdate && _lead.Status == "Contacted")
+                {
+                    <button type="button" class="button button-primary" disabled="@_busy" @onclick="() => _confirmQualify = true">
+                        Qualify lead
+                    </button>
+                }
+                @if (_canUpdate && _lead.Status is "New" or "Contacted")
+                {
+                    <button type="button" class="button button-danger-ghost" disabled="@_busy" @onclick="() => _confirmDisqualify = true">
+                        Disqualify
+                    </button>
+                }
+            </div>
+        </Card>
+    </div>
+
+    <Card Title="Notes" Subtitle="Qualification context and next steps." CssClass="detail-card-spaced">
+        @if (string.IsNullOrWhiteSpace(_lead.Notes))
+        {
+            <EmptyState Title="No notes"
+                        Description="Edit the lead to add context for the sales team." />
+        }
+        else
+        {
+            <p class="notes-copy">@_lead.Notes</p>
+        }
+    </Card>
+}
+
+<ConfirmDialog Open="_confirmQualify"
+               Title="Qualify this lead?"
+               Message="Qualification is a terminal lead status and makes this lead eligible for conversion to an opportunity."
+               ConfirmText="Qualify lead"
+               Busy="_busy"
+               Confirm="QualifyAsync"
+               Cancel="() => _confirmQualify = false" />
+
+<ConfirmDialog Open="_confirmDisqualify"
+               Title="Disqualify this lead?"
+               Message="A disqualified lead is terminal and cannot be contacted or qualified later."
+               ConfirmText="Disqualify lead"
+               Busy="_busy"
+               Confirm="DisqualifyAsync"
+               Cancel="() => _confirmDisqualify = false" />
+
+@code {
+    private LeadDto? _lead;
+    private string? _customerName;
+    private string? _organizationName;
+    private string? _actionError;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _confirmQualify;
+    private bool _confirmDisqualify;
+    private bool _canUpdate;
+    private bool _canCreateOpportunity;
+    private bool _canReadCustomers;
+    private bool _canReadOrganizations;
+
+    /// <summary>The lead identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canUpdate = permissions.Contains(SalesPermissionCodes.LeadsUpdate, StringComparer.Ordinal);
+        _canCreateOpportunity = permissions.Contains(SalesPermissionCodes.OpportunitiesCreate, StringComparer.Ordinal);
+        _canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
+        _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
+
+        if (!await LoadAsync())
+        {
+            if (HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+        }
+    }
+
+    private async Task<bool> LoadAsync()
+    {
+        _loading = true;
+        Result<LeadDto> result = await Sender.SendAsync(new GetLeadByIdQuery(Id));
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return false;
+        }
+
+        _lead = result.Value;
+        await LoadCrmNamesAsync(_lead);
+        return true;
+    }
+
+    private async Task LoadCrmNamesAsync(LeadDto lead)
+    {
+        _customerName = null;
+        _organizationName = null;
+
+        if (lead.CustomerId is { } customerId && _canReadCustomers)
+        {
+            Result<CustomerDto> customer = await Sender.SendAsync(new GetCustomerByIdQuery(customerId));
+            if (customer.IsSuccess)
+            {
+                _customerName = customer.Value.Name;
+            }
+        }
+
+        if (lead.OrganizationId is { } organizationId && _canReadOrganizations)
+        {
+            Result<OrganizationDto> organization = await Sender.SendAsync(new GetOrganizationByIdQuery(organizationId));
+            if (organization.IsSuccess)
+            {
+                _organizationName = organization.Value.Name;
+            }
+        }
+    }
+
+    private async Task ContactAsync()
+    {
+        if (_busy || _lead is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await SalesWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new MarkLeadContactedCommand(_lead.Id)));
+
+        _busy = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Lead contacted", "The lead can now be qualified or disqualified.");
+        await ReloadAsync();
+    }
+
+    private async Task QualifyAsync()
+    {
+        if (_busy || _lead is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await SalesWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new QualifyLeadCommand(_lead.Id)));
+
+        _busy = false;
+        _confirmQualify = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Lead qualified", "The lead can now be converted into an opportunity.");
+        await ReloadAsync();
+    }
+
+    private async Task DisqualifyAsync()
+    {
+        if (_busy || _lead is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await SalesWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new DisqualifyLeadCommand(_lead.Id)));
+
+        _busy = false;
+        _confirmDisqualify = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Lead disqualified", "The lead is now terminal.");
+        await ReloadAsync();
+    }
+
+    private Task ReloadAsync() => LoadAsync();
+}

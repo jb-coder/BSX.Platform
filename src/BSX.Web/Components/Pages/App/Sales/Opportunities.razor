@@ -1,12 +1,182 @@
 @page "/app/sales/opportunities"
 @attribute [Authorize(Policy = PermissionPolicies.SalesOpportunitiesRead)]
+@using System.Globalization
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Opportunities.ListOpportunities
+@using BSX.Modules.Sales.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@using BSX.Web.Sales
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Opportunities - BSX Platform</PageTitle>
 
 <PageHeader Title="Opportunities"
-            Subtitle="Revenue opportunities and their lifecycle." />
+            Subtitle="Track open revenue, forecasts and the path to a decision.">
+    <Actions>
+        @if (_canCreate)
+        {
+            <a class="button button-primary" href="/app/sales/opportunities/new">New opportunity</a>
+        }
+    </Actions>
+</PageHeader>
 
 <Card>
-    <EmptyState Title="Opportunity workspace is ready"
-                Description="The foundation is complete. Opportunity management screens will be added in a later slice." />
+    <div class="list-toolbar">
+        <form method="get" action="/app/sales/opportunities" role="search" class="list-search">
+            <SearchBox Name="search"
+                       @bind-Value="Search"
+                       Label="Search opportunities"
+                       Placeholder="Search by title or customer ID"
+                       ShowClearButton="false" />
+            <input type="hidden" name="size" value="@PageSize" />
+            <button type="submit" class="button button-secondary">Search</button>
+            @if (!string.IsNullOrWhiteSpace(Search))
+            {
+                <a class="button button-quiet" href="/app/sales/opportunities">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingState Label="Loading opportunities..." />
+    }
+    else if (_error is not null)
+    {
+        <ErrorState Title="Opportunities could not be loaded" Message="@_error">
+            <Action>
+                <a class="button button-secondary" href="@CurrentUrl">Try again</a>
+            </Action>
+        </ErrorState>
+    }
+    else if (_result is not null)
+    {
+        <p class="result-summary" aria-live="polite">@ResultSummary</p>
+
+        @if (_result.Items.Count == 0)
+        {
+            <EmptyState Title="@EmptyTitle" Description="@EmptyDescription">
+                <Action>
+                    @if (_canCreate)
+                    {
+                        <a class="button button-primary" href="/app/sales/opportunities/new">Create an opportunity</a>
+                    }
+                </Action>
+            </EmptyState>
+        }
+        else
+        {
+            <DataTable Items="_result.Items" Caption="Opportunity results">
+                <HeaderTemplate>
+                    <th scope="col">Opportunity</th>
+                    <th scope="col">Stage</th>
+                    <th scope="col">Revenue</th>
+                    <th scope="col">Probability</th>
+                    <th scope="col">Expected close</th>
+                    <th scope="col">Weighted</th>
+                </HeaderTemplate>
+                <RowTemplate Context="opportunity">
+                    <td>
+                        <a class="table-link" href="@($"/app/sales/opportunities/{opportunity.Id}")">
+                            @opportunity.Title
+                        </a>
+                    </td>
+                    <td><span class="@SalesDisplay.StageClass(opportunity.Stage)">@opportunity.Stage</span></td>
+                    <td>@SalesDisplay.Money(opportunity.Amount, opportunity.Currency)</td>
+                    <td>@opportunity.Probability%</td>
+                    <td>@SalesDisplay.Date(opportunity.ExpectedCloseDate)</td>
+                    <td>@SalesDisplay.Money(opportunity.WeightedAmount, opportunity.Currency)</td>
+                </RowTemplate>
+            </DataTable>
+
+            <Pagination Page="_result.Page"
+                        PageSize="_result.Size"
+                        TotalCount="_result.TotalCount"
+                        PageHrefFactory="BuildPageUrl" />
+        }
+    }
 </Card>
+
+@code {
+    private PagedResult<OpportunitySummaryDto>? _result;
+    private string? _error;
+    private bool _loading = true;
+    private bool _canCreate;
+
+    /// <summary>The requested one-based page.</summary>
+    [SupplyParameterFromQuery(Name = "page")]
+    public int Page { get; set; } = 1;
+
+    /// <summary>The requested page size.</summary>
+    [SupplyParameterFromQuery(Name = "size")]
+    public int PageSize { get; set; } = 20;
+
+    /// <summary>The optional title or customer-id search term.</summary>
+    [SupplyParameterFromQuery(Name = "search")]
+    public string? Search { get; set; }
+
+    private string CurrentUrl => BuildPageUrl(Page);
+
+    private string ResultSummary => _result!.TotalCount == 1
+        ? "1 opportunity"
+        : $"{_result.TotalCount:N0} opportunities";
+
+    private string EmptyTitle => string.IsNullOrWhiteSpace(Search)
+        ? "No opportunities yet"
+        : "No opportunities match your search";
+
+    private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
+        ? "Qualify a lead and convert it into the first opportunity."
+        : $"No opportunity title or customer ID contains \"{Search.Trim()}\".";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        _loading = true;
+        _error = null;
+        _canCreate = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(SalesPermissionCodes.OpportunitiesCreate, StringComparer.Ordinal);
+
+        Result<PagedResult<OpportunitySummaryDto>> result = await Sender.SendAsync(
+            new ListOpportunitiesQuery(Page, PageSize, Search));
+
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _error = SalesMessages.For(result.Error);
+            return;
+        }
+
+        _result = result.Value;
+        Page = result.Value.Page;
+        PageSize = result.Value.Size;
+    }
+
+    private string BuildPageUrl(int page)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["page"] = page.ToString(CultureInfo.InvariantCulture),
+        };
+
+        if (!string.IsNullOrWhiteSpace(Search))
+        {
+            query["search"] = Search.Trim();
+        }
+
+        if (PageSize > 0)
+        {
+            query["size"] = PageSize.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return QueryHelpers.AddQueryString("/app/sales/opportunities", query);
+    }
+}

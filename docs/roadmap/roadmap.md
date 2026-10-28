@@ -106,7 +106,8 @@ Status: Sales domain (Lead and Opportunity aggregates, value objects, events and
 Application layer (commands, queries, handlers, validators, DTOs and tests), Infrastructure
 (PostgreSQL persistence, repositories, tenant isolation, auditing, soft delete, concurrency,
 migrations, contract-backed CRM reference validation and tests) and HTTP API (endpoints,
-permission enforcement, health checks, endpoint integration tests) implemented. UI is pending;
+permission enforcement, health checks, endpoint integration tests) implemented. The Sales web
+experience (leads, lifecycle, opportunities, stage timeline and CRM pickers) is implemented;
 quotations, orders and invoices remain out of scope for this slice.
 
 ---

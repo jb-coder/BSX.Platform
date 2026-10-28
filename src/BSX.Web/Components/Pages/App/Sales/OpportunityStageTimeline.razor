@@ -1,0 +1,41 @@
+@using BSX.Web.Sales
+
+<ol class="stage-timeline" aria-label="Opportunity stage timeline">
+    @for (int index = 0; index < SalesDisplay.OpenStages.Count; index++)
+    {
+        string stage = SalesDisplay.OpenStages[index];
+        bool isCurrent = Stage == stage;
+        bool isCompleted = IsWon || (!isCurrent && SalesDisplay.StageIndex(Stage) > index);
+
+        <li class="@(isCurrent ? "is-current" : isCompleted ? "is-completed" : "is-pending")"
+            aria-current="@(isCurrent ? "step" : null)">
+            <span class="stage-marker" aria-hidden="true"></span>
+            <span class="stage-label">@stage</span>
+        </li>
+    }
+
+    @if (IsWon)
+    {
+        <li class="is-current is-won" aria-current="step">
+            <span class="stage-marker" aria-hidden="true"></span>
+            <span class="stage-label">Won</span>
+        </li>
+    }
+    else if (IsLost)
+    {
+        <li class="is-current is-lost" aria-current="step">
+            <span class="stage-marker" aria-hidden="true"></span>
+            <span class="stage-label">Lost</span>
+        </li>
+    }
+</ol>
+
+@code {
+    /// <summary>The current opportunity stage.</summary>
+    [Parameter, EditorRequired]
+    public string Stage { get; set; } = string.Empty;
+
+    private bool IsWon => string.Equals(Stage, "Won", StringComparison.Ordinal);
+
+    private bool IsLost => string.Equals(Stage, "Lost", StringComparison.Ordinal);
+}

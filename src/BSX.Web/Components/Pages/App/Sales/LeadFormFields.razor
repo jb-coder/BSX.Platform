@@ -1,0 +1,60 @@
+@using BSX.Web.Sales
+
+<FormSection Title="Lead details"
+             Description="Capture the prospect and link it to a CRM customer or organization when known.">
+    @if (!DetailsEditable)
+    {
+        <div class="alert alert-warning" role="status">
+            This lead is terminal. Only notes can be changed.
+        </div>
+    }
+
+    <div class="field">
+        <label for="lead-title">Lead title</label>
+        <InputText id="lead-title"
+                   @bind-Value="Model.Title"
+                   disabled="@(!DetailsEditable)"
+                   placeholder="Enterprise renewal — Northwind" />
+        <ValidationMessage For="@(() => Model.Title)" />
+    </div>
+
+    <CrmLookupPicker Kind="CrmLookupKind.Customer"
+                     Label="Customer"
+                     @bind-Value="Model.CustomerId"
+                     CanRead="CanReadCustomers"
+                     Disabled="@(!DetailsEditable)" />
+
+    <CrmLookupPicker Kind="CrmLookupKind.Organization"
+                     Label="Organization"
+                     @bind-Value="Model.OrganizationId"
+                     CanRead="CanReadOrganizations"
+                     Disabled="@(!DetailsEditable)" />
+
+    <div class="field">
+        <label for="lead-notes">Notes <span class="field-optional">Optional</span></label>
+        <InputTextArea id="lead-notes"
+                       @bind-Value="Model.Notes"
+                       rows="5"
+                       placeholder="Context, next steps or qualification notes." />
+        <span class="field-hint">Up to 2,000 characters. Notes can be edited in every status.</span>
+        <ValidationMessage For="@(() => Model.Notes)" />
+    </div>
+</FormSection>
+
+@code {
+    /// <summary>The lead form model.</summary>
+    [Parameter, EditorRequired]
+    public LeadFormModel Model { get; set; } = new();
+
+    /// <summary>Whether title and CRM links may be edited.</summary>
+    [Parameter]
+    public bool DetailsEditable { get; set; } = true;
+
+    /// <summary>Whether CRM customer lookup is available.</summary>
+    [Parameter]
+    public bool CanReadCustomers { get; set; }
+
+    /// <summary>Whether CRM organization lookup is available.</summary>
+    [Parameter]
+    public bool CanReadOrganizations { get; set; }
+}

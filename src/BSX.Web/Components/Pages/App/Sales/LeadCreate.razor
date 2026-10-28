@@ -1,0 +1,97 @@
+@page "/app/sales/leads/new"
+@attribute [Authorize(Policy = PermissionPolicies.SalesLeadsCreate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.Modules.Sales.Application.Leads.CreateLead
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using BSX.Web.Sales
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+
+<PageTitle>New lead - BSX Platform</PageTitle>
+
+<PageHeader Title="New lead"
+            Subtitle="Create a prospect for this workspace.">
+    <Actions>
+        <a class="button button-secondary" href="/app/sales/leads">Cancel</a>
+    </Actions>
+</PageHeader>
+
+<div class="content-medium">
+    <Card>
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>Lead could not be created.</strong>
+                <span>@_error</span>
+            </div>
+        }
+
+        <EditForm Model="Form" OnValidSubmit="CreateAsync">
+            <DataAnnotationsValidator />
+            <LeadFormFields Model="Form"
+                            DetailsEditable="true"
+                            CanReadCustomers="_canReadCustomers"
+                            CanReadOrganizations="_canReadOrganizations" />
+
+            <div class="form-actions">
+                <button type="submit" class="button button-primary" disabled="@_saving">
+                    @(_saving ? "Creating..." : "Create lead")
+                </button>
+                <a class="button button-secondary" href="/app/sales/leads">Cancel</a>
+            </div>
+        </EditForm>
+    </Card>
+</div>
+
+@code {
+    private string? _error;
+    private bool _saving;
+    private bool _canReadCustomers;
+    private bool _canReadOrganizations;
+
+    /// <summary>The lead form model.</summary>
+    public LeadFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
+        _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+
+        Result<Guid> result = await SalesWebResults.ExecuteAsync(() => Sender.SendAsync(
+            new CreateLeadCommand(
+                Form.Title,
+                Form.CustomerId,
+                Form.OrganizationId,
+                Form.Notes)));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _error = SalesMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Lead created", "The lead is ready to be contacted.");
+        Navigation.NavigateTo($"/app/sales/leads/{result.Value}");
+    }
+}

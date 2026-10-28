@@ -1,12 +1,11 @@
 # Web Foundation
 
-Status: **Application foundation and the full CRM web experience are implemented;** Sales and
-Inventory screens are not implemented in this slice.
+Status: **Application foundation, CRM and Sales web experiences are implemented;** Inventory
+screens are not implemented in this slice.
 
 The web foundation turns `BSX.Web` from a host into a SaaS application shell: authentication,
 workspace selection, permission-aware navigation, a responsive layout and a reusable design
-system. The CRM business slice is documented in [crm.md](crm.md) and
-[crm-customers.md](crm-customers.md).
+system. CRM is documented in [crm.md](crm.md) and Sales in [sales.md](sales.md).
 
 ---
 
@@ -23,11 +22,11 @@ Implemented:
 - CRM customer list, detail, create and edit screens.
 - CRM organization list, detail, create and edit screens.
 - Customer organization assignment, contact lifecycle and address lifecycle management.
+- Sales lead and opportunity lists, details, forms, lifecycle actions and CRM pickers.
 - Component, navigation, authorization, accessibility and endpoint tests.
 
 Not implemented:
 
-- Sales lead or opportunity business screens.
 - Inventory UI.
 - Reporting, analytics or dashboards.
 - Tenant creation or tenant settings.
@@ -223,6 +222,7 @@ The foundation defines patterns for future business screens:
 `tests/Integration/BSX.Web.IntegrationTests/WebFoundation` covers:
 
 - CRM customer, organization, assignment, contact and address screens (see [crm.md](crm.md)).
+- Sales lead and opportunity screens (see [sales.md](sales.md)).
 - Design-system component rendering.
 - Navigation visibility by permission and Inventory exclusion.
 - Permission policy and handler behavior.
@@ -237,7 +237,6 @@ Sales endpoints after the smart authentication scheme change.
 
 ## Future Work
 
-- Remaining Sales business screens (leads and opportunities).
 - Session list/revoke UI, profile editing and password changes.
 - Tenant settings, display names and branding.
 - Distributed pending-login storage for multi-instance deployments.
