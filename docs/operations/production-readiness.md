@@ -85,7 +85,7 @@ PostgreSQL parity (when Docker is available) and endpoint integration suites gre
   on `409`.
 - **Integration event publishing** is fully persisted but remains dormant until a broker-backed
   `IEventBus` is registered and `Outbox:IntegrationPublishingEnabled` is turned on.
-- **Service account / API key HTTP endpoints** and the **Blazor UI** are not part of this release.
+- **Service account / API key HTTP endpoints** and the **CRM/Sales business screens** are not part of this release. The web authentication, workspace selection and shell foundation is implemented ([foundation.md](../web/foundation.md)).
 
 None of the above block a single-instance production release. For HA, complete
 [deployment-ha.md](deployment-ha.md) prerequisites (shared keys, distributed limiter).

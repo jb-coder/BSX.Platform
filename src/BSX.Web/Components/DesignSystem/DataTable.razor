@@ -1,0 +1,64 @@
+@typeparam TItem
+
+@if (Loading)
+{
+    <LoadingState Label="@LoadingLabel" />
+}
+else if (Items.Count == 0)
+{
+    <EmptyState Title="@EmptyTitle" Description="@EmptyDescription" />
+}
+else
+{
+    <div class="data-table-wrap">
+        <table class="data-table">
+            <caption class="visually-hidden">@Caption</caption>
+            @if (HeaderTemplate is not null)
+            {
+                <thead>
+                    <tr>@HeaderTemplate</tr>
+                </thead>
+            }
+            <tbody>
+                @foreach (TItem item in Items)
+                {
+                    <tr>@RowTemplate?.Invoke(item)</tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    /// <summary>The rows to display.</summary>
+    [Parameter]
+    public IReadOnlyList<TItem> Items { get; set; } = [];
+
+    /// <summary>The header cells.</summary>
+    [Parameter]
+    public RenderFragment? HeaderTemplate { get; set; }
+
+    /// <summary>The row cells.</summary>
+    [Parameter]
+    public RenderFragment<TItem>? RowTemplate { get; set; }
+
+    /// <summary>An accessible table caption.</summary>
+    [Parameter]
+    public string Caption { get; set; } = "Data table";
+
+    /// <summary>The empty-state title.</summary>
+    [Parameter]
+    public string EmptyTitle { get; set; } = "No records found";
+
+    /// <summary>The empty-state description.</summary>
+    [Parameter]
+    public string? EmptyDescription { get; set; }
+
+    /// <summary>Whether the table is loading.</summary>
+    [Parameter]
+    public bool Loading { get; set; }
+
+    /// <summary>The loading label.</summary>
+    [Parameter]
+    public string LoadingLabel { get; set; } = "Loading records...";
+}

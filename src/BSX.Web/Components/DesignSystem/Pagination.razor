@@ -1,0 +1,42 @@
+@if (TotalPages > 1)
+{
+    <nav class="pagination" aria-label="Pagination">
+        <button type="button"
+                class="button button-secondary"
+                disabled="@(Page <= 1)"
+                @onclick="Previous">
+            Previous
+        </button>
+        <span class="pagination-status" aria-current="page">Page @Page of @TotalPages</span>
+        <button type="button"
+                class="button button-secondary"
+                disabled="@(Page >= TotalPages)"
+                @onclick="Next">
+            Next
+        </button>
+    </nav>
+}
+
+@code {
+    /// <summary>The current one-based page.</summary>
+    [Parameter]
+    public int Page { get; set; } = 1;
+
+    /// <summary>The page size.</summary>
+    [Parameter]
+    public int PageSize { get; set; } = 20;
+
+    /// <summary>The total number of items.</summary>
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    /// <summary>Raised when the page changes.</summary>
+    [Parameter]
+    public EventCallback<int> PageChanged { get; set; }
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)Math.Max(1, PageSize)));
+
+    private Task Previous() => PageChanged.InvokeAsync(Page - 1);
+
+    private Task Next() => PageChanged.InvokeAsync(Page + 1);
+}

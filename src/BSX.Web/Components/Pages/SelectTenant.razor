@@ -1,0 +1,101 @@
+@page "/select-tenant"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject PendingLoginStore PendingLogins
+
+<PageTitle>Choose a workspace - BSX Platform</PageTitle>
+
+<div class="auth-page auth-page-single">
+    <section class="auth-card auth-card-wide" aria-labelledby="workspace-title">
+        <Brand />
+        <div class="auth-card-heading">
+            <p class="eyebrow">Workspace selection</p>
+            <h1 id="workspace-title">Choose a workspace</h1>
+            @if (_pending is not null)
+            {
+                <p>Signed in as <strong>@_pending.Email</strong>. Select the workspace you want to open.</p>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="alert alert-error" role="alert">
+                The selected workspace is not available. Choose another workspace.
+            </div>
+        }
+
+        @if (_pending is null)
+        {
+            <LoadingState Label="Preparing your workspaces..." />
+        }
+        else
+        {
+            <form method="post" action="/auth/select-tenant" class="tenant-form">
+                <AntiforgeryToken />
+                <input type="hidden" name="token" value="@Token" />
+                <fieldset class="tenant-options">
+                    <legend class="visually-hidden">Available workspaces</legend>
+                    @foreach (PendingTenant tenant in _pending.Tenants)
+                    {
+                        <label class="tenant-option">
+                            <input type="radio"
+                                   name="tenantId"
+                                   value="@tenant.TenantId"
+                                   checked="@(tenant.TenantId == _selectedTenantId)" />
+                            <span class="tenant-option-copy">
+                                <strong>Workspace @ShortId(tenant.TenantId)</strong>
+                                <span>@TenantMeta(tenant)</span>
+                            </span>
+                        </label>
+                    }
+                </fieldset>
+
+                <div class="form-actions">
+                    <button type="submit" class="button button-primary">Continue to workspace</button>
+                    <a class="button button-secondary" href="/login">Use another account</a>
+                </div>
+            </form>
+        }
+    </section>
+</div>
+
+@code {
+    /// <summary>The opaque pending-login selection token.</summary>
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    /// <summary>An optional selection error.</summary>
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    private PendingLogin? _pending;
+    private Guid _selectedTenantId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        _pending = PendingLogins.Load(Token);
+        if (_pending is null)
+        {
+            Navigation.NavigateTo("/login?error=selection_expired", replace: true);
+            return;
+        }
+
+        _selectedTenantId = _pending.Tenants.FirstOrDefault()?.TenantId ?? Guid.Empty;
+    }
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8].ToUpperInvariant();
+
+    private static string TenantMeta(PendingTenant tenant)
+        => tenant.JoinedOnUtc is { } joined
+            ? $"Member since {joined.ToLocalTime():MMM yyyy}"
+            : "Active membership";
+}

@@ -1,0 +1,27 @@
+@using BSX.Web.Authentication
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@if (_tenantId is { } tenantId)
+{
+    <span class="tenant-badge" title="@tenantId.ToString()">
+        <span class="tenant-badge-dot" aria-hidden="true"></span>
+        <span class="tenant-badge-copy">
+            <span class="tenant-badge-label">Workspace</span>
+            <strong>@ShortId(tenantId)</strong>
+        </span>
+    </span>
+}
+
+@code {
+    private Guid? _tenantId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _tenantId = Guid.TryParse(state.User.FindFirst(WebAuthDefaults.TenantIdClaim)?.Value, out Guid id)
+            ? id
+            : null;
+    }
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8].ToUpperInvariant();
+}

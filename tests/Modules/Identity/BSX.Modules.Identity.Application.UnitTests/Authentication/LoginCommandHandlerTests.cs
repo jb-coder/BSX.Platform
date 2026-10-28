@@ -19,11 +19,10 @@ public sealed class LoginCommandHandlerTests
     private readonly MutableTimeProvider _timeProvider = new(TestData.Now);
 
     private LoginCommandHandler CreateHandler(IRateLimiter? rateLimiter = null) => new(
-        _users,
         _sessions,
         _memberships,
         new PermissionResolver(_roles),
-        _passwordHasher,
+        new CredentialAuthenticator(_users, _passwordHasher, _unitOfWork, _timeProvider),
         new FakeSecureTokenGenerator(),
         new FakeRefreshTokenHasher(),
         new FakeAccessTokenIssuer(),

@@ -1,0 +1,56 @@
+<section class="card @CssClass">
+    @if (!string.IsNullOrWhiteSpace(Title) || Actions is not null)
+    {
+        <header class="card-header">
+            <div>
+                @if (!string.IsNullOrWhiteSpace(Title))
+                {
+                    <h2>@Title</h2>
+                }
+                @if (!string.IsNullOrWhiteSpace(Subtitle))
+                {
+                    <p>@Subtitle</p>
+                }
+            </div>
+            @if (Actions is not null)
+            {
+                <div class="card-actions">@Actions</div>
+            }
+        </header>
+    }
+
+    <div class="card-body">
+        @ChildContent
+    </div>
+
+    @if (Footer is not null)
+    {
+        <footer class="card-footer">@Footer</footer>
+    }
+</section>
+
+@code {
+    /// <summary>An optional card title.</summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>An optional card subtitle.</summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>Card body content.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Optional header actions.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>Optional footer content.</summary>
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
+
+    /// <summary>Additional CSS classes.</summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+}

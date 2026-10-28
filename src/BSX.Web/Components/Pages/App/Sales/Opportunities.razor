@@ -1,0 +1,12 @@
+@page "/app/sales/opportunities"
+@attribute [Authorize(Policy = PermissionPolicies.SalesOpportunitiesRead)]
+
+<PageTitle>Opportunities - BSX Platform</PageTitle>
+
+<PageHeader Title="Opportunities"
+            Subtitle="Revenue opportunities and their lifecycle." />
+
+<Card>
+    <EmptyState Title="Opportunity workspace is ready"
+                Description="The foundation is complete. Opportunity management screens will be added in a later slice." />
+</Card>

@@ -64,6 +64,8 @@ internal sealed class JwtAccessTokenValidator : IAccessTokenValidator
                 tenantId,
                 principalId,
                 validated.FindFirst(JwtAccessTokenIssuer.PrincipalTypeClaim)?.Value ?? string.Empty,
+                validated.FindFirst(JwtRegisteredClaimNames.Email)?.Value ?? string.Empty,
+                validated.FindFirst(JwtRegisteredClaimNames.Name)?.Value ?? string.Empty,
                 permissions,
                 validated.FindFirst(JwtAccessTokenIssuer.SecurityStampClaim)?.Value ?? string.Empty,
                 sessionId,

@@ -1,0 +1,12 @@
+@page "/app/sales/leads"
+@attribute [Authorize(Policy = PermissionPolicies.SalesLeadsRead)]
+
+<PageTitle>Leads - BSX Platform</PageTitle>
+
+<PageHeader Title="Leads"
+            Subtitle="Incoming leads and qualification." />
+
+<Card>
+    <EmptyState Title="Lead workspace is ready"
+                Description="The shell, workspace context and permissions are in place. Lead management screens will be added in the next slice." />
+</Card>

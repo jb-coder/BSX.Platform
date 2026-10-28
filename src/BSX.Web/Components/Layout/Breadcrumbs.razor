@@ -1,0 +1,81 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol>
+        @foreach (BreadcrumbItem item in _items)
+        {
+            <li>
+                @if (item.Href is not null)
+                {
+                    <a href="@item.Href">@item.Label</a>
+                }
+                else
+                {
+                    <span aria-current="page">@item.Label</span>
+                }
+            </li>
+        }
+    </ol>
+</nav>
+
+@code {
+    private IReadOnlyList<BreadcrumbItem> _items = [];
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        Rebuild();
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        Rebuild();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Rebuild()
+    {
+        string relative = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).TrimStart('/');
+        string path = relative.Split('?', '#')[0].TrimEnd('/');
+        if (path.Length == 0)
+        {
+            path = "/";
+        }
+
+        var items = new List<BreadcrumbItem> { new("Home", "/") };
+
+        if (string.Equals(path, "/", StringComparison.OrdinalIgnoreCase))
+        {
+            _items = items;
+            return;
+        }
+
+        NavigationItem? item = NavigationCatalog.FindByPath(path);
+        if (item is not null)
+        {
+            string? section = NavigationCatalog.FindSectionLabel(item.Href);
+            if (section is not null)
+            {
+                items.Add(new BreadcrumbItem(section, null));
+            }
+
+            items.Add(new BreadcrumbItem(item.Label, null));
+        }
+        else
+        {
+            items.Add(new BreadcrumbItem(path switch
+            {
+                "/access-denied" => "Access denied",
+                "/not-found" => "Not found",
+                _ => "Workspace",
+            }, null));
+        }
+
+        _items = items;
+    }
+
+    private sealed record BreadcrumbItem(string Label, string? Href);
+}

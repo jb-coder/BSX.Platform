@@ -1,0 +1,29 @@
+<header class="app-header">
+    <button type="button"
+            class="icon-button nav-toggle"
+            aria-label="@(NavigationOpen ? "Close navigation" : "Open navigation")"
+            aria-controls="app-sidebar"
+            aria-expanded="@(NavigationOpen ? "true" : "false")"
+            @onclick="OnToggleNavigation">
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+    </button>
+
+    <div class="header-context">
+        <Breadcrumbs />
+    </div>
+
+    <div class="header-actions">
+        <TenantBadge />
+        <UserMenu />
+    </div>
+</header>
+
+@code {
+    [Parameter]
+    public bool NavigationOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggleNavigation { get; set; }
+}

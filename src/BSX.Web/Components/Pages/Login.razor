@@ -1,0 +1,118 @@
+@page "/login"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Sign in - BSX Platform</PageTitle>
+
+<div class="auth-page">
+    <section class="auth-brand-panel" aria-label="BSX Platform">
+        <Brand />
+        <div class="auth-brand-copy">
+            <p class="eyebrow">Business operations, unified</p>
+            <h2 class="auth-brand-title">Run your customer and revenue operations in one secure workspace.</h2>
+            <p>Sign in to continue to your workspace.</p>
+        </div>
+        <ul class="auth-points">
+            <li>Tenant-isolated customer data</li>
+            <li>Role-based access to every area</li>
+            <li>Session-aware security</li>
+        </ul>
+    </section>
+
+    <section class="auth-card" aria-labelledby="signin-title">
+        <div class="auth-mobile-brand"><Brand /></div>
+        <div class="auth-card-heading">
+            <p class="eyebrow">Welcome back</p>
+            <h1 id="signin-title">Sign in to BSX</h1>
+            <p>Use the credentials provided by your workspace administrator.</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(StatusMessage))
+        {
+            <div class="alert @StatusTone" role="status">@StatusMessage</div>
+        }
+
+        <form method="post" action="/auth/login" class="auth-form">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+            <div class="field">
+                <label for="email">Email address</label>
+                <input id="email"
+                       name="email"
+                       type="email"
+                       autocomplete="username"
+                       inputmode="email"
+                       required
+                       autofocus />
+            </div>
+
+            <div class="field">
+                <label for="password">Password</label>
+                <input id="password"
+                       name="password"
+                       type="password"
+                       autocomplete="current-password"
+                       required />
+            </div>
+
+            <button type="submit" class="button button-primary button-full">Sign in</button>
+        </form>
+
+        <p class="auth-help">
+            No self-service sign-up in this release. Contact your workspace administrator for access.
+        </p>
+    </section>
+</div>
+
+@code {
+    /// <summary>The local return URL supplied by the auth challenge.</summary>
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    /// <summary>An authentication error key.</summary>
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    /// <summary>Whether the session expired.</summary>
+    [SupplyParameterFromQuery(Name = "expired")]
+    public bool Expired { get; set; }
+
+    /// <summary>Whether the user just signed out.</summary>
+    [SupplyParameterFromQuery(Name = "loggedOut")]
+    public bool LoggedOut { get; set; }
+
+    private string? StatusMessage => Error switch
+    {
+        "invalid_credentials" => "The email address or password is incorrect.",
+        "too_many_requests" => "Too many sign-in attempts. Try again in a minute.",
+        "invalid_tenant" => "That workspace is no longer available. Sign in again.",
+        "selection_expired" => "Your workspace selection expired. Sign in again.",
+        "invalid_request" => "The sign-in request was invalid. Please try again.",
+        _ when Expired => "Your session expired. Sign in again to continue.",
+        _ when LoggedOut => "You have been signed out.",
+        _ => null,
+    };
+
+    private string StatusTone => LoggedOut && string.IsNullOrWhiteSpace(Error) && !Expired
+        ? "alert-success"
+        : "alert-error";
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo(SafeReturnUrl(ReturnUrl), replace: true);
+        }
+    }
+
+    private static string SafeReturnUrl(string? returnUrl)
+        => string.IsNullOrWhiteSpace(returnUrl)
+            || !returnUrl.StartsWith("/", StringComparison.Ordinal)
+            || returnUrl.StartsWith("//", StringComparison.Ordinal)
+            ? "/"
+            : returnUrl;
+}

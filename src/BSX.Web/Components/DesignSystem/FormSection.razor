@@ -1,0 +1,26 @@
+<fieldset class="form-section">
+    <legend class="@(string.IsNullOrWhiteSpace(Title) ? "visually-hidden" : null)">
+        @(string.IsNullOrWhiteSpace(Title) ? "Section" : Title)
+    </legend>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <p class="form-section-description">@Description</p>
+    }
+    <div class="form-section-body">
+        @ChildContent
+    </div>
+</fieldset>
+
+@code {
+    /// <summary>The section title.</summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>An optional section description.</summary>
+    [Parameter]
+    public string? Description { get; set; }
+
+    /// <summary>The form controls.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

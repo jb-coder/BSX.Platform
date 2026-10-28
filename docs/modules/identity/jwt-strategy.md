@@ -32,13 +32,15 @@ request (Rule 10: choose the simpler solution). The trade-off is documented unde
 | `exp` | Expiry | Short lifetime. |
 | `email` | User email | Convenience; not authoritative for authorization. |
 | `name` | Display name | UI convenience. |
-| `role` | Role names (0..n) | Optional; administration/UI only. |
-| `permission` | Effective permissions (0..n) | Authorization gate (ADR-012). |
-| `sstamp` | Security stamp | Detects security-relevant changes. |
-| `tenant` | Reserved | Multi-tenancy; unused until that phase. |
+| `principal_id` | Principal identifier | Stable principal mapping. |
+| `principal_type` | User or service account | Caller kind. |
+| `permissions` | Effective permissions (0..n) | Authorization gate (ADR-012). |
+| `security_stamp` | Security stamp | Detects security-relevant changes. |
+| `session_id` | Session identifier | Session correlation and revocation. |
+| `tenant_id` | Active tenant | Multi-tenant request scope. |
 
-The reserved permission claim type is `permission` (ADR-012). Authorization is evaluated against
-`permission`, never against `role`.
+The permission claim type is `permissions` (ADR-012). Authorization is evaluated against
+`permissions`, never against role names.
 
 ---
 

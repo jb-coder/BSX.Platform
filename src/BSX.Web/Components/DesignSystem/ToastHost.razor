@@ -1,0 +1,32 @@
+@inject IToastService Toasts
+@implements IDisposable
+
+<div class="toast-host" aria-live="polite" aria-atomic="false">
+    @foreach (ToastMessage toast in Toasts.Messages)
+    {
+        <div class="toast toast-@toast.Kind.ToString().ToLowerInvariant()"
+             role="@(toast.Kind is ToastKind.Error or ToastKind.Warning ? "alert" : "status")">
+            <div class="toast-copy">
+                <strong>@toast.Title</strong>
+                @if (!string.IsNullOrWhiteSpace(toast.Message))
+                {
+                    <span>@toast.Message</span>
+                }
+            </div>
+            <button type="button"
+                    class="toast-dismiss"
+                    aria-label="Dismiss notification"
+                    @onclick="() => Toasts.Dismiss(toast.Id)">
+                &times;
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized() => Toasts.Changed += OnToastsChanged;
+
+    public void Dispose() => Toasts.Changed -= OnToastsChanged;
+
+    private void OnToastsChanged() => _ = InvokeAsync(StateHasChanged);
+}

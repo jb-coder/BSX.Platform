@@ -19,6 +19,8 @@ public sealed class JwtTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             "User",
+            "admin@example.com",
+            "Admin User",
             ["crm.customers.read", "crm.customers.create"],
             "stamp-value",
             Guid.NewGuid());
@@ -30,6 +32,8 @@ public sealed class JwtTests
         principal.TenantId.Should().Be(descriptor.TenantId);
         principal.PrincipalId.Should().Be(descriptor.PrincipalId);
         principal.PrincipalType.Should().Be("User");
+        principal.Email.Should().Be(descriptor.Email);
+        principal.Name.Should().Be(descriptor.Name);
         principal.Permissions.Should().BeEquivalentTo(descriptor.Permissions);
         principal.SecurityStamp.Should().Be("stamp-value");
         principal.SessionId.Should().Be(descriptor.SessionId);
@@ -44,7 +48,7 @@ public sealed class JwtTests
         var validator = new JwtAccessTokenValidator(keyRing, options);
 
         AccessToken token = issuer.Issue(new AccessTokenDescriptor(
-            Guid.NewGuid(), null, Guid.NewGuid(), "User", [], "stamp", Guid.NewGuid()));
+            Guid.NewGuid(), null, Guid.NewGuid(), "User", "user@example.com", "User", [], "stamp", Guid.NewGuid()));
 
         validator.TryValidate(token.Token + "x", out _).Should().BeFalse();
     }

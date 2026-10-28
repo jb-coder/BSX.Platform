@@ -7,7 +7,6 @@ using BSX.Modules.Identity.Domain.Enums;
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Sessions;
 using BSX.Modules.Identity.Domain.Users;
-using BSX.Modules.Identity.Domain.Users.Credentials;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.SharedKernel.Results;
 
@@ -19,16 +18,10 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
     private const int MaxActiveSessions = 10;
     private const string UserPrincipalType = "User";
 
-    // A fixed, valid PBKDF2 hash used to equalize login timing for unknown users (no enumeration).
-    private static readonly PasswordHash DummyPasswordHash = PasswordHash.From(
-        "210000.AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        "pbkdf2-sha256");
-
-    private readonly IUserRepository _users;
     private readonly IUserSessionRepository _sessions;
     private readonly ITenantMembershipRepository _memberships;
     private readonly PermissionResolver _permissionResolver;
-    private readonly IPasswordHasher _passwordHasher;
+    private readonly CredentialAuthenticator _authenticator;
     private readonly ISecureTokenGenerator _tokenGenerator;
     private readonly IRefreshTokenHasher _refreshTokenHasher;
     private readonly IAccessTokenIssuer _accessTokenIssuer;
@@ -39,11 +32,10 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
 
     /// <summary>Initializes a new instance of the <see cref="LoginCommandHandler"/> class.</summary>
     public LoginCommandHandler(
-        IUserRepository users,
         IUserSessionRepository sessions,
         ITenantMembershipRepository memberships,
         PermissionResolver permissionResolver,
-        IPasswordHasher passwordHasher,
+        CredentialAuthenticator authenticator,
         ISecureTokenGenerator tokenGenerator,
         IRefreshTokenHasher refreshTokenHasher,
         IAccessTokenIssuer accessTokenIssuer,
@@ -52,11 +44,10 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         IRateLimiter rateLimiter,
         RateLimitOptions rateLimitOptions)
     {
-        _users = users;
         _sessions = sessions;
         _memberships = memberships;
         _permissionResolver = permissionResolver;
-        _passwordHasher = passwordHasher;
+        _authenticator = authenticator;
         _tokenGenerator = tokenGenerator;
         _refreshTokenHasher = refreshTokenHasher;
         _accessTokenIssuer = accessTokenIssuer;
@@ -67,7 +58,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
     }
 
     /// <inheritdoc />
-    public async Task<Result<AuthenticationTokensResponse>> HandleAsync(LoginCommand request, CancellationToken cancellationToken = default)
+    public async Task<Result<AuthenticationTokensResponse>> HandleAsync(
+        LoginCommand request,
+        CancellationToken cancellationToken = default)
     {
         string partitionKey = $"login:{request.Email?.Trim().ToLowerInvariant()}";
         if (!_rateLimiter.Acquire(partitionKey, _rateLimitOptions.Login).IsAllowed)
@@ -75,48 +68,29 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
             return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.TooManyRequests);
         }
 
-        var emailResult = Email.Create(request.Email);
-        if (emailResult.IsFailure)
+        Result<User> authenticated = await _authenticator
+            .AuthenticateAsync(request.Email, request.Password, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (authenticated.IsFailure)
         {
-            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidCredentials);
+            return Result.Failure<AuthenticationTokensResponse>(authenticated.Error);
         }
 
-        User? user = await _users.GetByEmailAsync(emailResult.Value, cancellationToken).ConfigureAwait(false);
-        if (user is null)
-        {
-            // Equalize timing with the credential-present path and return a generic failure.
-            _passwordHasher.Verify(request.Password, DummyPasswordHash);
-            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidCredentials);
-        }
-
+        User user = authenticated.Value;
         DateTimeOffset nowUtc = _timeProvider.GetUtcNow();
 
-        if (user.Status == UserStatus.Locked && user.LockoutEndUtc is { } lockoutEnd && nowUtc >= lockoutEnd)
-        {
-            user.Unlock();
-        }
+        Result<TenantMembership?> membershipResult = await ResolveMembershipAsync(
+            user,
+            request.TenantId,
+            cancellationToken).ConfigureAwait(false);
 
-        if (user.Status is UserStatus.Disabled or UserStatus.Pending or UserStatus.Locked)
-        {
-            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidCredentials);
-        }
-
-        PasswordCredential? credential = user.Credentials.OfType<PasswordCredential>().FirstOrDefault();
-        if (credential is null || !_passwordHasher.Verify(request.Password, credential.Hash))
-        {
-            user.RecordAccessFailure(nowUtc);
-            await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidCredentials);
-        }
-
-        Result<TenantMembership?> membershipResult = await ResolveMembershipAsync(user, request.TenantId, cancellationToken).ConfigureAwait(false);
         if (membershipResult.IsFailure)
         {
             return Result.Failure<AuthenticationTokensResponse>(membershipResult.Error);
         }
 
         TenantMembership? membership = membershipResult.Value;
-        user.ResetAccessFailures();
 
         IReadOnlyCollection<string> permissions = await _permissionResolver
             .ResolveAsync(user, membership, cancellationToken)
@@ -147,6 +121,8 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
             membership?.TenantId.Value,
             user.Principal.Value,
             UserPrincipalType,
+            user.Email.Value,
+            user.Name.Value,
             permissions,
             user.SecurityStamp.Value,
             session.Id.Value));
@@ -157,7 +133,10 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         return Result.Success(new AuthenticationTokensResponse(accessToken.Token, accessToken.ExpiresAtUtc, refreshToken));
     }
 
-    private async Task<Result<TenantMembership?>> ResolveMembershipAsync(User user, Guid? tenantId, CancellationToken cancellationToken)
+    private async Task<Result<TenantMembership?>> ResolveMembershipAsync(
+        User user,
+        Guid? tenantId,
+        CancellationToken cancellationToken)
     {
         if (tenantId is { } requestedTenant)
         {
@@ -182,7 +161,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
             .ListByUserAsync(user.Id, cancellationToken)
             .ConfigureAwait(false);
 
-        List<TenantMembership> active = memberships.Where(membership => membership.Status == MembershipStatus.Active).ToList();
+        List<TenantMembership> active = memberships
+            .Where(membership => membership.Status == MembershipStatus.Active)
+            .ToList();
 
         if (active.Count == 0)
         {
@@ -197,7 +178,10 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         return Result.Failure<TenantMembership?>(IdentityApplicationErrors.InvalidTenant);
     }
 
-    private async Task EnforceSessionLimitAsync(UserId userId, DateTimeOffset nowUtc, CancellationToken cancellationToken)
+    private async Task EnforceSessionLimitAsync(
+        UserId userId,
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken)
     {
         IReadOnlyCollection<UserSession> sessions = await _sessions
             .ListActiveByUserAsync(userId, cancellationToken)
@@ -210,7 +194,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
             return;
         }
 
-        foreach (UserSession oldest in active.OrderBy(session => session.CreatedOnUtc).Take(active.Count - MaxActiveSessions + 1))
+        foreach (UserSession oldest in active
+            .OrderBy(session => session.CreatedOnUtc)
+            .Take(active.Count - MaxActiveSessions + 1))
         {
             oldest.Revoke(nowUtc, "session_limit");
         }

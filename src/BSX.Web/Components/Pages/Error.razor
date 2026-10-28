@@ -1,36 +1,33 @@
-﻿@page "/Error"
+@page "/Error"
+@layout AuthLayout
 @using System.Diagnostics
 
-<PageTitle>Error</PageTitle>
+<PageTitle>Error - BSX Platform</PageTitle>
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="auth-page auth-page-single">
+    <section class="auth-card auth-card-wide" aria-labelledby="error-title">
+        <Brand />
+        <div class="auth-card-heading">
+            <p class="eyebrow">Unexpected error</p>
+            <h1 id="error-title">Something went wrong</h1>
+            <p>We could not complete that request. Try again, or return to your workspace.</p>
+        </div>
+        @if (ShowRequestId)
+        {
+            <p class="muted-text">Reference: <code>@RequestId</code></p>
+        }
+        <a class="button button-primary" href="/">Go to your workspace</a>
+    </section>
+</div>
 
-@if (ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@RequestId</code>
-    </p>
-}
-
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
-
-@code{
+@code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
     private string? RequestId { get; set; }
+
     private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
-    protected override void OnInitialized() =>
-        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+    protected override void OnInitialized()
+        => RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
 }

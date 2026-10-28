@@ -1,0 +1,15 @@
+<AuthorizeView>
+    <Authorized>
+        <div class="content-narrow">
+            <ErrorState Title="Access denied"
+                        Message="You do not have permission to open this area. Contact your workspace administrator if you need access.">
+                <Action>
+                    <a class="button button-primary" href="/">Back to workspace</a>
+                </Action>
+            </ErrorState>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <RedirectToLogin />
+    </NotAuthorized>
+</AuthorizeView>

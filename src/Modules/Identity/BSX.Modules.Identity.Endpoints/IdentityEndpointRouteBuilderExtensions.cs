@@ -1,6 +1,7 @@
 using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.Modules.Identity.Application.Authentication.CompletePasswordReset;
+using BSX.Modules.Identity.Application.Authentication.DiscoverTenantOptions;
 using BSX.Modules.Identity.Application.Authentication.Login;
 using BSX.Modules.Identity.Application.Authentication.Logout;
 using BSX.Modules.Identity.Application.Authentication.LogoutAll;
@@ -52,6 +53,15 @@ public static class IdentityEndpointRouteBuilderExtensions
 
             return IdentityResults.From(await sender.SendAsync(command, cancellationToken));
         }).AllowAnonymous();
+
+        group.MapPost("/login/tenants", async (
+            TenantDiscoveryRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+            IdentityResults.From(await sender.SendAsync(
+                new DiscoverTenantOptionsCommand(request.Email, request.Password),
+                cancellationToken)))
+            .AllowAnonymous();
 
         group.MapPost("/refresh", async (RefreshRequest request, ISender sender, CancellationToken cancellationToken) =>
             IdentityResults.From(await sender.SendAsync(new RefreshTokenCommand(request.RefreshToken), cancellationToken)))
@@ -117,6 +127,9 @@ public static class IdentityEndpointRouteBuilderExtensions
 
     /// <summary>Login request.</summary>
     public sealed record LoginRequest(string Email, string Password, Guid? TenantId);
+
+    /// <summary>Tenant discovery request used before selecting a workspace.</summary>
+    public sealed record TenantDiscoveryRequest(string Email, string Password);
 
     /// <summary>Refresh request.</summary>
     public sealed record RefreshRequest(string RefreshToken);

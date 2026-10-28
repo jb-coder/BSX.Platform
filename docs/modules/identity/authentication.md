@@ -124,7 +124,7 @@ Follows [ADR-016](../../decisions/ADR-016-Password-Reset-Security-Strategy.md).
 
 ## Not implemented
 
-API endpoints, Blazor UI and MFA remain out of scope. MFA hooks into login before token issuance.
+Identity administration UI and MFA remain out of scope. MFA hooks into login before token issuance.
 
 ## References
 

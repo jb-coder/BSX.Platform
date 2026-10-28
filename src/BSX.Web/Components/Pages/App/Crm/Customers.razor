@@ -1,0 +1,12 @@
+@page "/app/crm/customers"
+@attribute [Authorize(Policy = PermissionPolicies.CrmCustomersRead)]
+
+<PageTitle>Customers - BSX Platform</PageTitle>
+
+<PageHeader Title="Customers"
+            Subtitle="Customer records, contacts and addresses." />
+
+<Card>
+    <EmptyState Title="Customer workspace is ready"
+                Description="The shell, workspace context and permissions are in place. Customer management screens will be added in the next slice." />
+</Card>

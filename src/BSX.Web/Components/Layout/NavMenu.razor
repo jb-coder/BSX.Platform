@@ -1,0 +1,42 @@
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<nav class="nav-menu" aria-label="Primary navigation">
+    @foreach (NavigationSection section in _sections)
+    {
+        <section class="nav-section" aria-labelledby="@SectionId(section.Label)">
+            <h2 id="@SectionId(section.Label)" class="nav-section-title">@section.Label</h2>
+            <ul>
+                @foreach (NavigationItem item in section.Items)
+                {
+                    <li>
+                        <NavLink class="nav-link"
+                                 href="@item.Href"
+                                 Match="NavLinkMatch.Prefix"
+                                 @onclick="NotifyNavigated">
+                            <span class="nav-icon nav-icon-@item.Icon" aria-hidden="true"></span>
+                            <span>@item.Label</span>
+                        </NavLink>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+</nav>
+
+@code {
+    [Parameter]
+    public EventCallback OnNavigate { get; set; }
+
+    private IReadOnlyList<NavigationSection> _sections = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _sections = NavigationCatalog.For(NavigationCatalog.PermissionsOf(state.User));
+    }
+
+    private Task NotifyNavigated() => OnNavigate.InvokeAsync();
+
+    private static string SectionId(string label)
+        => $"nav-{label.ToLowerInvariant().Replace(' ', '-')}";
+}

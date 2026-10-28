@@ -40,3 +40,16 @@ tenant (`TenantGuard`).
 - Serialise refreshes per session to avoid consuming the grace window unnecessarily; on `409`
   (concurrent refresh), retry once.
 - Do not send refresh tokens over insecure channels; they are bearer credentials.
+
+## Blazor web session
+
+- Browser routes use an HttpOnly cookie session; `/identity`, `/crm`, `/sales` and `/health` keep
+  using JWT bearer authentication.
+- The web cookie contains identity/permission claims, not raw tokens. The refresh token is held in a
+  separate HttpOnly cookie and is rotated by cookie validation.
+- **Data Protection keys must be shared** across all web instances (`DataProtection` key ring) so
+  authentication cookies remain readable after a rolling deployment or behind a load balancer.
+  Persist the key ring in the deployment secret store or a shared protected store.
+- Workspace selection is held in an in-process pending store for five minutes. A multi-instance
+  deployment must replace it with a distributed store or the selection may fail between nodes.
+- Keep TLS enabled; cookies use `Secure` when the request is HTTPS.

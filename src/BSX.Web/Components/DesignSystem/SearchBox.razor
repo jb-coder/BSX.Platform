@@ -1,0 +1,50 @@
+<div class="search-box">
+    <label class="visually-hidden" for="@_inputId">@Label</label>
+    <span class="search-box-icon" aria-hidden="true"></span>
+    <input id="@_inputId"
+           type="search"
+           value="@Value"
+           placeholder="@Placeholder"
+           disabled="@Disabled"
+           autocomplete="off"
+           @oninput="OnInput" />
+    @if (!string.IsNullOrEmpty(Value))
+    {
+        <button type="button"
+                class="search-box-clear"
+                aria-label="Clear search"
+                disabled="@Disabled"
+                @onclick="Clear">
+            &times;
+        </button>
+    }
+</div>
+
+@code {
+    private readonly string _inputId = $"search-{Guid.NewGuid():N}";
+
+    /// <summary>The current search text.</summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>Raised when the search text changes.</summary>
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>The accessible input label.</summary>
+    [Parameter]
+    public string Label { get; set; } = "Search";
+
+    /// <summary>The placeholder text.</summary>
+    [Parameter]
+    public string Placeholder { get; set; } = "Search...";
+
+    /// <summary>Whether the input is disabled.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private Task OnInput(ChangeEventArgs args)
+        => ValueChanged.InvokeAsync(args.Value?.ToString());
+
+    private Task Clear() => ValueChanged.InvokeAsync(string.Empty);
+}

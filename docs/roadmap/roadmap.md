@@ -40,7 +40,7 @@ Identity
 - JWT
 - Refresh Tokens
 
-Status: Domain, Application, Infrastructure (EF Core + PostgreSQL, outbox, auditing, soft delete), authentication, JWT, sessions, authorization, password reset, tenant isolation and HTTP API implemented and hardened. Identity is production-ready (single instance); UI pending.
+Status: Domain, Application, Infrastructure (EF Core + PostgreSQL, outbox, auditing, soft delete), authentication, JWT, sessions, authorization, password reset, tenant isolation and HTTP API implemented and hardened. Identity is production-ready (single instance); web sign-in, workspace selection and shell are implemented, administration screens are pending.
 
 
 ---
@@ -53,7 +53,7 @@ CRM
 - Contacts
 - Categories
 
-Status: Domain, Application, Infrastructure and HTTP API implemented, tested and release-hardened (CQRS, tenant isolation, auditing, soft delete, optimistic concurrency mapped to `409`, projections, health, PostgreSQL parity suite). Blazor UI, reporting and analytics pending.
+Status: Domain, Application, Infrastructure and HTTP API implemented, tested and release-hardened (CQRS, tenant isolation, auditing, soft delete, optimistic concurrency mapped to `409`, projections, health, PostgreSQL parity suite). Web foundation, authentication UX and navigation are implemented; CRM business screens, reporting and analytics are pending.
 
 ---
 

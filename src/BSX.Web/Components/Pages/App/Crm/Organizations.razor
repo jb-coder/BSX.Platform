@@ -1,0 +1,12 @@
+@page "/app/crm/organizations"
+@attribute [Authorize(Policy = PermissionPolicies.CrmOrganizationsRead)]
+
+<PageTitle>Organizations - BSX Platform</PageTitle>
+
+<PageHeader Title="Organizations"
+            Subtitle="Organizations and their billing details." />
+
+<Card>
+    <EmptyState Title="Organization workspace is ready"
+                Description="The foundation is complete. Organization management screens will be added in a later slice." />
+</Card>

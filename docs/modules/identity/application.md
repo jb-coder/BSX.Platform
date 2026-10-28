@@ -19,6 +19,7 @@ means the operation declares no `[RequirePermission]` and is reachable without a
 | Command | Intent | Permission | Domain events |
 | --- | --- | --- | --- |
 | `AuthenticateUserCommand` | Verify credentials and start a session. | Anonymous | `UserSignedIn`, `SessionStarted`, `RefreshTokenIssued` |
+| `DiscoverTenantOptionsCommand` | Verify credentials and return active workspace memberships for the web chooser. | Anonymous | None |
 | `RefreshTokenCommand` | Rotate a refresh token and issue new tokens. | Anonymous | `RefreshTokenRotated` (or `RefreshTokenReuseDetected`, `SessionRevoked`) |
 | `LogoutCommand` | Revoke the current session. | Authenticated | `UserSignedOut`, `SessionRevoked` |
 | `LogoutAllCommand` | Revoke all sessions for the current user. | Authenticated | `SessionRevoked` (per session) |

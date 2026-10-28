@@ -113,6 +113,8 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
             session.TenantId?.Value,
             user.Principal.Value,
             UserPrincipalType,
+            user.Email.Value,
+            user.Name.Value,
             permissions,
             user.SecurityStamp.Value,
             session.Id.Value));

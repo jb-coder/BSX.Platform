@@ -16,6 +16,7 @@ using BSX.Modules.Sales.Endpoints;
 using BSX.Modules.Sales.Endpoints.HealthChecks;
 using BSX.Modules.Sales.Infrastructure.DependencyInjection;
 using BSX.Persistence.DependencyInjection;
+using BSX.Web.Authentication;
 using BSX.Web.Components;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
@@ -61,6 +62,7 @@ builder.Services.AddIdentityJwt(options =>
     JwtOptionsConfiguration.Apply(options, builder.Environment.IsDevelopment());
 });
 builder.Services.AddIdentityAuthentication();
+builder.Services.AddWebAuthentication();
 builder.Services.AddIdentityHealthChecks();
 
 if (builder.Configuration.GetValue("Identity:Database:VerifySchema", false))
@@ -161,6 +163,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 app.MapIdentityEndpoints();
 app.MapCrmEndpoints();
 app.MapSalesEndpoints();
+app.MapWebAuthEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

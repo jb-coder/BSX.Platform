@@ -1,7 +1,50 @@
-﻿@page "/"
+@page "/"
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<PageTitle>BSX Platform</PageTitle>
+<PageTitle>Workspace - BSX Platform</PageTitle>
 
-<h1>BSX Platform</h1>
+<PageHeader Title="@_greeting"
+            Subtitle="Choose an area from the navigation to continue." />
 
-<p>The core of modern business.</p>
+<div class="landing-grid">
+    @foreach (NavigationSection section in _sections)
+    {
+        <Card Title="@section.Label" Subtitle="@SectionDescription(section)">
+            <ul class="landing-links">
+                @foreach (NavigationItem item in section.Items)
+                {
+                    <li>
+                        <a class="landing-link" href="@item.Href">
+                            <span class="landing-link-copy">
+                                <strong>@item.Label</strong>
+                                <span>@item.Description</span>
+                            </span>
+                            <span class="landing-link-arrow" aria-hidden="true"></span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </Card>
+    }
+</div>
+
+@code {
+    private string _greeting = "Welcome to your workspace";
+    private IReadOnlyList<NavigationSection> _sections = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        string? name = state.User.Identity?.Name;
+        _greeting = string.IsNullOrWhiteSpace(name) ? "Welcome to your workspace" : $"Welcome, {name}";
+        _sections = NavigationCatalog.For(NavigationCatalog.PermissionsOf(state.User));
+    }
+
+    private static string SectionDescription(NavigationSection section) => section.Label switch
+    {
+        "CRM" => "Customers and organizations you work with.",
+        "Sales" => "Leads and opportunities across the revenue lifecycle.",
+        _ => "Your account and active sessions.",
+    };
+}

@@ -1,0 +1,67 @@
+using BSX.Web.Authorization;
+using BSX.Web.Notifications;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace BSX.Web.Authentication;
+
+/// <summary>Registers the web authentication, authorization and application services.</summary>
+public static class WebAuthenticationExtensions
+{
+    /// <summary>Adds cookie authentication for the Blazor app, JWT for the APIs and permission policies.</summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The same service collection for chaining.</returns>
+    public static IServiceCollection AddWebAuthentication(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = WebAuthDefaults.SmartScheme;
+                options.DefaultAuthenticateScheme = WebAuthDefaults.SmartScheme;
+                options.DefaultChallengeScheme = WebAuthDefaults.SmartScheme;
+                options.DefaultSignInScheme = WebAuthDefaults.CookieScheme;
+            })
+            .AddPolicyScheme(WebAuthDefaults.SmartScheme, "BSX smart authentication", options =>
+            {
+                options.ForwardDefaultSelector = SelectAuthenticationScheme;
+            })
+            .AddCookie(WebAuthDefaults.CookieScheme, options =>
+            {
+                options.Cookie.Name = WebAuthDefaults.AuthCookieName;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                options.LoginPath = "/login";
+                options.AccessDeniedPath = "/access-denied";
+                options.ReturnUrlParameter = "returnUrl";
+                options.ExpireTimeSpan = WebAuthDefaults.SessionLifetime;
+                options.SlidingExpiration = false;
+                options.EventsType = typeof(WebCookieAuthenticationEvents);
+            });
+
+        services.TryAddScoped<WebCookieAuthenticationEvents>();
+        services.TryAddSingleton<PendingLoginStore>();
+        services.TryAddScoped<IToastService, ToastService>();
+        services.AddCascadingAuthenticationState();
+
+        services.AddAuthorization();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IAuthorizationHandler, PermissionAuthorizationHandler>());
+
+        return services;
+    }
+
+    private static string SelectAuthenticationScheme(HttpContext context)
+        => IsApiRequest(context.Request.Path)
+            ? JwtBearerDefaults.AuthenticationScheme
+            : WebAuthDefaults.CookieScheme;
+
+    private static bool IsApiRequest(PathString path)
+        => path.StartsWithSegments("/identity")
+            || path.StartsWithSegments("/crm")
+            || path.StartsWithSegments("/sales")
+            || path.StartsWithSegments("/health");
+}

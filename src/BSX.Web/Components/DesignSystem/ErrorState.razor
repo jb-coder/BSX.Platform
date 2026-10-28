@@ -1,0 +1,28 @@
+<div class="error-state" role="alert">
+    <div class="error-state-mark" aria-hidden="true">!</div>
+    <div>
+        <h2>@Title</h2>
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <p>@Message</p>
+        }
+        @if (Action is not null)
+        {
+            <div class="error-state-action">@Action</div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>The error title.</summary>
+    [Parameter]
+    public string Title { get; set; } = "Something went wrong";
+
+    /// <summary>The user-facing error message.</summary>
+    [Parameter]
+    public string? Message { get; set; }
+
+    /// <summary>An optional recovery action.</summary>
+    [Parameter]
+    public RenderFragment? Action { get; set; }
+}

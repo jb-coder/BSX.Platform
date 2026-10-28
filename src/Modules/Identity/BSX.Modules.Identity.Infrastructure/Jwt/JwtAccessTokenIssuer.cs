@@ -50,6 +50,8 @@ internal sealed class JwtAccessTokenIssuer : IAccessTokenIssuer
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(PrincipalIdClaim, descriptor.PrincipalId.ToString()),
             new(PrincipalTypeClaim, descriptor.PrincipalType),
+            new(JwtRegisteredClaimNames.Email, descriptor.Email),
+            new(JwtRegisteredClaimNames.Name, descriptor.Name),
             new(SecurityStampClaim, descriptor.SecurityStamp),
             new(SessionIdClaim, descriptor.SessionId.ToString()),
         };

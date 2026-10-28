@@ -23,6 +23,7 @@ public static class IdentityApplicationServiceCollectionExtensions
         services.AddBuildingBlocks(typeof(IdentityApplicationServiceCollectionExtensions).Assembly);
         services.TryAddScoped<PermissionResolver>();
         services.TryAddScoped<TenantGuard>();
+        services.TryAddScoped<CredentialAuthenticator>();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IPermissionCatalogSource, IdentityPermissionCatalog>());
         return services;

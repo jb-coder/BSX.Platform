@@ -1,0 +1,15 @@
+@page "/access-denied"
+@layout MainLayout
+@attribute [Authorize]
+
+<PageTitle>Access denied - BSX Platform</PageTitle>
+
+<PageHeader Title="Access denied"
+            Subtitle="Your account does not have permission for this area." />
+
+<ErrorState Title="You cannot open this page"
+            Message="Ask your workspace administrator to grant the required permission, or return to your workspace.">
+    <Action>
+        <a class="button button-primary" href="/">Back to workspace</a>
+    </Action>
+</ErrorState>

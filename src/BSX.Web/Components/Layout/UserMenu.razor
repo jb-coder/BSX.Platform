@@ -1,0 +1,76 @@
+@using BSX.Web.Authentication
+@implements IDisposable
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<div class="user-menu">
+    <button type="button"
+            class="user-menu-trigger"
+            aria-haspopup="menu"
+            aria-controls="user-menu-panel"
+            aria-expanded="@(_open ? "true" : "false")"
+            @onclick="Toggle">
+        <span class="user-avatar" aria-hidden="true">@Initials</span>
+        <span class="user-menu-copy">
+            <strong>@DisplayName</strong>
+            <span>@Email</span>
+        </span>
+        <span class="user-menu-chevron" aria-hidden="true"></span>
+    </button>
+
+    <div id="user-menu-panel" class="user-menu-panel" role="menu" hidden="@(!_open)">
+        <a role="menuitem" href="/app/admin/profile">Profile</a>
+        <a role="menuitem" href="/app/admin/sessions">Sessions</a>
+        <form method="post" action="/auth/logout">
+            <AntiforgeryToken />
+            <button type="submit" role="menuitem" class="user-menu-logout">Sign out</button>
+        </form>
+    </div>
+</div>
+
+@code {
+    private bool _open;
+    private string _name = "User";
+    private string _email = string.Empty;
+
+    private string DisplayName => string.IsNullOrWhiteSpace(_name) ? _email : _name;
+
+    private string Email => _email;
+
+    private string Initials
+    {
+        get
+        {
+            string[] parts = DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length switch
+            {
+                0 => "?",
+                1 => parts[0][..1].ToUpperInvariant(),
+                _ => string.Concat(parts[0][..1], parts[^1][..1]).ToUpperInvariant(),
+            };
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _name = state.User.FindFirst(WebAuthDefaults.NameClaim)?.Value ?? string.Empty;
+        _email = state.User.FindFirst(WebAuthDefaults.EmailClaim)?.Value ?? string.Empty;
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (!_open)
+        {
+            return;
+        }
+
+        _open = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Toggle() => _open = !_open;
+}

@@ -1,0 +1,41 @@
+@page "/app/admin/profile"
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Profile - BSX Platform</PageTitle>
+
+<PageHeader Title="Profile"
+            Subtitle="Your account and active workspace." />
+
+<Card Title="Account">
+    <dl class="definition-list">
+        <div>
+            <dt>Name</dt>
+            <dd>@_name</dd>
+        </div>
+        <div>
+            <dt>Email</dt>
+            <dd>@_email</dd>
+        </div>
+        <div>
+            <dt>Workspace</dt>
+            <dd>@_tenant</dd>
+        </div>
+    </dl>
+</Card>
+
+@code {
+    private string _name = string.Empty;
+    private string _email = string.Empty;
+    private string _tenant = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _name = state.User.FindFirst(WebAuthDefaults.NameClaim)?.Value ?? "Not provided";
+        _email = state.User.FindFirst(WebAuthDefaults.EmailClaim)?.Value ?? "Not provided";
+        _tenant = Guid.TryParse(state.User.FindFirst(WebAuthDefaults.TenantIdClaim)?.Value, out Guid tenantId)
+            ? tenantId.ToString()
+            : "No workspace selected";
+    }
+}

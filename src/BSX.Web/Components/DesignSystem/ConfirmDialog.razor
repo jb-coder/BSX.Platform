@@ -1,0 +1,73 @@
+@if (Open)
+{
+    <div class="dialog-backdrop"></div>
+    <div @ref="_dialog"
+         class="dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="@_titleId"
+         aria-describedby="@_descriptionId"
+         tabindex="-1"
+         @onkeydown="OnKeyDown">
+        <h2 id="@_titleId">@Title</h2>
+        <p id="@_descriptionId">@Message</p>
+        <div class="dialog-actions">
+            <button type="button" class="button button-secondary" @onclick="Cancel">
+                @CancelText
+            </button>
+            <button type="button" class="button button-danger" @onclick="Confirm">
+                @ConfirmText
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly string _titleId = $"dialog-title-{Guid.NewGuid():N}";
+    private readonly string _descriptionId = $"dialog-description-{Guid.NewGuid():N}";
+    private ElementReference _dialog;
+    private bool _wasOpen;
+
+    /// <summary>Whether the dialog is visible.</summary>
+    [Parameter]
+    public bool Open { get; set; }
+
+    /// <summary>The dialog title.</summary>
+    [Parameter]
+    public string Title { get; set; } = "Confirm action";
+
+    /// <summary>The dialog message.</summary>
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>The confirm button label.</summary>
+    [Parameter]
+    public string ConfirmText { get; set; } = "Confirm";
+
+    /// <summary>The cancel button label.</summary>
+    [Parameter]
+    public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>Raised when the action is confirmed.</summary>
+    [Parameter]
+    public EventCallback Confirm { get; set; }
+
+    /// <summary>Raised when the dialog is cancelled.</summary>
+    [Parameter]
+    public EventCallback Cancel { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Open && !_wasOpen)
+        {
+            await _dialog.FocusAsync();
+        }
+
+        _wasOpen = Open;
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs args)
+        => string.Equals(args.Key, "Escape", StringComparison.Ordinal)
+            ? Cancel.InvokeAsync()
+            : Task.CompletedTask;
+}

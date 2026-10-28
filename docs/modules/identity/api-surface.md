@@ -15,12 +15,13 @@ query; it maps `Result` to HTTP via `IErrorMapper` (ADR-011) and contains no bus
 
 | Method | Path | Auth | Request | Success |
 | --- | --- | --- | --- | --- |
-| POST | `/identity/auth/login` | Anonymous | `{ email, password }` | `200` `{ accessToken, tokenType, expiresIn, refreshToken }` |
-| POST | `/identity/auth/refresh` | Anonymous | `{ refreshToken }` | `200` same token payload |
-| POST | `/identity/auth/logout` | Authenticated | `{ refreshToken }` | `204` |
-| POST | `/identity/auth/logout-all` | Authenticated | — | `204` |
-| POST | `/identity/auth/password/forgot` | Anonymous | `{ email }` | `202` (always, anti-enumeration) |
-| POST | `/identity/auth/password/reset` | Anonymous | `{ token, newPassword }` | `204` |
+| POST | `/identity/login` | Anonymous | `{ email, password, tenantId? }` | `200` `{ accessToken, accessTokenExpiresAtUtc, refreshToken }` |
+| POST | `/identity/login/tenants` | Anonymous | `{ email, password }` | `200` active tenant options for the web workspace chooser |
+| POST | `/identity/refresh` | Anonymous | `{ refreshToken }` | `200` same token payload |
+| POST | `/identity/logout` | Anonymous | `{ refreshToken }` | `204` |
+| POST | `/identity/logout-all` | Authenticated | - | `204` |
+| POST | `/identity/password-reset/request` | Anonymous | `{ email }` | `204`, or `503` when delivery is unavailable |
+| POST | `/identity/password-reset/complete` | Anonymous | `{ token, newPassword }` | `204` |
 
 Login and refresh are anonymous because the credential is in the body. Failures return
 `Authentication` (401); invalid reset tokens return `Failure` (422).

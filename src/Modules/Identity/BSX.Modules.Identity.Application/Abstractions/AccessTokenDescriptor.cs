@@ -6,6 +6,8 @@ public sealed record AccessTokenDescriptor(
     Guid? TenantId,
     Guid PrincipalId,
     string PrincipalType,
+    string Email,
+    string Name,
     IReadOnlyCollection<string> Permissions,
     string SecurityStamp,
     Guid SessionId);

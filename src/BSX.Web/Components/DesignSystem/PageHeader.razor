@@ -1,0 +1,37 @@
+<header class="page-header">
+    <div class="page-header-copy">
+        @if (Breadcrumbs is not null)
+        {
+            @Breadcrumbs
+        }
+        <h1>@Title</h1>
+        @if (!string.IsNullOrWhiteSpace(Subtitle))
+        {
+            <p class="page-subtitle">@Subtitle</p>
+        }
+    </div>
+    @if (Actions is not null)
+    {
+        <div class="page-header-actions">
+            @Actions
+        </div>
+    }
+</header>
+
+@code {
+    /// <summary>The page title.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>An optional supporting sentence.</summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>Optional breadcrumb content.</summary>
+    [Parameter]
+    public RenderFragment? Breadcrumbs { get; set; }
+
+    /// <summary>Optional page-level actions.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+}

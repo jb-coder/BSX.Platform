@@ -6,6 +6,8 @@ public sealed record ValidatedAccessToken(
     Guid? TenantId,
     Guid PrincipalId,
     string PrincipalType,
+    string Email,
+    string Name,
     IReadOnlyCollection<string> Permissions,
     string SecurityStamp,
     Guid SessionId,
