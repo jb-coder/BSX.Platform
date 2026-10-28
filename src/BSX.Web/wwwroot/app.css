@@ -1423,3 +1423,168 @@ h2 {
         text-align: center;
     }
 }
+
+/* CRM customer workflows */
+.content-medium {
+    width: min(48rem, 100%);
+}
+
+.list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.list-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+}
+
+.list-search .search-box {
+    flex: 1 1 18rem;
+}
+
+.result-summary {
+    margin-bottom: 0.75rem;
+    color: var(--bsx-text-muted);
+    font-size: 0.82rem;
+}
+
+.table-link {
+    font-weight: 700;
+}
+
+.table-primary {
+    color: var(--bsx-text);
+    font-weight: 600;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.status-active {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: var(--bsx-success-soft);
+    color: #a7f3d0;
+}
+
+.status-inactive {
+    border-color: rgba(130, 146, 168, 0.35);
+    background: rgba(130, 146, 168, 0.12);
+    color: var(--bsx-text-secondary);
+}
+
+.status-primary {
+    border-color: var(--bsx-primary-soft);
+    background: var(--bsx-primary-soft);
+    color: #bfdbfe;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr));
+    gap: 1rem;
+}
+
+.detail-card-spaced {
+    margin-top: 1rem;
+}
+
+.address-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 0.85rem;
+}
+
+.address-card {
+    padding: 1rem;
+    border: 1px solid var(--bsx-border);
+    border-radius: var(--bsx-radius);
+    background: var(--bsx-background-subtle);
+}
+
+.address-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.65rem;
+}
+
+.address-card address {
+    margin: 0;
+    color: var(--bsx-text-secondary);
+    font-style: normal;
+    line-height: 1.7;
+}
+
+.field-hint,
+.field-optional {
+    color: var(--bsx-text-muted);
+    font-size: 0.78rem;
+    font-weight: 400;
+}
+
+.field-optional {
+    margin-left: 0.25rem;
+}
+
+.button-quiet {
+    border-color: transparent;
+    background: transparent;
+    color: var(--bsx-text-secondary);
+}
+
+.button-quiet:hover {
+    background: var(--bsx-surface-hover);
+    color: var(--bsx-text);
+}
+
+.button.is-disabled {
+    pointer-events: none;
+    opacity: 0.55;
+}
+
+.alert {
+    display: grid;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.customer-code-note {
+    display: grid;
+    gap: 0.15rem;
+    margin-bottom: 1.25rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--bsx-border);
+    border-radius: var(--bsx-radius-sm);
+    background: var(--bsx-background-subtle);
+}
+
+.customer-code-note span:last-child {
+    color: var(--bsx-text-muted);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+    .list-search .button {
+        flex: 1 1 auto;
+    }
+}

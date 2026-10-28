@@ -63,5 +63,8 @@ public sealed class NavigationCatalogTests
         item.Should().NotBeNull();
         item!.Label.Should().Be("Customers");
         NavigationCatalog.FindSectionLabel(item.Href).Should().Be("CRM");
+
+        NavigationCatalog.FindByPath("/app/crm/customers/00000000-0000-0000-0000-000000000000/edit")
+            .Should().Be(item);
     }
 }

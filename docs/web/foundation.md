@@ -1,11 +1,12 @@
 # Web Foundation
 
-Status: **Application foundation implemented.** CRM, Sales and Inventory screens are not
-implemented in this slice.
+Status: **Application foundation implemented. The first CRM customer journey is implemented;**
+organizations, Sales and Inventory screens are not implemented in this slice.
 
 The web foundation turns `BSX.Web` from a host into a SaaS application shell: authentication,
 workspace selection, permission-aware navigation, a responsive layout and a reusable design
-system. It deliberately stops before business screens.
+system. The first business slice is the CRM customer journey, documented in
+[crm-customers.md](crm-customers.md).
 
 ---
 
@@ -19,11 +20,13 @@ Implemented:
 - Permission-aware CRM, Sales and Administration navigation.
 - Shared design-system components.
 - Toasts, loading, empty, error and confirmation patterns.
+- CRM customer list, detail, create and edit screens.
 - Component, navigation, authorization, accessibility and endpoint tests.
 
 Not implemented:
 
-- Customer, organization, lead or opportunity business screens.
+- Organization, lead or opportunity business screens.
+- Customer contact and address management.
 - Inventory UI.
 - Reporting, analytics or dashboards.
 - Tenant creation or tenant settings.
@@ -218,6 +221,7 @@ The foundation defines patterns for future business screens:
 
 `tests/Integration/BSX.Web.IntegrationTests/WebFoundation` covers:
 
+- CRM customer list, detail, create and edit screens (see [crm-customers.md](crm-customers.md)).
 - Design-system component rendering.
 - Navigation visibility by permission and Inventory exclusion.
 - Permission policy and handler behavior.
@@ -232,9 +236,10 @@ Sales endpoints after the smart authentication scheme change.
 
 ## Future Work
 
-- Business screens for CRM and Sales.
+- Remaining CRM and Sales business screens (organizations, leads, opportunities).
 - Session list/revoke UI, profile editing and password changes.
 - Tenant settings, display names and branding.
 - Distributed pending-login storage for multi-instance deployments.
-- A server-side API client/token accessor for business screens that call module APIs.
+- A decision on continuing in-process application dispatch for business screens versus a typed
+  server-side API client and token accessor.
 - Broader browser, mobile and assistive-technology testing.

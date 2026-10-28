@@ -1,0 +1,202 @@
+@page "/app/crm/customers/{Id:guid}"
+@attribute [Authorize(Policy = PermissionPolicies.CrmCustomersRead)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.GetCustomerById
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(_customer?.Name ?? "Customer") - BSX Platform</PageTitle>
+
+@if (_customer is null)
+{
+    <PageHeader Title="Customer not found"
+                Subtitle="The customer may have been removed or may belong to another workspace." />
+
+    <Card>
+        <EmptyState Title="Customer not found"
+                    Description="Return to the customer list to choose another record.">
+            <Action>
+                <a class="button button-primary" href="/app/crm/customers">Back to customers</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@_customer.Name"
+                Subtitle="@($"Customer {_customer.Code}")">
+        <Actions>
+            <a class="button button-secondary" href="/app/crm/customers">Back to customers</a>
+            @if (_canEdit)
+            {
+                <a class="button button-primary" href="@($"/app/crm/customers/{_customer.Id}/edit")">Edit customer</a>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (Created)
+    {
+        <div class="alert alert-success" role="status">
+            Customer created successfully.
+        </div>
+    }
+    else if (Updated)
+    {
+        <div class="alert alert-success" role="status">
+            Customer changes saved.
+        </div>
+    }
+
+    <div class="detail-grid">
+        <Card Title="Overview" Subtitle="Core customer information.">
+            <dl class="definition-list">
+                <div>
+                    <dt>Customer code</dt>
+                    <dd>@_customer.Code</dd>
+                </div>
+                <div>
+                    <dt>Status</dt>
+                    <dd><span class="@CustomerDisplay.StatusClass(_customer.Status)">@_customer.Status</span></dd>
+                </div>
+                <div>
+                    <dt>Tax identifier</dt>
+                    <dd>@Display(_customer.TaxIdentifier)</dd>
+                </div>
+                <div>
+                    <dt>Organization</dt>
+                    <dd>@CustomerDisplay.OrganizationLabel(_customer.OrganizationId)</dd>
+                </div>
+            </dl>
+        </Card>
+
+        <Card Title="Contacts"
+              Subtitle="People associated with this customer.">
+            @if (_customer.Contacts.Count == 0)
+            {
+                <EmptyState Title="No contacts yet"
+                            Description="Contact management is not available in this release." />
+            }
+            else
+            {
+                <DataTable Items="_customer.Contacts" Caption="Customer contacts">
+                    <HeaderTemplate>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Primary</th>
+                    </HeaderTemplate>
+                    <RowTemplate Context="contact">
+                        <td><span class="table-primary">@contact.Name</span></td>
+                        <td>@Display(contact.Email)</td>
+                        <td>@Display(contact.PhoneNumber)</td>
+                        <td>
+                            @if (contact.IsPrimary)
+                            {
+                                <span class="status-badge status-primary">Primary</span>
+                            }
+                        </td>
+                    </RowTemplate>
+                </DataTable>
+            }
+        </Card>
+    </div>
+
+    <Card Title="Addresses" Subtitle="Billing and shipping locations." CssClass="detail-card-spaced">
+        @if (_customer.Addresses.Count == 0)
+        {
+            <EmptyState Title="No addresses yet"
+                        Description="Address management is not available in this release." />
+        }
+        else
+        {
+            <div class="address-grid">
+                @foreach (AddressDto address in _customer.Addresses)
+                {
+                    <article class="address-card">
+                        <header>
+                            <strong>@address.Type</strong>
+                            @if (address.IsDefault)
+                            {
+                                <span class="status-badge status-primary">Default</span>
+                            }
+                        </header>
+                        <address>
+                            @address.Line1<br />
+                            @if (!string.IsNullOrWhiteSpace(address.Line2))
+                            {
+                                @address.Line2
+                                <br />
+                            }
+                            @if (!string.IsNullOrWhiteSpace(address.Region))
+                            {
+                                @($"{address.City}, {address.Region}")
+                                <br />
+                            }
+                            else
+                            {
+                                @address.City
+                                <br />
+                            }
+                            @if (!string.IsNullOrWhiteSpace(address.PostalCode))
+                            {
+                                @address.PostalCode
+                                <br />
+                            }
+                            @address.Country
+                        </address>
+                    </article>
+                }
+            </div>
+        }
+    </Card>
+}
+
+@code {
+    private CustomerDto? _customer;
+    private bool _canEdit;
+
+    /// <summary>The customer identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    /// <summary>Whether the customer was just created.</summary>
+    [SupplyParameterFromQuery(Name = "created")]
+    public bool Created { get; set; }
+
+    /// <summary>Whether the customer was just updated.</summary>
+    [SupplyParameterFromQuery(Name = "updated")]
+    public bool Updated { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        _canEdit = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(CrmPermissionCodes.CustomersUpdate, StringComparer.Ordinal);
+
+        Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(Id));
+
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "CRM.Customer.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        _customer = result.Value;
+    }
+
+    private static string Display(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "Not provided" : value;
+}

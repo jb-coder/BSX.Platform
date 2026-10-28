@@ -1,0 +1,136 @@
+@page "/app/crm/customers/{Id:guid}/edit"
+@attribute [Authorize(Policy = PermissionPolicies.CrmCustomersUpdate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.GetCustomerById
+@using BSX.Modules.Crm.Application.Customers.UpdateCustomer
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Http
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Edit customer - BSX Platform</PageTitle>
+
+@if (_customer is null)
+{
+    <PageHeader Title="Customer not found"
+                Subtitle="The customer may have been removed or may belong to another workspace." />
+
+    <Card>
+        <EmptyState Title="Customer not found"
+                    Description="Return to the customer list to choose another record.">
+            <Action>
+                <a class="button button-primary" href="/app/crm/customers">Back to customers</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@($"Edit {_customer.Name}")"
+                Subtitle="Update the customer name or tax identifier.">
+        <Actions>
+            <a class="button button-secondary" href="@($"/app/crm/customers/{_customer.Id}")">Cancel</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="content-medium">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>Changes could not be saved.</strong>
+                <span>@_error</span>
+                @if (_conflict)
+                {
+                    <a href="@($"/app/crm/customers/{_customer.Id}/edit")">Reload customer</a>
+                }
+            </div>
+        }
+
+        <Card>
+            <div class="customer-code-note">
+                <span class="eyebrow">Customer code</span>
+                <strong>@_customer.Code</strong>
+                <span>This identifier is permanent.</span>
+            </div>
+
+            @if (Form is not null)
+            {
+                <EditForm Model="Form" OnValidSubmit="UpdateAsync">
+                    <DataAnnotationsValidator />
+                    <CustomerFormFields Model="Form" IsEdit="true" />
+
+                    <div class="form-actions">
+                        <button type="submit" class="button button-primary">Save changes</button>
+                        <a class="button button-secondary" href="@($"/app/crm/customers/{_customer.Id}")">Cancel</a>
+                    </div>
+                </EditForm>
+            }
+        </Card>
+    </div>
+}
+
+@code {
+    private CustomerDto? _customer;
+    private string? _error;
+    private bool _conflict;
+
+    /// <summary>The customer identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    /// <summary>The customer form model.</summary>
+    public CustomerFormModel? Form { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(Id));
+
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "CRM.Customer.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        _customer = result.Value;
+        Form ??= new CustomerFormModel
+        {
+            Code = _customer.Code,
+            Name = _customer.Name,
+            TaxIdentifier = _customer.TaxIdentifier,
+        };
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (Form is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _conflict = false;
+
+        Result result = await Sender.SendAsync(
+            new UpdateCustomerCommand(Id, Form.Name, Form.TaxIdentifier));
+
+        if (result.IsFailure)
+        {
+            _conflict = result.Error.Code == "CRM.ConcurrencyConflict";
+            _error = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        Navigation.NavigateTo($"/app/crm/customers/{Id}?updated=true");
+    }
+}

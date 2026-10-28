@@ -1,0 +1,69 @@
+@page "/app/crm/customers/new"
+@attribute [Authorize(Policy = PermissionPolicies.CrmCustomersCreate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.CreateCustomer
+@using BSX.SharedKernel.Results
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>New customer - BSX Platform</PageTitle>
+
+<PageHeader Title="New customer"
+            Subtitle="Create a customer record for this workspace.">
+    <Actions>
+        <a class="button button-secondary" href="/app/crm/customers">Cancel</a>
+    </Actions>
+</PageHeader>
+
+<div class="content-medium">
+    <Card>
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>Customer could not be created.</strong>
+                <span>@_error</span>
+            </div>
+        }
+
+        <EditForm Model="Form" OnValidSubmit="CreateAsync">
+            <DataAnnotationsValidator />
+            <CustomerFormFields Model="Form" />
+
+            <div class="form-actions">
+                <button type="submit" class="button button-primary">Create customer</button>
+                <a class="button button-secondary" href="/app/crm/customers">Cancel</a>
+            </div>
+        </EditForm>
+    </Card>
+</div>
+
+@code {
+    private string? _error;
+
+    /// <summary>The customer form model.</summary>
+    public CustomerFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+    }
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+
+        Result<Guid> result = await Sender.SendAsync(
+            new CreateCustomerCommand(Form.Code, Form.Name, Form.TaxIdentifier));
+
+        if (result.IsFailure)
+        {
+            _error = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        Navigation.NavigateTo($"/app/crm/customers/{result.Value}?created=true");
+    }
+}

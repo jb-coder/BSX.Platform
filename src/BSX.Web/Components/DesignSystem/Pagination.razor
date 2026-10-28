@@ -1,19 +1,43 @@
 @if (TotalPages > 1)
 {
     <nav class="pagination" aria-label="Pagination">
-        <button type="button"
-                class="button button-secondary"
-                disabled="@(Page <= 1)"
-                @onclick="Previous">
-            Previous
-        </button>
+        @if (PageHrefFactory is null)
+        {
+            <button type="button"
+                    class="button button-secondary"
+                    disabled="@(Page <= 1)"
+                    @onclick="Previous">
+                Previous
+            </button>
+        }
+        else
+        {
+            <a class="button button-secondary @(Page <= 1 ? "is-disabled" : null)"
+               href="@(Page <= 1 ? null : PageHrefFactory(Page - 1))"
+               aria-disabled="@(Page <= 1 ? "true" : "false")">
+                Previous
+            </a>
+        }
+
         <span class="pagination-status" aria-current="page">Page @Page of @TotalPages</span>
-        <button type="button"
-                class="button button-secondary"
-                disabled="@(Page >= TotalPages)"
-                @onclick="Next">
-            Next
-        </button>
+
+        @if (PageHrefFactory is null)
+        {
+            <button type="button"
+                    class="button button-secondary"
+                    disabled="@(Page >= TotalPages)"
+                    @onclick="Next">
+                Next
+            </button>
+        }
+        else
+        {
+            <a class="button button-secondary @(Page >= TotalPages ? "is-disabled" : null)"
+               href="@(Page >= TotalPages ? null : PageHrefFactory(Page + 1))"
+               aria-disabled="@(Page >= TotalPages ? "true" : "false")">
+                Next
+            </a>
+        }
     </nav>
 }
 
@@ -30,9 +54,16 @@
     [Parameter]
     public int TotalCount { get; set; }
 
-    /// <summary>Raised when the page changes.</summary>
+    /// <summary>Raised when the page changes in interactive mode.</summary>
     [Parameter]
     public EventCallback<int> PageChanged { get; set; }
+
+    /// <summary>
+    /// An optional page URL factory. When supplied, the current page is rendered as links for
+    /// server-rendered GET paging instead of event-driven buttons.
+    /// </summary>
+    [Parameter]
+    public Func<int, string>? PageHrefFactory { get; set; }
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)Math.Max(1, PageSize)));
 

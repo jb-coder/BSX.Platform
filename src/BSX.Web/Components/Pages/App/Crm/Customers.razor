@@ -1,12 +1,185 @@
 @page "/app/crm/customers"
 @attribute [Authorize(Policy = PermissionPolicies.CrmCustomersRead)]
+@using System.Globalization
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.ListCustomers
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Customers - BSX Platform</PageTitle>
 
 <PageHeader Title="Customers"
-            Subtitle="Customer records, contacts and addresses." />
+            Subtitle="Search and manage the customers in this workspace.">
+    <Actions>
+        @if (_canCreate)
+        {
+            <a class="button button-primary" href="/app/crm/customers/new">New customer</a>
+        }
+    </Actions>
+</PageHeader>
 
 <Card>
-    <EmptyState Title="Customer workspace is ready"
-                Description="The shell, workspace context and permissions are in place. Customer management screens will be added in the next slice." />
+    <div class="list-toolbar">
+        <form method="get" action="/app/crm/customers" role="search" class="list-search">
+            <SearchBox Name="search"
+                       @bind-Value="Search"
+                       Label="Search customers"
+                       Placeholder="Search by code or name"
+                       ShowClearButton="false" />
+            <input type="hidden" name="size" value="@PageSize" />
+            <button type="submit" class="button button-secondary">Search</button>
+            @if (!string.IsNullOrWhiteSpace(Search))
+            {
+                <a class="button button-quiet" href="/app/crm/customers">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingState Label="Loading customers..." />
+    }
+    else if (_error is not null)
+    {
+        <ErrorState Title="Customers could not be loaded"
+                    Message="@_error">
+            <Action>
+                <a class="button button-secondary" href="@CurrentUrl">Try again</a>
+            </Action>
+        </ErrorState>
+    }
+    else if (_result is not null)
+    {
+        <p class="result-summary" aria-live="polite">
+            @ResultSummary
+        </p>
+
+        @if (_result.Items.Count == 0)
+        {
+            <EmptyState Title="@EmptyTitle"
+                        Description="@EmptyDescription">
+                <Action>
+                    @if (_canCreate)
+                    {
+                        <a class="button button-primary" href="/app/crm/customers/new">Create a customer</a>
+                    }
+                </Action>
+            </EmptyState>
+        }
+        else
+        {
+            <DataTable Items="_result.Items"
+                       Caption="Customer results"
+                       LoadingLabel="Loading customers...">
+                <HeaderTemplate>
+                    <th scope="col">Code</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Organization</th>
+                </HeaderTemplate>
+                <RowTemplate Context="customer">
+                    <td>
+                        <a class="table-link" href="@($"/app/crm/customers/{customer.Id}")">
+                            @customer.Code
+                        </a>
+                    </td>
+                    <td><span class="table-primary">@customer.Name</span></td>
+                    <td><span class="@CustomerDisplay.StatusClass(customer.Status)">@customer.Status</span></td>
+                    <td>@CustomerDisplay.OrganizationLabel(customer.OrganizationId)</td>
+                </RowTemplate>
+            </DataTable>
+
+            <Pagination Page="_result.Page"
+                        PageSize="_result.Size"
+                        TotalCount="_result.TotalCount"
+                        PageHrefFactory="BuildPageUrl" />
+        }
+    }
 </Card>
+
+@code {
+    private PagedResult<CustomerSummaryDto>? _result;
+    private string? _error;
+    private bool _loading = true;
+    private bool _canCreate;
+
+    /// <summary>The requested one-based page.</summary>
+    [SupplyParameterFromQuery(Name = "page")]
+    public int Page { get; set; } = 1;
+
+    /// <summary>The requested page size.</summary>
+    [SupplyParameterFromQuery(Name = "size")]
+    public int PageSize { get; set; } = 20;
+
+    /// <summary>The optional customer search term.</summary>
+    [SupplyParameterFromQuery(Name = "search")]
+    public string? Search { get; set; }
+
+    private string CurrentUrl => BuildPageUrl(Page);
+
+    private string ResultSummary => _result!.TotalCount == 1
+        ? "1 customer"
+        : $"{_result.TotalCount:N0} customers";
+
+    private string EmptyTitle => string.IsNullOrWhiteSpace(Search)
+        ? "No customers yet"
+        : "No customers match your search";
+
+    private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
+        ? "Create the first customer for this workspace to get started."
+        : $"No customer code or name contains \"{Search.Trim()}\".";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        _loading = true;
+        _error = null;
+
+        _canCreate = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(CrmPermissionCodes.CustomersCreate, StringComparer.Ordinal);
+
+        Result<PagedResult<CustomerSummaryDto>> result = await Sender.SendAsync(
+            new ListCustomersQuery(Page, PageSize, Search));
+
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _error = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        _result = result.Value;
+        Page = result.Value.Page;
+        PageSize = result.Value.Size;
+    }
+
+    private string BuildPageUrl(int page)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["page"] = page.ToString(CultureInfo.InvariantCulture),
+        };
+
+        if (!string.IsNullOrWhiteSpace(Search))
+        {
+            query["search"] = Search.Trim();
+        }
+
+        if (PageSize > 0)
+        {
+            query["size"] = PageSize.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return QueryHelpers.AddQueryString("/app/crm/customers", query);
+    }
+
+}

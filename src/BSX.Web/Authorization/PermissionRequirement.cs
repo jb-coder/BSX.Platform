@@ -11,6 +11,12 @@ public static class PermissionPolicies
     /// <summary>Policy for reading CRM customers.</summary>
     public const string CrmCustomersRead = Prefix + "crm.customers.read";
 
+    /// <summary>Policy for creating CRM customers.</summary>
+    public const string CrmCustomersCreate = Prefix + "crm.customers.create";
+
+    /// <summary>Policy for updating CRM customers.</summary>
+    public const string CrmCustomersUpdate = Prefix + "crm.customers.update";
+
     /// <summary>Policy for reading CRM organizations.</summary>
     public const string CrmOrganizationsRead = Prefix + "crm.organizations.read";
 

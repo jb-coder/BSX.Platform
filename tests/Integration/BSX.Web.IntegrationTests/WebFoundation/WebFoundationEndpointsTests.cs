@@ -42,7 +42,7 @@ public sealed class WebFoundationEndpointsTests : IClassFixture<IdentityApiFacto
 
         HttpResponseMessage customers = await client.GetAsync("/app/crm/customers");
         customers.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await customers.Content.ReadAsStringAsync()).Should().Contain("Customer workspace is ready");
+        (await customers.Content.ReadAsStringAsync()).Should().Contain("Search and manage the customers");
     }
 
     [Fact]

@@ -108,7 +108,9 @@ public static class NavigationCatalog
 
         return Sections
             .SelectMany(section => section.Items)
-            .FirstOrDefault(item => string.Equals(item.Href, normalized, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(item =>
+                string.Equals(item.Href, normalized, StringComparison.OrdinalIgnoreCase)
+                || normalized.StartsWith($"{item.Href}/", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Returns the section label for an item, when known.</summary>

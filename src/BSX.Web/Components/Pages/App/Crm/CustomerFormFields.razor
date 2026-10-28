@@ -1,0 +1,46 @@
+<FormSection Title="Customer details"
+             Description="Use a unique code for this workspace. The code cannot be changed after creation.">
+    @if (!IsEdit)
+    {
+        <div class="field">
+            <label for="code">Customer code</label>
+            <InputText id="code"
+                       @bind-Value="Model.Code"
+                       autocomplete="off"
+                       spellcheck="false"
+                       placeholder="ACME-001" />
+            <span class="field-hint">Letters, numbers, hyphens, underscores or periods.</span>
+            <ValidationMessage For="@(() => Model.Code)" />
+        </div>
+    }
+
+    <div class="field">
+        <label for="name">Customer name</label>
+        <InputText id="name"
+                   @bind-Value="Model.Name"
+                   autocomplete="organization"
+                   placeholder="Acme Corporation" />
+        <ValidationMessage For="@(() => Model.Name)" />
+    </div>
+
+    <div class="field">
+        <label for="tax-identifier">Tax identifier <span class="field-optional">Optional</span></label>
+        <InputText id="tax-identifier"
+                   @bind-Value="Model.TaxIdentifier"
+                   autocomplete="off"
+                   spellcheck="false"
+                   placeholder="VAT-123456" />
+        <span class="field-hint">VAT, tax or national registration number.</span>
+        <ValidationMessage For="@(() => Model.TaxIdentifier)" />
+    </div>
+</FormSection>
+
+@code {
+    /// <summary>The customer form model.</summary>
+    [Parameter, EditorRequired]
+    public CustomerFormModel Model { get; set; } = new();
+
+    /// <summary>Whether the immutable customer code is hidden because it is already known.</summary>
+    [Parameter]
+    public bool IsEdit { get; set; }
+}

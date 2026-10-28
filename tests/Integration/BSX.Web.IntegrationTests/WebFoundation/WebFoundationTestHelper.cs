@@ -17,6 +17,30 @@ internal static class WebFoundationTestHelper
             HandleCookies = true,
         });
 
+    public static async Task<HttpClient> SignInAsync(
+        IdentityApiFactory factory,
+        string email,
+        string password)
+    {
+        HttpClient client = CreateClient(factory);
+        string antiforgery = await GetAntiforgeryTokenAsync(client, "/login");
+
+        HttpResponseMessage login = await PostFormAsync(
+            client,
+            "/auth/login",
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = antiforgery,
+                ["email"] = email,
+                ["password"] = password,
+                ["returnUrl"] = "/",
+            });
+
+        login.StatusCode.Should().Be(System.Net.HttpStatusCode.Redirect);
+
+        return client;
+    }
+
     public static async Task<string> GetAntiforgeryTokenAsync(HttpClient client, string path)
     {
         HttpResponseMessage response = await client.GetAsync(path);

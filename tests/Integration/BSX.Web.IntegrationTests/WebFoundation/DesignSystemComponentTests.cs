@@ -65,12 +65,16 @@ public sealed class DesignSystemComponentTests
         {
             [nameof(SearchBox.Label)] = "Search customers",
             [nameof(SearchBox.Placeholder)] = "Name or code",
+            [nameof(SearchBox.Name)] = "search",
+            [nameof(SearchBox.ShowClearButton)] = false,
         });
 
         html.Should().Contain("<label class=\"visually-hidden\"");
         html.Should().Contain("Search customers");
         html.Should().Contain("type=\"search\"");
         html.Should().Contain("placeholder=\"Name or code\"");
+        html.Should().Contain("name=\"search\"");
+        html.Should().NotContain("search-box-clear");
     }
 
     [Fact]
@@ -99,6 +103,22 @@ public sealed class DesignSystemComponentTests
         html.Should().Contain("aria-label=\"Pagination\"");
         html.Should().Contain("Page 1 of 3");
         html.Should().Contain("disabled");
+    }
+
+    [Fact]
+    public async Task Pagination_ShouldRenderLinks_WhenPageUrlFactoryIsSupplied()
+    {
+        string html = await RenderAsync<Pagination>(new Dictionary<string, object?>
+        {
+            [nameof(Pagination.Page)] = 2,
+            [nameof(Pagination.PageSize)] = 20,
+            [nameof(Pagination.TotalCount)] = 60,
+            [nameof(Pagination.PageHrefFactory)] = (Func<int, string>)(page => $"/app/crm/customers?page={page}"),
+        });
+
+        html.Should().Contain("href=\"/app/crm/customers?page=1\"");
+        html.Should().Contain("href=\"/app/crm/customers?page=3\"");
+        html.Should().NotContain("<button");
     }
 
     [Fact]

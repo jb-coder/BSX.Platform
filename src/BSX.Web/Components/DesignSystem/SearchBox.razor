@@ -2,13 +2,14 @@
     <label class="visually-hidden" for="@_inputId">@Label</label>
     <span class="search-box-icon" aria-hidden="true"></span>
     <input id="@_inputId"
+           name="@Name"
            type="search"
            value="@Value"
            placeholder="@Placeholder"
            disabled="@Disabled"
            autocomplete="off"
            @oninput="OnInput" />
-    @if (!string.IsNullOrEmpty(Value))
+    @if (ShowClearButton && !string.IsNullOrEmpty(Value))
     {
         <button type="button"
                 class="search-box-clear"
@@ -30,6 +31,14 @@
     /// <summary>Raised when the search text changes.</summary>
     [Parameter]
     public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>The optional form field name, enabling progressive-enhancement GET forms.</summary>
+    [Parameter]
+    public string? Name { get; set; }
+
+    /// <summary>Whether the interactive clear button is shown.</summary>
+    [Parameter]
+    public bool ShowClearButton { get; set; } = true;
 
     /// <summary>The accessible input label.</summary>
     [Parameter]

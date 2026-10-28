@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.Web.Authorization;
 using BSX.Web.Notifications;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -42,6 +43,9 @@ public static class WebAuthenticationExtensions
             });
 
         services.TryAddScoped<WebCookieAuthenticationEvents>();
+        services.TryAddScoped<WebCurrentUser>();
+        services.Replace(ServiceDescriptor.Scoped<ICurrentUser>(
+            provider => provider.GetRequiredService<WebCurrentUser>()));
         services.TryAddSingleton<PendingLoginStore>();
         services.TryAddScoped<IToastService, ToastService>();
         services.AddCascadingAuthenticationState();
