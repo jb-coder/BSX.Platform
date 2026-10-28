@@ -1,0 +1,56 @@
+<FormSection Title="Contact details"
+             Description="A contact must have at least one reachable channel: an email address or a phone number.">
+    <div class="field">
+        <label for="contact-name">Contact name</label>
+        <InputText id="contact-name"
+                   @bind-Value="Model.Name"
+                   autocomplete="name"
+                   placeholder="Jane Doe" />
+        <ValidationMessage For="@(() => Model.Name)" />
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="contact-email">
+                Email address <span class="field-optional">Optional</span>
+            </label>
+            <InputText id="contact-email"
+                       type="email"
+                       @bind-Value="Model.Email"
+                       autocomplete="email"
+                       inputmode="email"
+                       placeholder="jane@example.com" />
+            <ValidationMessage For="@(() => Model.Email)" />
+        </div>
+
+        <div class="field">
+            <label for="contact-phone">
+                Phone number <span class="field-optional">Optional</span>
+            </label>
+            <InputText id="contact-phone"
+                       @bind-Value="Model.PhoneNumber"
+                       autocomplete="tel"
+                       inputmode="tel"
+                       placeholder="+1 555 0100" />
+            <ValidationMessage For="@(() => Model.PhoneNumber)" />
+        </div>
+    </div>
+
+    @if (ShowPrimary)
+    {
+        <div class="field field-checkbox">
+            <InputCheckbox id="contact-primary" @bind-Value="Model.IsPrimary" />
+            <label for="contact-primary">Make this the primary contact</label>
+        </div>
+    }
+</FormSection>
+
+@code {
+    /// <summary>The contact form model.</summary>
+    [Parameter, EditorRequired]
+    public ContactFormModel Model { get; set; } = new();
+
+    /// <summary>Whether the primary-contact option is shown (add mode only).</summary>
+    [Parameter]
+    public bool ShowPrimary { get; set; }
+}

@@ -1588,3 +1588,223 @@ h2 {
         flex: 1 1 auto;
     }
 }
+
+/* CRM organizations, contacts and addresses */
+.button-small {
+    min-height: 2.1rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+}
+
+.button-danger-ghost {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: transparent;
+    color: #fca5a5;
+}
+
+.button-danger-ghost:hover:not(:disabled) {
+    background: var(--bsx-danger-soft);
+    color: #fecaca;
+}
+
+.link-button {
+    justify-self: start;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--bsx-primary);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+}
+
+.link-button:hover {
+    text-decoration: underline;
+}
+
+.text-muted {
+    color: var(--bsx-text-muted);
+}
+
+.detail-stack {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.action-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.table-actions-column {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.field-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.field-checkbox input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--bsx-primary);
+}
+
+.field-checkbox label {
+    margin: 0;
+    cursor: pointer;
+}
+
+.assignment-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.assignment-summary > div:first-child {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.assignment-summary strong {
+    font-size: 1rem;
+}
+
+.selector-panel {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--bsx-border);
+}
+
+.selector-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.selector-header h3 {
+    margin-bottom: 0.2rem;
+    font-size: 1rem;
+}
+
+.selector-header p {
+    margin: 0;
+    color: var(--bsx-text-muted);
+    font-size: 0.82rem;
+}
+
+.selector-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.selector-search .search-box {
+    flex: 1 1 16rem;
+}
+
+.selector-list {
+    display: grid;
+    gap: 0.45rem;
+    max-height: 22rem;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.selector-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--bsx-border);
+    border-radius: var(--bsx-radius-sm);
+    background: var(--bsx-background-subtle);
+    color: var(--bsx-text);
+    cursor: pointer;
+    text-align: left;
+}
+
+.selector-option:hover:not(:disabled) {
+    border-color: var(--bsx-border-strong);
+    background: var(--bsx-surface-raised);
+}
+
+.selector-option.is-selected {
+    border-color: var(--bsx-primary);
+    background: var(--bsx-primary-soft);
+}
+
+.selector-option > span:first-child {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.selector-option > span:first-child span {
+    color: var(--bsx-text-muted);
+    font-size: 0.78rem;
+}
+
+.address-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.address-card header {
+    align-items: flex-start;
+}
+
+.address-card .action-row {
+    justify-content: flex-end;
+}
+
+.address-block {
+    margin: 0;
+    color: var(--bsx-text-secondary);
+    font-style: normal;
+    line-height: 1.8;
+}
+
+@media (max-width: 760px) {
+    .form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .table-actions {
+        justify-content: flex-start;
+    }
+
+    .selector-header {
+        flex-direction: column;
+    }
+}

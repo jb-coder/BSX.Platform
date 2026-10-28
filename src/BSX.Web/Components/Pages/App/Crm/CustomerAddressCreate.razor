@@ -1,0 +1,134 @@
+@page "/app/crm/customers/{CustomerId:guid}/addresses/new"
+@attribute [Authorize(Policy = PermissionPolicies.CrmCustomersUpdate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Addresses.AddAddress
+@using BSX.Modules.Crm.Application.Common
+@using BSX.Modules.Crm.Application.Customers.GetCustomerById
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Http
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Add address - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading customer..." />
+}
+else if (_customer is null)
+{
+    <PageHeader Title="Customer not found"
+                Subtitle="The customer may have been removed or may belong to another workspace." />
+
+    <Card>
+        <EmptyState Title="Customer not found"
+                    Description="Return to the customer list to choose another record.">
+            <Action>
+                <a class="button button-primary" href="/app/crm/customers">Back to customers</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="Add address"
+                Subtitle="@($"Add a billing, shipping or other address to {_customer.Name}.")">
+        <Actions>
+            <a class="button button-secondary" href="@($"/app/crm/customers/{_customer.Id}")">Cancel</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="content-medium">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>Address could not be added.</strong>
+                <span>@_error</span>
+            </div>
+        }
+
+        <Card>
+            <EditForm Model="Form" OnValidSubmit="CreateAsync">
+                <DataAnnotationsValidator />
+                <AddressFormFields Model="Form" />
+
+                <div class="form-actions">
+                    <button type="submit" class="button button-primary" disabled="@_saving">
+                        @(_saving ? "Adding..." : "Add address")
+                    </button>
+                    <a class="button button-secondary" href="@($"/app/crm/customers/{_customer.Id}")">
+                        Cancel
+                    </a>
+                </div>
+            </EditForm>
+        </Card>
+    </div>
+}
+
+@code {
+    private CustomerDto? _customer;
+    private string? _error;
+    private bool _loading = true;
+    private bool _saving;
+
+    /// <summary>The customer identifier.</summary>
+    [Parameter]
+    public Guid CustomerId { get; set; }
+
+    /// <summary>The address form model.</summary>
+    public AddressFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(CustomerId));
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "CRM.Customer.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        _customer = result.Value;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_saving || _customer is null || !Form.TryGetAddressType(out CrmAddressType type))
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+
+        Result result = await CrmWebResults.ExecuteAsync(() => Sender.SendAsync(
+            new AddAddressCommand(
+                _customer.Id,
+                Form.ToAddressInput(),
+                type)));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _error = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Address added", $"The address was added to {_customer.Name}.");
+        Navigation.NavigateTo($"/app/crm/customers/{_customer.Id}");
+    }
+}

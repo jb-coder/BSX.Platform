@@ -14,7 +14,11 @@
 
 <PageTitle>@(_customer?.Name ?? "Customer") - BSX Platform</PageTitle>
 
-@if (_customer is null)
+@if (_loading)
+{
+    <LoadingState Label="Loading customer..." />
+}
+else if (_customer is null)
 {
     <PageHeader Title="Customer not found"
                 Subtitle="The customer may have been removed or may belong to another workspace." />
@@ -54,6 +58,15 @@ else
         </div>
     }
 
+    @if (_reloadError is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>The customer could not be refreshed.</strong>
+            <span>@_reloadError</span>
+            <button type="button" class="link-button" @onclick="ReloadCustomerAsync">Try again</button>
+        </div>
+    }
+
     <div class="detail-grid">
         <Card Title="Overview" Subtitle="Core customer information.">
             <dl class="definition-list">
@@ -69,98 +82,34 @@ else
                     <dt>Tax identifier</dt>
                     <dd>@Display(_customer.TaxIdentifier)</dd>
                 </div>
-                <div>
-                    <dt>Organization</dt>
-                    <dd>@CustomerDisplay.OrganizationLabel(_customer.OrganizationId)</dd>
-                </div>
             </dl>
         </Card>
 
-        <Card Title="Contacts"
-              Subtitle="People associated with this customer.">
-            @if (_customer.Contacts.Count == 0)
-            {
-                <EmptyState Title="No contacts yet"
-                            Description="Contact management is not available in this release." />
-            }
-            else
-            {
-                <DataTable Items="_customer.Contacts" Caption="Customer contacts">
-                    <HeaderTemplate>
-                        <th scope="col">Name</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Phone</th>
-                        <th scope="col">Primary</th>
-                    </HeaderTemplate>
-                    <RowTemplate Context="contact">
-                        <td><span class="table-primary">@contact.Name</span></td>
-                        <td>@Display(contact.Email)</td>
-                        <td>@Display(contact.PhoneNumber)</td>
-                        <td>
-                            @if (contact.IsPrimary)
-                            {
-                                <span class="status-badge status-primary">Primary</span>
-                            }
-                        </td>
-                    </RowTemplate>
-                </DataTable>
-            }
-        </Card>
+        <OrganizationAssignmentCard CustomerId="_customer.Id"
+                                    OrganizationId="_customer.OrganizationId"
+                                    CustomerStatus="_customer.Status"
+                                    CanEdit="_canEdit"
+                                    CanReadOrganizations="_canReadOrganizations"
+                                    OnChanged="ReloadCustomerAsync" />
     </div>
 
-    <Card Title="Addresses" Subtitle="Billing and shipping locations." CssClass="detail-card-spaced">
-        @if (_customer.Addresses.Count == 0)
-        {
-            <EmptyState Title="No addresses yet"
-                        Description="Address management is not available in this release." />
-        }
-        else
-        {
-            <div class="address-grid">
-                @foreach (AddressDto address in _customer.Addresses)
-                {
-                    <article class="address-card">
-                        <header>
-                            <strong>@address.Type</strong>
-                            @if (address.IsDefault)
-                            {
-                                <span class="status-badge status-primary">Default</span>
-                            }
-                        </header>
-                        <address>
-                            @address.Line1<br />
-                            @if (!string.IsNullOrWhiteSpace(address.Line2))
-                            {
-                                @address.Line2
-                                <br />
-                            }
-                            @if (!string.IsNullOrWhiteSpace(address.Region))
-                            {
-                                @($"{address.City}, {address.Region}")
-                                <br />
-                            }
-                            else
-                            {
-                                @address.City
-                                <br />
-                            }
-                            @if (!string.IsNullOrWhiteSpace(address.PostalCode))
-                            {
-                                @address.PostalCode
-                                <br />
-                            }
-                            @address.Country
-                        </address>
-                    </article>
-                }
-            </div>
-        }
-    </Card>
+    <div class="detail-stack">
+        <CustomerContactsSection Customer="_customer"
+                                 CanEdit="_canEdit"
+                                 OnChanged="ReloadCustomerAsync" />
+
+        <CustomerAddressesSection Customer="_customer"
+                                  CanEdit="_canEdit"
+                                  OnChanged="ReloadCustomerAsync" />
+    </div>
 }
 
 @code {
     private CustomerDto? _customer;
+    private string? _reloadError;
     private bool _canEdit;
+    private bool _canReadOrganizations;
+    private bool _loading = true;
 
     /// <summary>The customer identifier.</summary>
     [Parameter]
@@ -178,11 +127,12 @@ else
     {
         AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         CurrentUser.SetPrincipal(state.User);
-
-        _canEdit = NavigationCatalog.PermissionsOf(state.User)
-            .Contains(CrmPermissionCodes.CustomersUpdate, StringComparer.Ordinal);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canEdit = permissions.Contains(CrmPermissionCodes.CustomersUpdate, StringComparer.Ordinal);
+        _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
 
         Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(Id));
+        _loading = false;
 
         if (result.IsFailure)
         {
@@ -191,6 +141,20 @@ else
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
             }
 
+            return;
+        }
+
+        _customer = result.Value;
+    }
+
+    private async Task ReloadCustomerAsync()
+    {
+        _reloadError = null;
+
+        Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(Id));
+        if (result.IsFailure)
+        {
+            _reloadError = CrmCustomerMessages.For(result.Error);
             return;
         }
 

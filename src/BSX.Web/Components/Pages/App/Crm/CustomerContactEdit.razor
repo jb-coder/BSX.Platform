@@ -1,0 +1,167 @@
+@page "/app/crm/customers/{CustomerId:guid}/contacts/{ContactId:guid}/edit"
+@attribute [Authorize(Policy = PermissionPolicies.CrmCustomersUpdate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Contacts.UpdateContact
+@using BSX.Modules.Crm.Application.Customers.GetCustomerById
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Http
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Edit contact - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading contact..." />
+}
+else if (_customer is null)
+{
+    <PageHeader Title="Contact not found"
+                Subtitle="The customer or contact may have been removed." />
+
+    <Card>
+        <EmptyState Title="Contact not found"
+                    Description="Return to the customer to choose another contact.">
+            <Action>
+                <a class="button button-primary" href="/app/crm/customers">Back to customers</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@($"Edit {_contact?.Name ?? "contact"}")"
+                Subtitle="@($"Update the contact details for {_customer.Name}.")">
+        <Actions>
+            <a class="button button-secondary" href="@($"/app/crm/customers/{_customer.Id}")">Cancel</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="content-medium">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>Changes could not be saved.</strong>
+                <span>@_error</span>
+                @if (_conflict)
+                {
+                    <a href="@($"/app/crm/customers/{_customer.Id}/contacts/{ContactId}/edit")">
+                        Reload contact
+                    </a>
+                }
+            </div>
+        }
+
+        <Card>
+            <EditForm Model="Form" OnValidSubmit="UpdateAsync">
+                <DataAnnotationsValidator />
+                <ContactFormFields Model="Form" ShowPrimary="false" />
+
+                <div class="form-actions">
+                    <button type="submit" class="button button-primary" disabled="@_saving">
+                        @(_saving ? "Saving..." : "Save changes")
+                    </button>
+                    <a class="button button-secondary" href="@($"/app/crm/customers/{_customer.Id}")">
+                        Cancel
+                    </a>
+                </div>
+            </EditForm>
+        </Card>
+    </div>
+}
+
+@code {
+    private CustomerDto? _customer;
+    private ContactDto? _contact;
+    private string? _error;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _conflict;
+
+    /// <summary>The customer identifier.</summary>
+    [Parameter]
+    public Guid CustomerId { get; set; }
+
+    /// <summary>The contact identifier.</summary>
+    [Parameter]
+    public Guid ContactId { get; set; }
+
+    /// <summary>The contact form model.</summary>
+    public ContactFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(CustomerId));
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "CRM.Customer.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        _customer = result.Value;
+        _contact = _customer.Contacts.FirstOrDefault(contact => contact.Id == ContactId);
+
+        if (_contact is null)
+        {
+            if (HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        Form = new ContactFormModel
+        {
+            Name = _contact.Name,
+            Email = _contact.Email,
+            PhoneNumber = _contact.PhoneNumber,
+        };
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (_saving || _customer is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        _conflict = false;
+
+        Result result = await CrmWebResults.ExecuteAsync(() => Sender.SendAsync(
+            new UpdateContactCommand(
+                _customer.Id,
+                ContactId,
+                Form.Name,
+                Form.Email,
+                Form.PhoneNumber)));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _conflict = result.Error.Code == "CRM.ConcurrencyConflict";
+            _error = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Contact saved", "The contact details were updated.");
+        Navigation.NavigateTo($"/app/crm/customers/{_customer.Id}");
+    }
+}

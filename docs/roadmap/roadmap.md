@@ -53,9 +53,8 @@ CRM
 - Contacts
 - Categories
 
-Status: Domain, Application, Infrastructure and HTTP API implemented, tested and release-hardened (CQRS, tenant isolation, auditing, soft delete, optimistic concurrency mapped to `409`, projections, health, PostgreSQL parity suite). The first customer-facing CRM journey is implemented (customer
-list, detail, create and edit); organizations, contact/address management, reporting and analytics
-are pending.
+Status: Domain, Application, Infrastructure and HTTP API implemented, tested and release-hardened (CQRS, tenant isolation, auditing, soft delete, optimistic concurrency mapped to `409`, projections, health, PostgreSQL parity suite). The full CRM web experience is implemented: customers, organizations, organization assignment,
+contacts and addresses. Reporting and analytics are pending.
 
 ---
 

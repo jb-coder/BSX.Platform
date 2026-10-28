@@ -121,8 +121,8 @@ else
         _error = null;
         _conflict = false;
 
-        Result result = await Sender.SendAsync(
-            new UpdateCustomerCommand(Id, Form.Name, Form.TaxIdentifier));
+        Result result = await CrmWebResults.ExecuteAsync(() => Sender.SendAsync(
+            new UpdateCustomerCommand(Id, Form.Name, Form.TaxIdentifier)));
 
         if (result.IsFailure)
         {

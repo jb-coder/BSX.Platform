@@ -1,0 +1,207 @@
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Contacts.RemoveContact
+@using BSX.Modules.Crm.Application.Contacts.SetPrimaryContact
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.SharedKernel.Results
+@inject ISender Sender
+@inject IToastService Toasts
+
+<Card Title="Contacts" Subtitle="People associated with this customer.">
+    <Actions>
+        @if (CanAddContact)
+        {
+            <a class="button button-primary button-small"
+               href="@($"/app/crm/customers/{Customer.Id}/contacts/new")">
+                Add contact
+            </a>
+        }
+    </Actions>
+
+    <ChildContent>
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>Contact could not be updated.</strong>
+            <span>@_error</span>
+            <button type="button" class="link-button" @onclick="ReloadAsync">Reload customer</button>
+        </div>
+    }
+
+    @if (Customer.Contacts.Count == 0)
+    {
+        <EmptyState Title="No contacts yet"
+                    Description="Add a contact person so the customer has a reachable point of contact.">
+            <Action>
+                @if (CanAddContact)
+                {
+                    <a class="button button-primary"
+                       href="@($"/app/crm/customers/{Customer.Id}/contacts/new")">
+                        Add the first contact
+                    </a>
+                }
+                else if (!IsCustomerActive)
+                {
+                    <span class="field-hint">Contacts can be added only while the customer is active.</span>
+                }
+            </Action>
+        </EmptyState>
+    }
+    else
+    {
+        <DataTable Items="Customer.Contacts" Caption="Customer contacts">
+            <HeaderTemplate>
+                <th scope="col">Contact</th>
+                <th scope="col">Email</th>
+                <th scope="col">Phone</th>
+                <th scope="col">Primary</th>
+                <th scope="col" class="table-actions-column">Actions</th>
+            </HeaderTemplate>
+            <RowTemplate Context="contact">
+                <td><span class="table-primary">@contact.Name</span></td>
+                <td>@Display(contact.Email)</td>
+                <td>@Display(contact.PhoneNumber)</td>
+                <td>
+                    @if (contact.IsPrimary)
+                    {
+                        <span class="status-badge status-primary">Primary</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No</span>
+                    }
+                </td>
+                <td>
+                    @if (CanEdit)
+                    {
+                        <div class="table-actions">
+                            <a class="button button-quiet button-small"
+                               href="@($"/app/crm/customers/{Customer.Id}/contacts/{contact.Id}/edit")"
+                               aria-label="@($"Edit {contact.Name}")">
+                                Edit
+                            </a>
+                            @if (!contact.IsPrimary)
+                            {
+                                <button type="button"
+                                        class="button button-quiet button-small"
+                                        disabled="@_busy"
+                                        aria-label="@($"Make {contact.Name} the primary contact")"
+                                        @onclick="() => SetPrimaryAsync(contact)">
+                                    Set primary
+                                </button>
+                            }
+                            <button type="button"
+                                    class="button button-danger-ghost button-small"
+                                    disabled="@_busy"
+                                    aria-label="@($"Remove {contact.Name}")"
+                                    @onclick="() => OpenRemoveDialog(contact)">
+                                Remove
+                            </button>
+                        </div>
+                    }
+                </td>
+            </RowTemplate>
+        </DataTable>
+    }
+    </ChildContent>
+</Card>
+
+<ConfirmDialog Open="_confirmRemove"
+               Title="Remove contact?"
+               Message="@($"Remove {_pendingContact?.Name ?? "this contact"} from the customer? This cannot be undone.")"
+               ConfirmText="Remove contact"
+               Busy="_busy"
+               Confirm="RemoveAsync"
+               Cancel="CloseRemoveDialog" />
+
+@code {
+    private string? _error;
+    private ContactDto? _pendingContact;
+    private bool _busy;
+    private bool _confirmRemove;
+
+    /// <summary>The customer whose contacts are managed.</summary>
+    [Parameter, EditorRequired]
+    public CustomerDto Customer { get; set; } = null!;
+
+    /// <summary>Whether the user may change contacts.</summary>
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    /// <summary>Raised after a successful mutation so the parent can reload the customer.</summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private bool IsCustomerActive => string.Equals(Customer.Status, "Active", StringComparison.OrdinalIgnoreCase);
+
+    private bool CanAddContact => CanEdit && IsCustomerActive;
+
+    private void OpenRemoveDialog(ContactDto contact)
+    {
+        _pendingContact = contact;
+        _confirmRemove = true;
+    }
+
+    private void CloseRemoveDialog()
+    {
+        _confirmRemove = false;
+        _pendingContact = null;
+    }
+
+    private async Task SetPrimaryAsync(ContactDto contact)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        Result result = await CrmWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new SetPrimaryContactCommand(Customer.Id, contact.Id)));
+
+        _busy = false;
+
+        if (result.IsFailure)
+        {
+            _error = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Primary contact updated", $"{contact.Name} is now the primary contact.");
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task RemoveAsync()
+    {
+        if (_busy || _pendingContact is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        Result result = await CrmWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new RemoveContactCommand(Customer.Id, _pendingContact.Id)));
+
+        _busy = false;
+        _confirmRemove = false;
+
+        if (result.IsFailure)
+        {
+            _error = CrmCustomerMessages.For(result.Error);
+            _pendingContact = null;
+            return;
+        }
+
+        Toasts.Success("Contact removed", "The contact was removed from the customer.");
+        _pendingContact = null;
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task ReloadAsync() => OnChanged.InvokeAsync();
+
+    private static string Display(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "Not provided" : value;
+}

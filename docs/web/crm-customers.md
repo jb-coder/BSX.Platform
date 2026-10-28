@@ -1,9 +1,9 @@
 # CRM Customers
 
-Status: **First customer-facing CRM journey implemented.**
+Status: **Customer record journey implemented. Full CRM coverage is documented in [crm.md](crm.md).**
 
-This slice delivers the customer experience on top of the web foundation and the existing CRM
-application layer. Organizations, contacts, addresses and Sales remain out of scope.
+This document describes the customer record journey. Organization management, customer organization
+assignment, contact management and address management are documented in [crm.md](crm.md).
 
 ---
 
@@ -44,7 +44,7 @@ the existing CRM read repository projects the summaries.
 - Friendly not-found and access-denied experiences.
 - Edit action is permission-aware.
 
-Contact and address management is intentionally read-only in this slice.
+Contact and address management is available from this screen; see [crm.md](crm.md).
 
 ---
 
@@ -122,7 +122,8 @@ token is exposed to browser JavaScript or stored in component state.
 - Edit-page prefill and immutable-code context.
 - Permission-aware actions and route protection.
 - Access denied, unauthenticated redirects and not-found behavior.
-- Organizations and Sales placeholders remaining unchanged.
+- Sales placeholder remaining unchanged; organization, contact and address workflows are covered
+  by [crm.md](crm.md).
 
 The existing CRM API and application test suites continue to cover command/query behavior,
 validation, tenant isolation, concurrency and persistence.
@@ -131,10 +132,10 @@ validation, tenant isolation, concurrency and persistence.
 
 ## Limitations
 
-- Organizations are not implemented in the UI.
-- Contact and address editing is not implemented.
+- Organization management and assignment are implemented; see [crm.md](crm.md).
+- Contact and address editing are implemented; see [crm.md](crm.md).
 - Customer activation/deactivation is not exposed in this slice.
 - Sales and Inventory remain outside the CRM journey.
-- Organization assignment is displayed as a compact identifier until an organization picker ships.
+- Organization assignment uses the searchable selector on the customer detail screen.
 - The create/edit forms use interactive Blazor Server event handling; automated browser-level
   interaction testing is still future work.

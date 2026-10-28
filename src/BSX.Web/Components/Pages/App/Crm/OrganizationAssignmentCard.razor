@@ -1,0 +1,334 @@
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.AssignOrganization
+@using BSX.Modules.Crm.Application.Customers.ClearOrganization
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.Modules.Crm.Application.Organizations.GetOrganizationById
+@using BSX.Modules.Crm.Application.Organizations.ListOrganizations
+@using BSX.SharedKernel.Results
+@inject ISender Sender
+@inject IToastService Toasts
+
+<Card Title="Organization"
+      Subtitle="Assign this customer to the group it belongs to.">
+    @if (_actionError is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>Organization could not be updated.</strong>
+            <span>@_actionError</span>
+            <button type="button" class="link-button" @onclick="NotifyChangedAsync">Reload customer</button>
+        </div>
+    }
+
+    @if (OrganizationId is { } organizationId)
+    {
+        <div class="assignment-summary">
+            <div>
+                <span class="eyebrow">Assigned organization</span>
+                @if (CanReadOrganizations)
+                {
+                    <strong>
+                        <a href="@($"/app/crm/organizations/{organizationId}")">
+                            @(_assignedName ?? "Loading organization...")
+                        </a>
+                    </strong>
+                }
+                else
+                {
+                    <strong>@organizationId.ToString("N")[..8]</strong>
+                }
+            </div>
+
+            @if (CanEdit && CanReadOrganizations)
+            {
+                <div class="action-row">
+                    <button type="button"
+                            class="button button-secondary"
+                            disabled="@(!IsCustomerActive)"
+                            title="@(!IsCustomerActive ? "Organizations can be assigned only while the customer is active." : null)"
+                            @onclick="OpenPickerAsync">
+                        Change organization
+                    </button>
+                    <button type="button"
+                            class="button button-danger-ghost"
+                            disabled="@_busy"
+                            @onclick="() => _confirmClear = true">
+                        Clear organization
+                    </button>
+                </div>
+            }
+            else if (CanEdit)
+            {
+                <button type="button"
+                        class="button button-danger-ghost"
+                        disabled="@_busy"
+                        @onclick="() => _confirmClear = true">
+                    Clear organization
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        <EmptyState Title="Not assigned"
+                    Description="This customer is not part of an organization yet.">
+            <Action>
+                @if (CanAssign)
+                {
+                    <button type="button" class="button button-primary" @onclick="OpenPickerAsync">
+                        Assign organization
+                    </button>
+                }
+                else if (CanEdit && !CanReadOrganizations)
+                {
+                    <span class="field-hint">Organization selection requires organization read access.</span>
+                }
+                else if (CanEdit && !IsCustomerActive)
+                {
+                    <span class="field-hint">Organizations can be assigned only while the customer is active.</span>
+                }
+            </Action>
+        </EmptyState>
+    }
+
+    @if (_showPicker)
+    {
+        <section class="selector-panel" aria-labelledby="organization-picker-title">
+            <header class="selector-header">
+                <div>
+                    <h3 id="organization-picker-title">Choose an organization</h3>
+                    <p>Search by name or tax identifier, then select a result.</p>
+                </div>
+                <button type="button" class="button button-quiet" @onclick="ClosePicker">Close</button>
+            </header>
+
+            <form class="selector-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                <SearchBox @bind-Value="_search"
+                           Label="Search organizations"
+                           Placeholder="Search organizations"
+                           Disabled="@_busy" />
+                <button type="submit" class="button button-secondary" disabled="@_busy">Search</button>
+            </form>
+
+            @if (_searching)
+            {
+                <LoadingState Label="Searching organizations..." />
+            }
+            else if (_organizations.Count == 0)
+            {
+                <EmptyState Title="No organizations found"
+                            Description="Try a different name or tax identifier, or create an organization first." />
+            }
+            else
+            {
+                <ul class="selector-list" aria-live="polite">
+                    @foreach (OrganizationDto organization in _organizations)
+                    {
+                        <li>
+                            <button type="button"
+                                    class="selector-option @(_selectedOrganizationId == organization.Id ? "is-selected" : null)"
+                                    aria-pressed="@(_selectedOrganizationId == organization.Id ? "true" : "false")"
+                                    disabled="@_busy"
+                                    @onclick="() => SelectOrganization(organization.Id)">
+                                <span>
+                                    <strong>@organization.Name</strong>
+                                    <span>@OrganizationDisplay.Location(organization.Address)</span>
+                                </span>
+                                @if (organization.Id == OrganizationId)
+                                {
+                                    <span class="status-badge status-primary">Current</span>
+                                }
+                            </button>
+                        </li>
+                    }
+                </ul>
+
+                @if (_organizationTotal > _organizations.Count)
+                {
+                    <p class="field-hint">
+                        Showing @_organizations.Count of @_organizationTotal organizations. Refine the search to narrow the list.
+                    </p>
+                }
+            }
+
+            <div class="form-actions">
+                <button type="button"
+                        class="button button-primary"
+                        disabled="@(_busy || _selectedOrganizationId is null || _selectedOrganizationId == OrganizationId)"
+                        @onclick="AssignAsync">
+                    @(_busy ? "Assigning..." : "Assign selected organization")
+                </button>
+                <button type="button" class="button button-secondary" disabled="@_busy" @onclick="ClosePicker">
+                    Cancel
+                </button>
+            </div>
+        </section>
+    }
+</Card>
+
+<ConfirmDialog Open="_confirmClear"
+               Title="Clear organization?"
+               Message="This removes the organization assignment from the customer. The organization itself is not deleted."
+               ConfirmText="Clear organization"
+               Busy="_busy"
+               Confirm="ClearAsync"
+               Cancel="() => _confirmClear = false" />
+
+@code {
+    private string? _assignedName;
+    private string? _actionError;
+    private string? _search;
+    private IReadOnlyList<OrganizationDto> _organizations = [];
+    private Guid? _loadedOrganizationId;
+    private Guid? _selectedOrganizationId;
+    private int _organizationTotal;
+    private bool _busy;
+    private bool _searching;
+    private bool _showPicker;
+    private bool _confirmClear;
+
+    /// <summary>The customer identifier.</summary>
+    [Parameter, EditorRequired]
+    public Guid CustomerId { get; set; }
+
+    /// <summary>The assigned organization, if any.</summary>
+    [Parameter]
+    public Guid? OrganizationId { get; set; }
+
+    /// <summary>The customer lifecycle status.</summary>
+    [Parameter, EditorRequired]
+    public string CustomerStatus { get; set; } = string.Empty;
+
+    /// <summary>Whether the user may change the assignment.</summary>
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    /// <summary>Whether the user may read organizations.</summary>
+    [Parameter]
+    public bool CanReadOrganizations { get; set; }
+
+    /// <summary>Raised after a successful mutation so the parent can reload the customer.</summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private bool IsCustomerActive => string.Equals(CustomerStatus, "Active", StringComparison.OrdinalIgnoreCase);
+
+    private bool CanAssign => CanEdit && CanReadOrganizations && IsCustomerActive;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedOrganizationId == OrganizationId)
+        {
+            return;
+        }
+
+        _loadedOrganizationId = OrganizationId;
+        _assignedName = null;
+
+        if (OrganizationId is { } organizationId && CanReadOrganizations)
+        {
+            Result<OrganizationDto> result = await Sender.SendAsync(new GetOrganizationByIdQuery(organizationId));
+            if (result.IsSuccess)
+            {
+                _assignedName = result.Value.Name;
+            }
+        }
+    }
+
+    private async Task OpenPickerAsync()
+    {
+        _actionError = null;
+        _showPicker = true;
+        _selectedOrganizationId = null;
+        await SearchAsync();
+    }
+
+    private void ClosePicker()
+    {
+        _showPicker = false;
+        _selectedOrganizationId = null;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (_searching)
+        {
+            return;
+        }
+
+        _searching = true;
+        _actionError = null;
+
+        Result<PagedResult<OrganizationDto>> result = await Sender.SendAsync(
+            new ListOrganizationsQuery(1, 10, _search));
+
+        _searching = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = CrmCustomerMessages.For(result.Error);
+            _organizations = [];
+            _organizationTotal = 0;
+            return;
+        }
+
+        _organizations = result.Value.Items;
+        _organizationTotal = result.Value.TotalCount;
+    }
+
+    private void SelectOrganization(Guid organizationId) => _selectedOrganizationId = organizationId;
+
+    private async Task AssignAsync()
+    {
+        if (_busy || _selectedOrganizationId is not { } organizationId)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await CrmWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new AssignOrganizationCommand(CustomerId, organizationId)));
+
+        _busy = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        _showPicker = false;
+        _selectedOrganizationId = null;
+        Toasts.Success("Organization assigned", "The customer was assigned to the selected organization.");
+        await NotifyChangedAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await CrmWebResults.ExecuteAsync(
+            () => Sender.SendAsync(new ClearOrganizationCommand(CustomerId)));
+
+        _busy = false;
+        _confirmClear = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Organization cleared", "The customer is no longer assigned to an organization.");
+        await NotifyChangedAsync();
+    }
+
+    private Task NotifyChangedAsync() => OnChanged.InvokeAsync();
+}

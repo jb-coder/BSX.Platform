@@ -1,0 +1,62 @@
+<FormSection Title="Address details"
+             Description="Use Billing, Shipping or Other. A customer may hold the same address for different purposes, but not the same address and type twice.">
+    <div class="field">
+        <label for="address-type">Address type</label>
+        <InputSelect id="address-type" @bind-Value="Model.Type">
+            <option value="Billing">Billing</option>
+            <option value="Shipping">Shipping</option>
+            <option value="Other">Other</option>
+        </InputSelect>
+        <ValidationMessage For="@(() => Model.Type)" />
+    </div>
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="address-line1">Address line 1</label>
+            <InputText id="address-line1" @bind-Value="Model.Line1" autocomplete="address-line1" />
+            <ValidationMessage For="@(() => Model.Line1)" />
+        </div>
+
+        <div class="field">
+            <label for="address-line2">
+                Address line 2 <span class="field-optional">Optional</span>
+            </label>
+            <InputText id="address-line2" @bind-Value="Model.Line2" autocomplete="address-line2" />
+            <ValidationMessage For="@(() => Model.Line2)" />
+        </div>
+
+        <div class="field">
+            <label for="address-city">City</label>
+            <InputText id="address-city" @bind-Value="Model.City" autocomplete="address-level2" />
+            <ValidationMessage For="@(() => Model.City)" />
+        </div>
+
+        <div class="field">
+            <label for="address-region">
+                Region / state <span class="field-optional">Optional</span>
+            </label>
+            <InputText id="address-region" @bind-Value="Model.Region" autocomplete="address-level1" />
+            <ValidationMessage For="@(() => Model.Region)" />
+        </div>
+
+        <div class="field">
+            <label for="address-postal-code">
+                Postal code <span class="field-optional">Optional</span>
+            </label>
+            <InputText id="address-postal-code" @bind-Value="Model.PostalCode" autocomplete="postal-code" />
+            <ValidationMessage For="@(() => Model.PostalCode)" />
+        </div>
+
+        <div class="field">
+            <label for="address-country">Country</label>
+            <InputText id="address-country" @bind-Value="Model.Country" autocomplete="country-name" />
+            <ValidationMessage For="@(() => Model.Country)" />
+        </div>
+    </div>
+</FormSection>
+
+@code {
+    /// <summary>The address form model.</summary>
+    [Parameter, EditorRequired]
+    public AddressFormModel Model { get; set; } = new();
+}

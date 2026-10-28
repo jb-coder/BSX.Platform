@@ -1,0 +1,85 @@
+<FormSection Title="Organization details"
+             Description="Organizations group customers and hold billing details for the group.">
+    <div class="field">
+        <label for="organization-name">Organization name</label>
+        <InputText id="organization-name"
+                   @bind-Value="Model.Name"
+                   autocomplete="organization"
+                   placeholder="Acme Group" />
+        <ValidationMessage For="@(() => Model.Name)" />
+    </div>
+
+    <div class="field">
+        <label for="organization-tax-identifier">
+            Tax identifier <span class="field-optional">Optional</span>
+        </label>
+        <InputText id="organization-tax-identifier"
+                   @bind-Value="Model.TaxIdentifier"
+                   autocomplete="off"
+                   spellcheck="false"
+                   placeholder="VAT-123456" />
+        <span class="field-hint">VAT, tax or national registration number.</span>
+        <ValidationMessage For="@(() => Model.TaxIdentifier)" />
+    </div>
+</FormSection>
+
+<FormSection Title="Primary address"
+             Description="An optional billing or head-office address for the organization.">
+    <div class="field field-checkbox">
+        <InputCheckbox id="include-organization-address" @bind-Value="Model.IncludeAddress" />
+        <label for="include-organization-address">Include a primary address</label>
+    </div>
+
+    @if (Model.IncludeAddress)
+    {
+        <div class="form-grid">
+            <div class="field">
+                <label for="organization-line1">Address line 1</label>
+                <InputText id="organization-line1" @bind-Value="Model.AddressLine1" />
+                <ValidationMessage For="@(() => Model.AddressLine1)" />
+            </div>
+
+            <div class="field">
+                <label for="organization-line2">
+                    Address line 2 <span class="field-optional">Optional</span>
+                </label>
+                <InputText id="organization-line2" @bind-Value="Model.AddressLine2" />
+                <ValidationMessage For="@(() => Model.AddressLine2)" />
+            </div>
+
+            <div class="field">
+                <label for="organization-city">City</label>
+                <InputText id="organization-city" @bind-Value="Model.City" />
+                <ValidationMessage For="@(() => Model.City)" />
+            </div>
+
+            <div class="field">
+                <label for="organization-region">
+                    Region / state <span class="field-optional">Optional</span>
+                </label>
+                <InputText id="organization-region" @bind-Value="Model.Region" />
+                <ValidationMessage For="@(() => Model.Region)" />
+            </div>
+
+            <div class="field">
+                <label for="organization-postal-code">
+                    Postal code <span class="field-optional">Optional</span>
+                </label>
+                <InputText id="organization-postal-code" @bind-Value="Model.PostalCode" />
+                <ValidationMessage For="@(() => Model.PostalCode)" />
+            </div>
+
+            <div class="field">
+                <label for="organization-country">Country</label>
+                <InputText id="organization-country" @bind-Value="Model.Country" />
+                <ValidationMessage For="@(() => Model.Country)" />
+            </div>
+        </div>
+    }
+</FormSection>
+
+@code {
+    /// <summary>The organization form model.</summary>
+    [Parameter, EditorRequired]
+    public OrganizationFormModel Model { get; set; } = new();
+}

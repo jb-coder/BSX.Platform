@@ -18,6 +18,7 @@ using BSX.Modules.Sales.Infrastructure.DependencyInjection;
 using BSX.Persistence.DependencyInjection;
 using BSX.Web.Authentication;
 using BSX.Web.Components;
+using BSX.Web.Demo;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -135,6 +136,7 @@ WebApplication app = builder.Build();
 
 await app.ApplyIdentityMigrationsAsync();
 await app.SynchronizeIdentityPermissionsAsync();
+await DemoIdentitySeeder.SeedAsync(app);
 
 app.UseSerilogRequestLogging();
 

@@ -129,10 +129,14 @@ public sealed class DesignSystemComponentTests
             [nameof(ConfirmDialog.Open)] = true,
             [nameof(ConfirmDialog.Title)] = "Delete customer",
             [nameof(ConfirmDialog.Message)] = "This cannot be undone.",
+            [nameof(ConfirmDialog.Busy)] = true,
         });
 
         html.Should().Contain("role=\"dialog\"");
         html.Should().Contain("aria-modal=\"true\"");
+        html.Should().Contain("aria-busy=\"true\"");
+        html.Should().Contain("Working...");
+        html.Should().Contain("disabled");
         html.Should().Contain("Delete customer");
     }
 

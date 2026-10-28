@@ -1,11 +1,11 @@
 # Web Foundation
 
-Status: **Application foundation implemented. The first CRM customer journey is implemented;**
-organizations, Sales and Inventory screens are not implemented in this slice.
+Status: **Application foundation and the full CRM web experience are implemented;** Sales and
+Inventory screens are not implemented in this slice.
 
 The web foundation turns `BSX.Web` from a host into a SaaS application shell: authentication,
 workspace selection, permission-aware navigation, a responsive layout and a reusable design
-system. The first business slice is the CRM customer journey, documented in
+system. The CRM business slice is documented in [crm.md](crm.md) and
 [crm-customers.md](crm-customers.md).
 
 ---
@@ -21,12 +21,13 @@ Implemented:
 - Shared design-system components.
 - Toasts, loading, empty, error and confirmation patterns.
 - CRM customer list, detail, create and edit screens.
+- CRM organization list, detail, create and edit screens.
+- Customer organization assignment, contact lifecycle and address lifecycle management.
 - Component, navigation, authorization, accessibility and endpoint tests.
 
 Not implemented:
 
-- Organization, lead or opportunity business screens.
-- Customer contact and address management.
+- Sales lead or opportunity business screens.
 - Inventory UI.
 - Reporting, analytics or dashboards.
 - Tenant creation or tenant settings.
@@ -221,7 +222,7 @@ The foundation defines patterns for future business screens:
 
 `tests/Integration/BSX.Web.IntegrationTests/WebFoundation` covers:
 
-- CRM customer list, detail, create and edit screens (see [crm-customers.md](crm-customers.md)).
+- CRM customer, organization, assignment, contact and address screens (see [crm.md](crm.md)).
 - Design-system component rendering.
 - Navigation visibility by permission and Inventory exclusion.
 - Permission policy and handler behavior.
@@ -236,7 +237,7 @@ Sales endpoints after the smart authentication scheme change.
 
 ## Future Work
 
-- Remaining CRM and Sales business screens (organizations, leads, opportunities).
+- Remaining Sales business screens (leads and opportunities).
 - Session list/revoke UI, profile editing and password changes.
 - Tenant settings, display names and branding.
 - Distributed pending-login storage for multi-instance deployments.

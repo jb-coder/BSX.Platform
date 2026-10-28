@@ -1,12 +1,179 @@
 @page "/app/crm/organizations"
 @attribute [Authorize(Policy = PermissionPolicies.CrmOrganizationsRead)]
+@using System.Globalization
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Dtos
+@using BSX.Modules.Crm.Application.Organizations.ListOrganizations
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@inject ISender Sender
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Organizations - BSX Platform</PageTitle>
 
 <PageHeader Title="Organizations"
-            Subtitle="Organizations and their billing details." />
+            Subtitle="Group customers and keep their billing details in one place.">
+    <Actions>
+        @if (_canCreate)
+        {
+            <a class="button button-primary" href="/app/crm/organizations/new">New organization</a>
+        }
+    </Actions>
+</PageHeader>
 
 <Card>
-    <EmptyState Title="Organization workspace is ready"
-                Description="The foundation is complete. Organization management screens will be added in a later slice." />
+    <div class="list-toolbar">
+        <form method="get" action="/app/crm/organizations" role="search" class="list-search">
+            <SearchBox Name="search"
+                       @bind-Value="Search"
+                       Label="Search organizations"
+                       Placeholder="Search by name or tax identifier"
+                       ShowClearButton="false" />
+            <input type="hidden" name="size" value="@PageSize" />
+            <button type="submit" class="button button-secondary">Search</button>
+            @if (!string.IsNullOrWhiteSpace(Search))
+            {
+                <a class="button button-quiet" href="/app/crm/organizations">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingState Label="Loading organizations..." />
+    }
+    else if (_error is not null)
+    {
+        <ErrorState Title="Organizations could not be loaded"
+                    Message="@_error">
+            <Action>
+                <a class="button button-secondary" href="@CurrentUrl">Try again</a>
+            </Action>
+        </ErrorState>
+    }
+    else if (_result is not null)
+    {
+        <p class="result-summary" aria-live="polite">@ResultSummary</p>
+
+        @if (_result.Items.Count == 0)
+        {
+            <EmptyState Title="@EmptyTitle" Description="@EmptyDescription">
+                <Action>
+                    @if (_canCreate)
+                    {
+                        <a class="button button-primary" href="/app/crm/organizations/new">Create an organization</a>
+                    }
+                </Action>
+            </EmptyState>
+        }
+        else
+        {
+            <DataTable Items="_result.Items" Caption="Organization results">
+                <HeaderTemplate>
+                    <th scope="col">Organization</th>
+                    <th scope="col">Tax identifier</th>
+                    <th scope="col">Primary address</th>
+                </HeaderTemplate>
+                <RowTemplate Context="organization">
+                    <td>
+                        <a class="table-link" href="@($"/app/crm/organizations/{organization.Id}")">
+                            @organization.Name
+                        </a>
+                    </td>
+                    <td>@Display(organization.TaxIdentifier)</td>
+                    <td>@OrganizationDisplay.Location(organization.Address)</td>
+                </RowTemplate>
+            </DataTable>
+
+            <Pagination Page="_result.Page"
+                        PageSize="_result.Size"
+                        TotalCount="_result.TotalCount"
+                        PageHrefFactory="BuildPageUrl" />
+        }
+    }
 </Card>
+
+@code {
+    private PagedResult<OrganizationDto>? _result;
+    private string? _error;
+    private bool _loading = true;
+    private bool _canCreate;
+
+    /// <summary>The requested one-based page.</summary>
+    [SupplyParameterFromQuery(Name = "page")]
+    public int Page { get; set; } = 1;
+
+    /// <summary>The requested page size.</summary>
+    [SupplyParameterFromQuery(Name = "size")]
+    public int PageSize { get; set; } = 20;
+
+    /// <summary>The optional organization search term.</summary>
+    [SupplyParameterFromQuery(Name = "search")]
+    public string? Search { get; set; }
+
+    private string CurrentUrl => BuildPageUrl(Page);
+
+    private string ResultSummary => _result!.TotalCount == 1
+        ? "1 organization"
+        : $"{_result.TotalCount:N0} organizations";
+
+    private string EmptyTitle => string.IsNullOrWhiteSpace(Search)
+        ? "No organizations yet"
+        : "No organizations match your search";
+
+    private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
+        ? "Create an organization to group customers and centralize billing details."
+        : $"No organization name or tax identifier contains \"{Search.Trim()}\".";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        _loading = true;
+        _error = null;
+        _canCreate = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(CrmPermissionCodes.OrganizationsCreate, StringComparer.Ordinal);
+
+        Result<PagedResult<OrganizationDto>> result = await Sender.SendAsync(
+            new ListOrganizationsQuery(Page, PageSize, Search));
+
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _error = CrmCustomerMessages.For(result.Error);
+            return;
+        }
+
+        _result = result.Value;
+        Page = result.Value.Page;
+        PageSize = result.Value.Size;
+    }
+
+    private string BuildPageUrl(int page)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["page"] = page.ToString(CultureInfo.InvariantCulture),
+        };
+
+        if (!string.IsNullOrWhiteSpace(Search))
+        {
+            query["search"] = Search.Trim();
+        }
+
+        if (PageSize > 0)
+        {
+            query["size"] = PageSize.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return QueryHelpers.AddQueryString("/app/crm/organizations", query);
+    }
+
+    private static string Display(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "Not provided" : value;
+}

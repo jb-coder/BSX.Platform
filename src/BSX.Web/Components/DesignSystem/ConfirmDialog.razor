@@ -5,6 +5,7 @@
          class="dialog"
          role="dialog"
          aria-modal="true"
+         aria-busy="@(Busy ? "true" : "false")"
          aria-labelledby="@_titleId"
          aria-describedby="@_descriptionId"
          tabindex="-1"
@@ -12,11 +13,17 @@
         <h2 id="@_titleId">@Title</h2>
         <p id="@_descriptionId">@Message</p>
         <div class="dialog-actions">
-            <button type="button" class="button button-secondary" @onclick="Cancel">
+            <button type="button"
+                    class="button button-secondary"
+                    disabled="@Busy"
+                    @onclick="Cancel">
                 @CancelText
             </button>
-            <button type="button" class="button button-danger" @onclick="Confirm">
-                @ConfirmText
+            <button type="button"
+                    class="button button-danger"
+                    disabled="@Busy"
+                    @onclick="Confirm">
+                @(Busy ? "Working..." : ConfirmText)
             </button>
         </div>
     </div>
@@ -47,6 +54,10 @@
     /// <summary>The cancel button label.</summary>
     [Parameter]
     public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>Whether the confirmed operation is in progress.</summary>
+    [Parameter]
+    public bool Busy { get; set; }
 
     /// <summary>Raised when the action is confirmed.</summary>
     [Parameter]

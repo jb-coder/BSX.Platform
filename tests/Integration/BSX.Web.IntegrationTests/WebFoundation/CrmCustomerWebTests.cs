@@ -115,14 +115,9 @@ public sealed class CrmCustomerWebTests : IClassFixture<IdentityApiFactory>
     }
 
     [Fact]
-    public async Task OrganizationAndSalesPages_ShouldRemainPlaceholders()
+    public async Task SalesPage_ShouldRemainPlaceholder()
     {
         HttpClient client = await SignInAsync();
-
-        HttpResponseMessage organizations = await client.GetAsync("/app/crm/organizations");
-        organizations.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await organizations.Content.ReadAsStringAsync())
-            .Should().Contain("Organization workspace is ready");
 
         HttpResponseMessage leads = await client.GetAsync("/app/sales/leads");
         leads.StatusCode.Should().Be(HttpStatusCode.OK);
