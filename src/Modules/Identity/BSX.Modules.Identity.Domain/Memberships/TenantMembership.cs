@@ -12,7 +12,7 @@ namespace BSX.Modules.Identity.Domain.Memberships;
 /// </summary>
 public sealed class TenantMembership : AggregateRoot<MembershipId>
 {
-    private readonly HashSet<RoleId> _roleIds = [];
+    private readonly List<RoleId> _roleIds = [];
 
     private TenantMembership(
         MembershipId id,
@@ -55,7 +55,7 @@ public sealed class TenantMembership : AggregateRoot<MembershipId>
     public DateTimeOffset? SuspendedOnUtc { get; private set; }
 
     /// <summary>Gets the assigned tenant role identifiers.</summary>
-    public IReadOnlyCollection<RoleId> RoleIds => _roleIds.ToArray();
+    public ICollection<RoleId> RoleIds => _roleIds;
 
     /// <summary>Invites a user to a tenant.</summary>
     /// <param name="id">The membership identifier.</param>
@@ -142,10 +142,12 @@ public sealed class TenantMembership : AggregateRoot<MembershipId>
             return Result.Failure(IdentityErrors.MembershipInvalidTransition);
         }
 
-        if (!_roleIds.Add(roleId))
+        if (_roleIds.Contains(roleId))
         {
             return Result.Failure(IdentityErrors.MembershipRoleAlreadyAssigned);
         }
+
+        _roleIds.Add(roleId);
 
         RaiseDomainEvent(new MembershipRoleAssigned(Id, TenantId, UserId, roleId));
         return Result.Success();

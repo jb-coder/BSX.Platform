@@ -1,0 +1,111 @@
+@page "/app/admin/users/new"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityUsersCreate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Users.RegisterUser
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+
+<PageTitle>New user - BSX Platform</PageTitle>
+
+<PageHeader Title="New user"
+            Subtitle="Create a platform user account. The account starts in Pending status.">
+    <Actions>
+        <a class="button button-secondary" href="/app/admin/users">Cancel</a>
+    </Actions>
+</PageHeader>
+
+<div class="content-medium">
+    <Card>
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>User could not be created.</strong>
+                <span>@_error</span>
+            </div>
+        }
+
+        <EditForm Model="Form" OnValidSubmit="CreateAsync">
+            <DataAnnotationsValidator />
+            <FormSection Title="Account details"
+                         Description="The password is the initial credential. The user remains Pending until activated.">
+                <div class="field">
+                    <label for="user-name">Display name</label>
+                    <InputText id="user-name" @bind-Value="Form.Name" autocomplete="name" />
+                    <ValidationMessage For="@(() => Form.Name)" />
+                </div>
+
+                <div class="field">
+                    <label for="user-email">Email address</label>
+                    <InputText id="user-email"
+                               type="email"
+                               @bind-Value="Form.Email"
+                               autocomplete="email"
+                               inputmode="email" />
+                    <ValidationMessage For="@(() => Form.Email)" />
+                </div>
+
+                <div class="field">
+                    <label for="user-password">Initial password</label>
+                    <InputText id="user-password"
+                               type="password"
+                               @bind-Value="Form.Password"
+                               autocomplete="new-password" />
+                    <span class="field-hint">At least 8 characters.</span>
+                    <ValidationMessage For="@(() => Form.Password)" />
+                </div>
+            </FormSection>
+
+            <div class="form-actions">
+                <button type="submit" class="button button-primary" disabled="@_saving">
+                    @(_saving ? "Creating..." : "Create user")
+                </button>
+                <a class="button button-secondary" href="/app/admin/users">Cancel</a>
+            </div>
+        </EditForm>
+    </Card>
+</div>
+
+@code {
+    private string? _error;
+    private bool _saving;
+
+    /// <summary>The create-user form model.</summary>
+    public UserCreateFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+
+        Result<RegisterUserResponse> result = await IdentityWebResults.ExecuteAsync(() => Dispatcher.SendAsync(
+            new RegisterUserCommand(Form.Email, Form.Name, Form.Password)));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("User created", "Activate the user when the account is ready.");
+        Navigation.NavigateTo($"/app/admin/users/{result.Value.UserId}");
+    }
+}

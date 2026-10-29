@@ -1,4 +1,5 @@
 using BSX.Modules.Crm.Contracts.Permissions;
+using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Sales.Contracts.Permissions;
 
 namespace BSX.Web.Navigation;
@@ -47,11 +48,23 @@ public static class NavigationCatalog
         new("Administration",
         [
             new(
-                "Profile",
-                $"{AppRoot}/admin/profile",
-                null,
-                "Your account and active workspace.",
-                "profile"),
+                "Users",
+                $"{AppRoot}/admin/users",
+                IdentityPermissionCodes.UsersRead,
+                "User accounts and lifecycle.",
+                "users"),
+            new(
+                "Roles",
+                $"{AppRoot}/admin/roles",
+                IdentityPermissionCodes.RolesRead,
+                "Roles and permission assignments.",
+                "roles"),
+            new(
+                "Memberships",
+                $"{AppRoot}/admin/memberships",
+                IdentityPermissionCodes.MembershipsRead,
+                "Workspace members and invitations.",
+                "memberships"),
             new(
                 "Sessions",
                 $"{AppRoot}/admin/sessions",

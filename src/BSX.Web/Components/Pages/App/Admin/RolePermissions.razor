@@ -1,0 +1,146 @@
+@page "/app/admin/roles/{Id:guid}/permissions"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityRolesSetPermissions)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Permissions.ListPermissions
+@using BSX.Modules.Identity.Application.Roles.GetRoleById
+@using BSX.Modules.Identity.Application.Roles.SetRolePermissions
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Role permissions - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading permissions..." />
+}
+else if (_role is null)
+{
+    <PageHeader Title="Role not found" Subtitle="The role may have been removed." />
+    <Card>
+        <EmptyState Title="Role not found" Description="Return to the role list.">
+            <Action><a class="button button-primary" href="/app/admin/roles">Back to roles</a></Action>
+        </EmptyState>
+    </Card>
+}
+else if (_role.IsSystem)
+{
+    <PageHeader Title="System role" Subtitle="System role permissions are synchronized by the platform.">
+        <Actions><a class="button button-secondary" href="@($"/app/admin/roles/{_role.Id}")">Back to role</a></Actions>
+    </PageHeader>
+}
+else
+{
+    <PageHeader Title="@($"Permissions · {_role.Name}")"
+                Subtitle="Choose the capabilities granted by this workspace role.">
+        <Actions><a class="button button-secondary" href="@($"/app/admin/roles/{_role.Id}")">Cancel</a></Actions>
+    </PageHeader>
+
+    <div class="content-medium">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>Permissions could not be saved.</strong>
+                <span>@_error</span>
+                @if (_conflict)
+                {
+                    <a href="@($"/app/admin/roles/{_role.Id}/permissions")">Reload permissions</a>
+                }
+            </div>
+        }
+
+        <Card>
+            <PermissionSelector Permissions="_catalog"
+                                @bind-Selected="SelectedPermissions" />
+
+            <div class="form-actions">
+                <button type="button" class="button button-primary" disabled="@_saving" @onclick="SaveAsync">
+                    @(_saving ? "Saving..." : "Save permissions")
+                </button>
+                <a class="button button-secondary" href="@($"/app/admin/roles/{_role.Id}")">Cancel</a>
+            </div>
+        </Card>
+    </div>
+}
+
+@code {
+    private RoleDto? _role;
+    private IReadOnlyList<PermissionDto> _catalog = [];
+    private string? _error;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _conflict;
+
+    /// <summary>The selected permission codes.</summary>
+    public HashSet<string> SelectedPermissions { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>The role identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        Result<RoleDto> role = await Dispatcher.SendAsync(new GetRoleByIdQuery(Id));
+        Result<IReadOnlyList<PermissionDto>> catalog = await Dispatcher.SendAsync(new ListPermissionsQuery());
+        _loading = false;
+
+        if (role.IsFailure)
+        {
+            if (role.Error.Code == "Identity.Role.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        _role = role.Value;
+
+        if (catalog.IsFailure)
+        {
+            _error = IdentityMessages.For(catalog.Error);
+            return;
+        }
+
+        _catalog = catalog.Value;
+        SelectedPermissions = new HashSet<string>(_role.Permissions, StringComparer.Ordinal);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_saving || _role is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        _conflict = false;
+
+        Result result = await IdentityWebResults.ExecuteAsync(() => Dispatcher.SendAsync(
+            new SetRolePermissionsCommand(_role.Id, SelectedPermissions.ToArray())));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _conflict = result.Error.Code == "Identity.Concurrency.Conflict";
+            _error = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Permissions saved", "The role permissions were updated.");
+        Navigation.NavigateTo($"/app/admin/roles/{_role.Id}");
+    }
+}

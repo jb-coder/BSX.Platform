@@ -77,6 +77,7 @@ public sealed class AssignRoleToMembershipCommandHandler : ICommandHandler<Assig
             return result;
         }
 
+        await _memberships.TrackRoleChangesAsync(membership, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
     }

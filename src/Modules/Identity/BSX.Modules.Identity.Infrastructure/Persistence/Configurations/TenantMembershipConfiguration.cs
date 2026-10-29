@@ -31,7 +31,11 @@ internal sealed class TenantMembershipConfiguration : IEntityTypeConfiguration<T
             roles.WithOwner().HasForeignKey("MembershipId");
             roles.Property(roleId => roleId.Value).HasColumnName("role_id");
             roles.HasKey("MembershipId", "Value");
+            roles.UsePropertyAccessMode(PropertyAccessMode.Field);
         });
+
+        builder.Navigation(membership => membership.RoleIds)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.ApplyAuditing();
         builder.HasQueryFilter(membership => !EF.Property<bool>(membership, "IsDeleted"));

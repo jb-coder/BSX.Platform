@@ -3,6 +3,7 @@ using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Application.Authentication.DiscoverTenantOptions;
 using BSX.Modules.Identity.Application.Authentication.Login;
 using BSX.Modules.Identity.Application.Authentication.Logout;
+using BSX.Modules.Identity.Application.Authentication.LogoutAll;
 using BSX.Modules.Identity.Application.Dtos;
 using BSX.SharedKernel.Results;
 using Microsoft.AspNetCore.Antiforgery;
@@ -27,6 +28,7 @@ public static class WebAuthEndpoints
         endpoints.MapPost("/auth/login", (Delegate)LoginAsync).AllowAnonymous();
         endpoints.MapPost("/auth/select-tenant", (Delegate)SelectTenantAsync).AllowAnonymous();
         endpoints.MapPost("/auth/logout", (Delegate)LogoutAsync).AllowAnonymous();
+        endpoints.MapPost("/auth/logout-all", (Delegate)LogoutAllAsync).RequireAuthorization();
 
         return endpoints;
     }
@@ -139,6 +141,23 @@ public static class WebAuthEndpoints
         pendingLogins.Remove(token);
         return await SignInAndRedirectAsync(httpContext, login.Value, SafeReturnUrl(pending.ReturnUrl))
             .ConfigureAwait(false);
+    }
+
+    private static async Task<IResult> LogoutAllAsync(HttpContext httpContext)
+    {
+        if (!await ValidateAntiforgeryAsync(httpContext).ConfigureAwait(false))
+        {
+            return Results.Redirect("/login?error=invalid_request");
+        }
+
+        ISender sender = httpContext.RequestServices.GetRequiredService<ISender>();
+        await sender
+            .SendAsync(new LogoutAllCommand(), httpContext.RequestAborted)
+            .ConfigureAwait(false);
+
+        await httpContext.SignOutAsync(WebAuthDefaults.CookieScheme).ConfigureAwait(false);
+        WebAuthCookieWriter.DeleteRefreshToken(httpContext);
+        return Results.Redirect("/login?loggedOut=true");
     }
 
     private static async Task<IResult> LogoutAsync(HttpContext httpContext)

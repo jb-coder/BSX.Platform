@@ -3,6 +3,7 @@ using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Application.Errors;
+using BSX.Modules.Identity.Domain.Errors;
 using BSX.Modules.Identity.Domain.Roles;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.SharedKernel.Results;
@@ -46,13 +47,15 @@ public sealed class SetRolePermissionsCommandHandler : ICommandHandler<SetRolePe
             return Result.Failure(IdentityApplicationErrors.RoleNotFound);
         }
 
-        if (!role.IsSystem)
+        if (role.IsSystem)
         {
-            Result guard = _tenantGuard.Ensure(role.TenantId?.Value);
-            if (guard.IsFailure)
-            {
-                return guard;
-            }
+            return Result.Failure(IdentityErrors.RoleSystemImmutable);
+        }
+
+        Result guard = _tenantGuard.Ensure(role.TenantId?.Value);
+        if (guard.IsFailure)
+        {
+            return guard;
         }
 
         HashSet<Permission> target = permissionsResult.Value.ToHashSet();

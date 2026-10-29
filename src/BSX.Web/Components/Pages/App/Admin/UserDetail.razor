@@ -1,0 +1,243 @@
+@page "/app/admin/users/{Id:guid}"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityUsersRead)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Roles.ListRoles
+@using BSX.Modules.Identity.Application.Users.ActivateUser
+@using BSX.Modules.Identity.Application.Users.DeactivateUser
+@using BSX.Modules.Identity.Application.Users.GetUserById
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(_user?.Name ?? "User") - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading user..." />
+}
+else if (_user is null)
+{
+    <PageHeader Title="User not found" Subtitle="The user may have been removed." />
+
+    <Card>
+        <EmptyState Title="User not found" Description="Return to the user list to choose another account.">
+            <Action>
+                <a class="button button-primary" href="/app/admin/users">Back to users</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@_user.Name" Subtitle="User account and platform role context.">
+        <Actions>
+            <a class="button button-secondary" href="/app/admin/users">Back to users</a>
+            @if (_canUpdate)
+            {
+                <a class="button button-secondary" href="@($"/app/admin/users/{_user.Id}/edit")">Edit user</a>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (_actionError is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>The user could not be updated.</strong>
+            <span>@_actionError</span>
+            <button type="button" class="link-button" @onclick="ReloadAsync">Reload user</button>
+        </div>
+    }
+
+    <div class="detail-grid">
+        <Card Title="Account" Subtitle="Identity and lifecycle status.">
+            <dl class="definition-list">
+                <div>
+                    <dt>Email</dt>
+                    <dd>@_user.Email</dd>
+                </div>
+                <div>
+                    <dt>Status</dt>
+                    <dd>
+                        <span class="@AdministrationDisplay.UserStatusClass(_user.Status)">@_user.Status</span>
+                        @if (_isCurrentUser)
+                        {
+                            <span class="status-badge status-primary">You</span>
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt>MFA</dt>
+                    <dd>@(_user.MfaEnabled ? "Enabled" : "Not enabled")</dd>
+                </div>
+                <div>
+                    <dt>Registered</dt>
+                    <dd>@AdministrationDisplay.Timestamp(_user.RegisteredOnUtc)</dd>
+                </div>
+            </dl>
+        </Card>
+
+        <Card Title="Platform roles" Subtitle="System roles assigned directly to the global identity.">
+            @if (_user.PlatformRoleIds.Count == 0)
+            {
+                <EmptyState Title="No platform roles" Description="This user has no direct platform role assignment." />
+            }
+            else
+            {
+                <ul class="tag-list">
+                    @foreach (Guid roleId in _user.PlatformRoleIds)
+                    {
+                        <li class="status-badge status-primary">@(_roleNames.GetValueOrDefault(roleId) ?? roleId.ToString("N")[..8])</li>
+                    }
+                </ul>
+            }
+        </Card>
+    </div>
+
+    @if (_canManageStatus)
+    {
+        <Card Title="Lifecycle actions" Subtitle="Activate or deactivate the account." CssClass="detail-card-spaced">
+            <div class="action-row">
+                @if (_user.Status != "Active")
+                {
+                    <button type="button" class="button button-primary" disabled="@_busy" @onclick="ActivateAsync">
+                        @(_busy ? "Updating..." : "Activate user")
+                    </button>
+                }
+                else if (!_isCurrentUser)
+                {
+                    <button type="button" class="button button-danger-ghost" disabled="@_busy" @onclick="() => _confirmDeactivate = true">
+                        Deactivate user
+                    </button>
+                }
+                @if (_isCurrentUser)
+                {
+                    <span class="field-hint">You cannot deactivate your own account.</span>
+                }
+            </div>
+        </Card>
+    }
+}
+
+<ConfirmDialog Open="_confirmDeactivate"
+               Title="Deactivate user?"
+               Message="The user will be disabled and their refresh sessions will be revoked. They cannot sign in until reactivated."
+               ConfirmText="Deactivate user"
+               Busy="_busy"
+               Confirm="DeactivateAsync"
+               Cancel="() => _confirmDeactivate = false" />
+
+@code {
+    private UserDto? _user;
+    private Dictionary<Guid, string> _roleNames = [];
+    private string? _actionError;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _confirmDeactivate;
+    private bool _canUpdate;
+    private bool _canManageStatus;
+    private bool _isCurrentUser;
+
+    /// <summary>The user identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canUpdate = permissions.Contains(IdentityPermissionCodes.UsersUpdate, StringComparer.Ordinal);
+        _canManageStatus = permissions.Contains(IdentityPermissionCodes.UsersManageStatus, StringComparer.Ordinal);
+
+        if (!await LoadAsync())
+        {
+            if (HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+        }
+    }
+
+    private async Task<bool> LoadAsync()
+    {
+        _loading = true;
+        Result<UserDto> result = await Dispatcher.SendAsync(new GetUserByIdQuery(Id));
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = IdentityMessages.For(result.Error);
+            return false;
+        }
+
+        _user = result.Value;
+        _isCurrentUser = CurrentUser.UserId == _user.Id;
+
+        Result<IReadOnlyList<RoleDto>> roles = await Dispatcher.SendAsync(new ListRolesQuery(null));
+        _roleNames = roles.IsSuccess
+            ? roles.Value.ToDictionary(role => role.Id, role => role.Name)
+            : [];
+
+        return true;
+    }
+
+    private async Task ActivateAsync()
+    {
+        if (_busy || _user is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await IdentityWebResults.ExecuteAsync(
+            () => Dispatcher.SendAsync(new ActivateUserCommand(_user.Id)));
+
+        _busy = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("User activated", "The user account is now active.");
+        await ReloadAsync();
+    }
+
+    private async Task DeactivateAsync()
+    {
+        if (_busy || _user is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await IdentityWebResults.ExecuteAsync(
+            () => Dispatcher.SendAsync(new DeactivateUserCommand(_user.Id)));
+
+        _busy = false;
+        _confirmDeactivate = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("User deactivated", "The user account has been disabled.");
+        await ReloadAsync();
+    }
+
+    private Task ReloadAsync() => LoadAsync();
+}

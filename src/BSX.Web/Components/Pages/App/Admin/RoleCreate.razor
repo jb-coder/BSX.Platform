@@ -1,0 +1,121 @@
+@page "/app/admin/roles/new"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityRolesCreate)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Permissions.ListPermissions
+@using BSX.Modules.Identity.Application.Roles.CreateRole
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+
+<PageTitle>New role - BSX Platform</PageTitle>
+
+<PageHeader Title="New role" Subtitle="Create a workspace role and assign its permissions.">
+    <Actions>
+        <a class="button button-secondary" href="/app/admin/roles">Cancel</a>
+    </Actions>
+</PageHeader>
+
+<div class="content-medium">
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>Role could not be created.</strong>
+            <span>@_error</span>
+        </div>
+    }
+
+    <Card>
+        @if (_loading)
+        {
+            <LoadingState Label="Loading permissions..." />
+        }
+        else
+        {
+            <EditForm Model="Form" OnValidSubmit="CreateAsync">
+                <DataAnnotationsValidator />
+                <FormSection Title="Role details">
+                    <div class="field">
+                        <label for="role-name">Role name</label>
+                        <InputText id="role-name" @bind-Value="Form.Name" placeholder="Sales Manager" />
+                        <ValidationMessage For="@(() => Form.Name)" />
+                    </div>
+                    <div class="field">
+                        <label for="role-description">Description <span class="field-optional">Optional</span></label>
+                        <InputTextArea id="role-description" @bind-Value="Form.Description" rows="3" />
+                        <ValidationMessage For="@(() => Form.Description)" />
+                    </div>
+                </FormSection>
+
+                <PermissionSelector Permissions="Form.Catalog" @bind-Selected="Form.Permissions" />
+
+                <div class="form-actions">
+                    <button type="submit" class="button button-primary" disabled="@_saving">
+                        @(_saving ? "Creating..." : "Create role")
+                    </button>
+                    <a class="button button-secondary" href="/app/admin/roles">Cancel</a>
+                </div>
+            </EditForm>
+        }
+    </Card>
+</div>
+
+@code {
+    private string? _error;
+    private bool _loading = true;
+    private bool _saving;
+
+    /// <summary>The role form model.</summary>
+    public RoleFormModel Form { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        Result<IReadOnlyList<PermissionDto>> permissions = await Dispatcher.SendAsync(new ListPermissionsQuery());
+        _loading = false;
+
+        if (permissions.IsFailure)
+        {
+            _error = IdentityMessages.For(permissions.Error);
+            return;
+        }
+
+        Form.Catalog = permissions.Value;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_saving || CurrentUser.TenantId is not { } tenantId)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+
+        Result<CreateRoleResponse> result = await IdentityWebResults.ExecuteAsync(() => Dispatcher.SendAsync(
+            new CreateRoleCommand(
+                tenantId,
+                Form.Name,
+                Form.Description,
+                Form.Permissions.ToArray())));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Role created", "The role is ready for permission review.");
+        Navigation.NavigateTo($"/app/admin/roles/{result.Value.RoleId}");
+    }
+}

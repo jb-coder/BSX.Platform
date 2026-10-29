@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
 
 namespace BSX.Modules.Identity.Application.Users.UpdateUser;
@@ -6,4 +7,5 @@ namespace BSX.Modules.Identity.Application.Users.UpdateUser;
 /// <param name="UserId">The user identifier.</param>
 /// <param name="Name">The new display name.</param>
 /// <param name="Email">The new email address.</param>
+[RequirePermission("identity.users.update")]
 public sealed record UpdateUserCommand(Guid UserId, string Name, string Email) : ICommand;

@@ -1,0 +1,108 @@
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Web.Administration
+
+<fieldset class="permission-selector" disabled="@Disabled">
+    <legend>Permissions</legend>
+    <p class="form-section-description">
+        Select the capabilities granted by this role. Permissions are grouped by module.
+        <strong>@_selected.Count selected.</strong>
+    </p>
+
+    <SearchBox @bind-Value="_search"
+               Label="Search permissions"
+               Placeholder="Search by permission code or description"
+               Disabled="@Disabled" />
+
+    @foreach (IGrouping<string, PermissionDto> group in FilteredGroups())
+    {
+        <section class="permission-group" aria-labelledby="@GroupId(group.Key)">
+            <header>
+                <h3 id="@GroupId(group.Key)">@AdministrationDisplay.PermissionModule(group.Key)</h3>
+                <span>@group.Count() permission(s)</span>
+            </header>
+
+            <div class="permission-list">
+                @foreach (PermissionDto permission in group)
+                {
+                    <label class="permission-option">
+                        <input type="checkbox"
+                               checked="@_selected.Contains(permission.Code)"
+                               disabled="@Disabled"
+                               @onchange="args => ToggleAsync(permission.Code, args.Value is true)" />
+                        <span>
+                            <strong>@permission.Description</strong>
+                            <code>@permission.Code</code>
+                        </span>
+                    </label>
+                }
+            </div>
+        </section>
+    }
+</fieldset>
+
+@code {
+    private HashSet<string> _selected = new(StringComparer.Ordinal);
+    private string? _search;
+
+    /// <summary>The full permission catalog.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<PermissionDto> Permissions { get; set; } = [];
+
+    /// <summary>The selected permission codes.</summary>
+    [Parameter]
+    public HashSet<string> Selected { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Raised when the selected permissions change.</summary>
+    [Parameter]
+    public EventCallback<HashSet<string>> SelectedChanged { get; set; }
+
+    /// <summary>Whether the selector is read-only.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_selected, Selected))
+        {
+            _selected = new HashSet<string>(Selected, StringComparer.Ordinal);
+        }
+    }
+
+    private IEnumerable<IGrouping<string, PermissionDto>> FilteredGroups()
+    {
+        IEnumerable<PermissionDto> filtered = Permissions;
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            string term = _search.Trim();
+            filtered = filtered.Where(permission =>
+                permission.Code.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || permission.Description.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return filtered
+            .GroupBy(permission => permission.Code.Split('.')[0], StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal);
+    }
+
+    private async Task ToggleAsync(string code, bool selected)
+    {
+        if (Disabled)
+        {
+            return;
+        }
+
+        if (selected)
+        {
+            _selected.Add(code);
+        }
+        else
+        {
+            _selected.Remove(code);
+        }
+
+        await SelectedChanged.InvokeAsync(new HashSet<string>(_selected, StringComparer.Ordinal));
+    }
+
+    private static string GroupId(string module) => $"permissions-{module}";
+}

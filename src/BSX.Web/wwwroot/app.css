@@ -2054,3 +2054,121 @@ h2 {
         flex-basis: 100%;
     }
 }
+
+/* Administration */
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.permission-selector {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.permission-selector > legend {
+    padding: 0;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.permission-group {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.85rem;
+    border: 1px solid var(--bsx-border);
+    border-radius: var(--bsx-radius);
+    background: var(--bsx-background-subtle);
+}
+
+.permission-group header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.permission-group header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.permission-group header span {
+    color: var(--bsx-text-muted);
+    font-size: 0.76rem;
+}
+
+.permission-list {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.permission-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.45rem 0.5rem;
+    border-radius: var(--bsx-radius-sm);
+    cursor: pointer;
+}
+
+.permission-option:hover {
+    background: var(--bsx-surface-hover);
+}
+
+.permission-option input {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.15rem;
+    accent-color: var(--bsx-primary);
+}
+
+.permission-option > span {
+    display: grid;
+    gap: 0.1rem;
+}
+
+.permission-option code,
+.permission-summary code {
+    color: var(--bsx-text-muted);
+    font-size: 0.74rem;
+}
+
+.permission-summary {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.permission-summary li {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--bsx-border);
+}
+
+.permission-summary li:last-child {
+    border-bottom: 0;
+}
+
+.session-actions {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--bsx-border);
+}
+
+.session-actions form {
+    margin: 0;
+}

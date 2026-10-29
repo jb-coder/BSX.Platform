@@ -1,12 +1,183 @@
 @page "/app/admin/sessions"
 @attribute [Authorize]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Sessions.ListMySessions
+@using BSX.Modules.Identity.Application.Sessions.RevokeSession
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IToastService Toasts
 
 <PageTitle>Sessions - BSX Platform</PageTitle>
 
 <PageHeader Title="Sessions"
-            Subtitle="Devices and sessions with access to your account." />
+            Subtitle="Review devices with access to your account and revoke sessions." />
 
 <Card>
-    <EmptyState Title="Session management is coming next"
-                Description="Your current session is secured by the platform authentication flow. The session list and revoke experience will be added in a later slice." />
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>The session could not be updated.</strong>
+            <span>@_error</span>
+            <button type="button" class="link-button" @onclick="LoadAsync">Reload sessions</button>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <LoadingState Label="Loading sessions..." />
+    }
+    else if (_sessions.Count == 0)
+    {
+        <EmptyState Title="No sessions" Description="No active session records were found." />
+    }
+    else
+    {
+        <DataTable Items="_sessions" Caption="Account sessions">
+            <HeaderTemplate>
+                <th scope="col">Session</th>
+                <th scope="col">Device</th>
+                <th scope="col">Status</th>
+                <th scope="col">Last refreshed</th>
+                <th scope="col">Expires</th>
+                <th scope="col" class="table-actions-column">Actions</th>
+            </HeaderTemplate>
+            <RowTemplate Context="session">
+                <td>
+                    <span class="table-primary">@ShortId(session.Id)</span>
+                    @if (session.Id == _currentSessionId)
+                    {
+                        <span class="status-badge status-primary">Current</span>
+                    }
+                </td>
+                <td>
+                    <span>@Display(session.UserAgent, "Unknown device")</span>
+                    <div class="field-hint">@Display(session.IpAddress, "Unknown IP")</div>
+                </td>
+                <td><span class="@AdministrationDisplay.SessionStatusClass(session.Status)">@session.Status</span></td>
+                <td>@AdministrationDisplay.Timestamp(session.LastRefreshedOnUtc)</td>
+                <td>@AdministrationDisplay.Timestamp(session.ExpiresOnUtc)</td>
+                <td>
+                    @if (session.Id != _currentSessionId && session.Status == "Active")
+                    {
+                        <button type="button"
+                                class="button button-danger-ghost button-small"
+                                disabled="@_busy"
+                                @onclick="() => OpenRevokeDialog(session)">
+                            Revoke
+                        </button>
+                    }
+                </td>
+            </RowTemplate>
+        </DataTable>
+
+        <div class="session-actions">
+            <form method="post" action="/auth/logout-all" data-enhance="false">
+                <AntiforgeryToken />
+                <button type="submit" class="button button-danger">
+                    Revoke all sessions
+                </button>
+            </form>
+            <p class="field-hint">
+                Revoking all sessions signs out every device, including this one.
+            </p>
+        </div>
+    }
 </Card>
+
+<ConfirmDialog Open="_confirmRevoke"
+               Title="Revoke session?"
+               Message="@(_pendingSession is null ? "Revoke this session?" : $"Revoke the session for {Display(_pendingSession.UserAgent, "this device")}?")"
+               ConfirmText="Revoke session"
+               Busy="_busy"
+               Confirm="RevokeAsync"
+               Cancel="CloseDialog" />
+
+@code {
+    private IReadOnlyList<SessionDto> _sessions = [];
+    private SessionDto? _pendingSession;
+    private string? _error;
+    private Guid? _currentSessionId;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _confirmRevoke;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        _currentSessionId = Guid.TryParse(
+            state.User.FindFirst(WebAuthDefaults.SessionIdClaim)?.Value,
+            out Guid sessionId)
+            ? sessionId
+            : null;
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        Result<IReadOnlyList<SessionDto>> result = await Dispatcher.SendAsync(new ListMySessionsQuery());
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        _sessions = result.Value;
+    }
+
+    private void OpenRevokeDialog(SessionDto session)
+    {
+        _pendingSession = session;
+        _confirmRevoke = true;
+    }
+
+    private void CloseDialog()
+    {
+        _confirmRevoke = false;
+        _pendingSession = null;
+    }
+
+    private async Task RevokeAsync()
+    {
+        if (_busy || _pendingSession is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        Result result = await IdentityWebResults.ExecuteAsync(
+            () => Dispatcher.SendAsync(new RevokeSessionCommand(_pendingSession.Id)));
+
+        _busy = false;
+        _confirmRevoke = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            _pendingSession = null;
+            return;
+        }
+
+        Toasts.Success("Session revoked", "The selected session can no longer refresh.");
+        _pendingSession = null;
+        await LoadAsync();
+    }
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+
+    private static string Display(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+}

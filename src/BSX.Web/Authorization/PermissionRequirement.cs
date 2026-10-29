@@ -8,6 +8,42 @@ public static class PermissionPolicies
     /// <summary>Policy prefix.</summary>
     public const string Prefix = "Permission:";
 
+    /// <summary>Policy for reading users.</summary>
+    public const string IdentityUsersRead = Prefix + "identity.users.read";
+
+    /// <summary>Policy for creating users.</summary>
+    public const string IdentityUsersCreate = Prefix + "identity.users.create";
+
+    /// <summary>Policy for updating users.</summary>
+    public const string IdentityUsersUpdate = Prefix + "identity.users.update";
+
+    /// <summary>Policy for activating and deactivating users.</summary>
+    public const string IdentityUsersManageStatus = Prefix + "identity.users.manage-status";
+
+    /// <summary>Policy for assigning platform roles.</summary>
+    public const string IdentityUsersAssignRole = Prefix + "identity.users.assign-role";
+
+    /// <summary>Policy for reading roles.</summary>
+    public const string IdentityRolesRead = Prefix + "identity.roles.read";
+
+    /// <summary>Policy for creating roles.</summary>
+    public const string IdentityRolesCreate = Prefix + "identity.roles.create";
+
+    /// <summary>Policy for updating roles.</summary>
+    public const string IdentityRolesUpdate = Prefix + "identity.roles.update";
+
+    /// <summary>Policy for changing role permissions.</summary>
+    public const string IdentityRolesSetPermissions = Prefix + "identity.roles.set-permissions";
+
+    /// <summary>Policy for reading the permission catalog.</summary>
+    public const string IdentityPermissionsRead = Prefix + "identity.permissions.read";
+
+    /// <summary>Policy for reading workspace memberships.</summary>
+    public const string IdentityMembershipsRead = Prefix + "identity.memberships.read";
+
+    /// <summary>Policy for managing workspace memberships.</summary>
+    public const string IdentityMembershipsManage = Prefix + "identity.memberships.manage";
+
     /// <summary>Policy for reading CRM customers.</summary>
     public const string CrmCustomersRead = Prefix + "crm.customers.read";
 

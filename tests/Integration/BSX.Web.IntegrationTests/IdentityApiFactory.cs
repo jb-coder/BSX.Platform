@@ -46,6 +46,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
     /// <summary>The email of a user with read-only Sales and CRM permissions.</summary>
     public const string SalesReaderEmail = "sales-reader@example.com";
 
+    /// <summary>The email of a user with read-only administration permissions.</summary>
+    public const string AdministrationReaderEmail = "admin-reader@example.com";
+
     /// <summary>The email of a user who belongs to both seeded tenants.</summary>
     public const string TenantAdminEmail = "tenant-admin@example.com";
 
@@ -57,8 +60,15 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
     [
         "identity.users.read",
         "identity.users.create",
+        "identity.users.update",
+        "identity.users.manage-status",
         "identity.roles.read",
         "identity.roles.create",
+        "identity.roles.update",
+        "identity.roles.set-permissions",
+        "identity.permissions.read",
+        "identity.memberships.read",
+        "identity.memberships.manage",
         "identity.users.assign-role",
         "crm.customers.read",
         "crm.customers.create",
@@ -88,6 +98,15 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         "crm.organizations.read",
         "sales.leads.read",
         "sales.opportunities.read",
+    ];
+
+    /// <summary>The read-only administration permissions granted to the seeded administration reader.</summary>
+    public static readonly string[] AdministrationReaderPermissions =
+    [
+        "identity.users.read",
+        "identity.roles.read",
+        "identity.memberships.read",
+        "identity.permissions.read",
     ];
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
@@ -132,6 +151,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
 
     /// <summary>Gets the read-only Sales user's identifier.</summary>
     public Guid SalesReaderUserId { get; private set; }
+
+    /// <summary>Gets the read-only administration user's identifier.</summary>
+    public Guid AdministrationReaderUserId { get; private set; }
 
     /// <summary>Gets the two-tenant user's identifier.</summary>
     public Guid TenantAdminUserId { get; private set; }
@@ -310,6 +332,16 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         context.Roles.Add(salesReaderRole);
 
         SalesReaderUserId = AddUser(context, passwordHasher, SalesReaderEmail, "Sales Reader", now, platformRoleId: salesReaderRole.Id.Value, memberships: [TenantId]);
+
+        Role adminReaderRole = Role.Create(
+            RoleId.New(),
+            null,
+            RoleName.Create("Administration Reader").Value,
+            AdministrationReaderPermissions.Select(code => Permission.Create(code).Value),
+            isSystem: true).Value;
+        context.Roles.Add(adminReaderRole);
+
+        AdministrationReaderUserId = AddUser(context, passwordHasher, AdministrationReaderEmail, "Administration Reader", now, platformRoleId: adminReaderRole.Id.Value, memberships: [TenantId]);
         TenantAdminUserId = AddUser(context, passwordHasher, TenantAdminEmail, "Tenant Admin", now, platformRoleId: role.Id.Value, memberships: [TenantId, OtherTenantId]);
         InviteeUserId = AddUser(context, passwordHasher, InviteeEmail, "Invitee", now, platformRoleId: null, memberships: []);
 

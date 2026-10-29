@@ -43,7 +43,7 @@ public sealed class SetRolePermissionsCommandHandlerTests
     }
 
     [Fact]
-    public async Task Should_AllowSystemRole()
+    public async Task Should_RejectSystemRole()
     {
         Role role = TestData.CreateRole(tenantId: null, name: "Administrator", isSystem: true);
         _roles.Seed(role);
@@ -51,7 +51,8 @@ public sealed class SetRolePermissionsCommandHandlerTests
         var result = await CreateHandler(null).HandleAsync(
             new SetRolePermissionsCommand(role.Id.Value, ["crm.customers.create"]));
 
-        result.IsSuccess.Should().BeTrue();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Role.SystemImmutable");
     }
 
     [Fact]

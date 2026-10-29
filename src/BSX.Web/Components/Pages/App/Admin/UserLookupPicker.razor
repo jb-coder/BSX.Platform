@@ -1,0 +1,180 @@
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Users.GetUserById
+@using BSX.Modules.Identity.Application.Users.ListUsers
+@using BSX.SharedKernel.Results
+@inject AdministrationDispatcher Dispatcher
+
+<fieldset class="lookup-picker">
+    <legend>User</legend>
+
+    @if (!CanRead)
+    {
+        <p class="field-hint">User read permission is required to select an account.</p>
+    }
+    else
+    {
+        <div class="lookup-selection">
+            <div>
+                @if (Value is not null)
+                {
+                    <strong>@(_selectedName ?? "Selected user")</strong>
+                    <span>@_selectedEmail</span>
+                }
+                else
+                {
+                    <span class="text-muted">No user selected</span>
+                }
+            </div>
+            <button type="button" class="button button-secondary button-small" @onclick="TogglePicker">
+                @(Value is null ? "Choose user" : "Change")
+            </button>
+        </div>
+
+        @if (_open)
+        {
+            <section class="selector-panel" aria-label="Choose a user">
+                <form class="selector-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                    <SearchBox @bind-Value="_search"
+                               Label="Search users"
+                               Placeholder="Search by name or email"
+                               Disabled="@_searching" />
+                    <button type="submit" class="button button-secondary" disabled="@_searching">Search</button>
+                </form>
+
+                @if (_searching)
+                {
+                    <LoadingState Label="Searching users..." />
+                }
+                else if (_error is not null)
+                {
+                    <ErrorState Title="Users could not be loaded" Message="@_error" />
+                }
+                else if (_users.Count == 0)
+                {
+                    <EmptyState Title="No users found" Description="Try a different name or email." />
+                }
+                else
+                {
+                    <ul class="selector-list" aria-live="polite">
+                        @foreach (UserSummaryDto user in _users)
+                        {
+                            <li>
+                                <button type="button"
+                                        class="selector-option @(Value == user.Id ? "is-selected" : null)"
+                                        aria-pressed="@(Value == user.Id ? "true" : "false")"
+                                        @onclick="() => SelectAsync(user)">
+                                    <span>
+                                        <strong>@user.Name</strong>
+                                        <span>@user.Email</span>
+                                    </span>
+                                    <span class="@AdministrationDisplay.UserStatusClass(user.Status)">@user.Status</span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <div class="form-actions">
+                    <button type="button" class="button button-secondary" @onclick="ClosePicker">Cancel</button>
+                </div>
+            </section>
+        }
+    }
+</fieldset>
+
+@code {
+    private string? _selectedName;
+    private string? _selectedEmail;
+    private string? _search;
+    private string? _error;
+    private IReadOnlyList<UserSummaryDto> _users = [];
+    private Guid? _loadedValue;
+    private bool _open;
+    private bool _searching;
+
+    /// <summary>The selected user identifier.</summary>
+    [Parameter]
+    public Guid? Value { get; set; }
+
+    /// <summary>Raised when the selection changes.</summary>
+    [Parameter]
+    public EventCallback<Guid?> ValueChanged { get; set; }
+
+    /// <summary>Whether the user may read users.</summary>
+    [Parameter]
+    public bool CanRead { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedValue == Value)
+        {
+            return;
+        }
+
+        _loadedValue = Value;
+        _selectedName = null;
+        _selectedEmail = null;
+
+        if (Value is not { } id || !CanRead)
+        {
+            return;
+        }
+
+        Result<UserDto> result = await Dispatcher.SendAsync(new GetUserByIdQuery(id));
+        if (result.IsSuccess)
+        {
+            _selectedName = result.Value.Name;
+            _selectedEmail = result.Value.Email;
+        }
+    }
+
+    private async Task TogglePicker()
+    {
+        _open = !_open;
+        if (_open)
+        {
+            await SearchAsync();
+        }
+    }
+
+    private void ClosePicker()
+    {
+        _open = false;
+        _error = null;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (_searching)
+        {
+            return;
+        }
+
+        _searching = true;
+        _error = null;
+
+        Result<PagedResult<UserSummaryDto>> result = await Dispatcher.SendAsync(
+            new ListUsersQuery(1, 10, _search));
+
+        _searching = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            _users = [];
+            return;
+        }
+
+        _users = result.Value.Items;
+    }
+
+    private async Task SelectAsync(UserSummaryDto user)
+    {
+        _loadedValue = user.Id;
+        _selectedName = user.Name;
+        _selectedEmail = user.Email;
+        _open = false;
+        await ValueChanged.InvokeAsync(user.Id);
+    }
+}

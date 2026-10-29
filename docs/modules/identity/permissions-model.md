@@ -60,10 +60,12 @@ model auditable and avoids drift.
 | `identity.users.reset-password` | `ResetUserPasswordCommand` |
 | `identity.roles.read` | `ListRolesQuery`, `GetRoleByIdQuery` |
 | `identity.roles.create` | `CreateRoleCommand` |
-| `identity.roles.update` | `RenameRoleCommand` |
+| `identity.roles.update` | `UpdateRoleCommand` |
 | `identity.roles.set-permissions` | `SetRolePermissionsCommand` |
 | `identity.roles.delete` | `DeleteRoleCommand` |
 | `identity.permissions.read` | `ListPermissionsQuery` |
+| `identity.memberships.read` | `ListTenantMembershipsQuery` |
+| `identity.memberships.manage` | invite, accept, change-role and remove membership |
 | `identity.sessions.read` | `ListUserSessionsQuery` |
 | `identity.sessions.revoke` | Admin session revocation |
 

@@ -1,0 +1,104 @@
+@page "/app/admin/memberships/invite"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityMembershipsManage)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Memberships.InviteUserToTenant
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+
+<PageTitle>Invite member - BSX Platform</PageTitle>
+
+<PageHeader Title="Invite member"
+            Subtitle="Invite an existing user to the active workspace.">
+    <Actions><a class="button button-secondary" href="/app/admin/memberships">Cancel</a></Actions>
+</PageHeader>
+
+<div class="content-medium">
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>The invitation could not be created.</strong>
+            <span>@_error</span>
+        </div>
+    }
+
+    <Card>
+        @if (!_canReadUsers)
+        {
+            <EmptyState Title="User access is required"
+                        Description="Membership invitations require permission to read user accounts." />
+        }
+        else
+        {
+            <UserLookupPicker @bind-Value="_selectedUserId" CanRead="_canReadUsers" />
+
+            <p class="field-hint">
+                The membership starts as Invited. Accept the invitation from the membership list to activate workspace access.
+            </p>
+
+            <div class="form-actions">
+                <button type="button" class="button button-primary" disabled="@_saving" @onclick="InviteAsync">
+                    @(_saving ? "Inviting..." : "Create invitation")
+                </button>
+                <a class="button button-secondary" href="/app/admin/memberships">Cancel</a>
+            </div>
+        }
+    </Card>
+</div>
+
+@code {
+    private Guid? _selectedUserId;
+    private string? _error;
+    private bool _saving;
+    private bool _canReadUsers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        _canReadUsers = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(IdentityPermissionCodes.UsersRead, StringComparer.Ordinal);
+    }
+
+    private async Task InviteAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        if (_selectedUserId is not { } userId)
+        {
+            _error = "Choose a user to invite.";
+            return;
+        }
+
+        if (CurrentUser.TenantId is not { } tenantId)
+        {
+            _error = "No active workspace is selected.";
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+
+        Result<InviteUserToTenantResponse> result = await IdentityWebResults.ExecuteAsync(() => Dispatcher.SendAsync(
+            new InviteUserToTenantCommand(tenantId, userId, CurrentUser.UserId)));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Membership invited", "Accept the invitation to activate workspace access.");
+        Navigation.NavigateTo("/app/admin/memberships");
+    }
+}

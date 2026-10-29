@@ -20,6 +20,9 @@ public sealed class UnavailableDatabaseIdentityApiFactory : WebApplicationFactor
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting(
+            "ConnectionStrings:Identity",
+            "Host=127.0.0.1;Port=1;Database=unreachable;Username=postgres;Password=postgres;Timeout=1;Command Timeout=1");
 
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {

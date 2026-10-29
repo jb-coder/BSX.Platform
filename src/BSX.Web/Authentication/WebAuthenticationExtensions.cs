@@ -44,6 +44,7 @@ public static class WebAuthenticationExtensions
 
         services.TryAddScoped<WebCookieAuthenticationEvents>();
         services.TryAddScoped<WebCurrentUser>();
+        services.TryAddScoped<BSX.Web.Administration.AdministrationDispatcher>();
         services.Replace(ServiceDescriptor.Scoped<ICurrentUser>(
             provider => provider.GetRequiredService<WebCurrentUser>()));
         services.TryAddSingleton<PendingLoginStore>();

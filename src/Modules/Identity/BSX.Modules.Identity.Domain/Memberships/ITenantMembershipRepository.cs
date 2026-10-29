@@ -22,10 +22,20 @@ public interface ITenantMembershipRepository
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
     Task<bool> ExistsAsync(TenantId tenantId, UserId userId, CancellationToken cancellationToken = default);
 
+    /// <summary>Lists the memberships in a tenant.</summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
+    Task<IReadOnlyCollection<TenantMembership>> ListByTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default);
+
     /// <summary>Lists the memberships of a user.</summary>
     /// <param name="userId">The user identifier.</param>
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
     Task<IReadOnlyCollection<TenantMembership>> ListByUserAsync(UserId userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Marks newly assigned membership roles as inserts for EF Core.</summary>
+    /// <param name="membership">The tracked membership.</param>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
+    Task TrackRoleChangesAsync(TenantMembership membership, CancellationToken cancellationToken = default);
 
     /// <summary>Adds a new membership.</summary>
     /// <param name="membership">The membership.</param>

@@ -1,4 +1,5 @@
 using BSX.Modules.Crm.Contracts.Permissions;
+using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Sales.Contracts.Permissions;
 using BSX.Web.Navigation;
 
@@ -13,7 +14,7 @@ public sealed class NavigationCatalogTests
 
         sections.Should().ContainSingle();
         sections[0].Label.Should().Be("Administration");
-        sections[0].Items.Select(item => item.Label).Should().BeEquivalentTo("Profile", "Sessions");
+        sections[0].Items.Select(item => item.Label).Should().BeEquivalentTo("Sessions");
     }
 
     [Fact]
@@ -22,7 +23,7 @@ public sealed class NavigationCatalogTests
         IReadOnlyList<NavigationSection> sections = NavigationCatalog.For([CrmPermissionCodes.CustomersRead]);
 
         sections.SelectMany(section => section.Items).Select(item => item.Label)
-            .Should().BeEquivalentTo("Customers", "Profile", "Sessions");
+            .Should().BeEquivalentTo("Customers", "Sessions");
     }
 
     [Fact]
@@ -34,11 +35,14 @@ public sealed class NavigationCatalogTests
             CrmPermissionCodes.OrganizationsRead,
             SalesPermissionCodes.LeadsRead,
             SalesPermissionCodes.OpportunitiesRead,
+            IdentityPermissionCodes.UsersRead,
+            IdentityPermissionCodes.RolesRead,
+            IdentityPermissionCodes.MembershipsRead,
         ]);
 
         sections.Select(section => section.Label)
             .Should().BeEquivalentTo("CRM", "Sales", "Administration");
-        sections.SelectMany(section => section.Items).Should().HaveCount(6);
+        sections.SelectMany(section => section.Items).Should().HaveCount(8);
     }
 
     [Fact]
@@ -52,7 +56,7 @@ public sealed class NavigationCatalogTests
     [Fact]
     public void GetLandingRoute_ShouldChooseTheFirstAccessibleSection()
     {
-        NavigationCatalog.GetLandingRoute([]).Should().Be("/app/admin/profile");
+        NavigationCatalog.GetLandingRoute([]).Should().Be("/app/admin/sessions");
         NavigationCatalog.GetLandingRoute([SalesPermissionCodes.LeadsRead]).Should().Be("/app/sales/leads");
     }
 

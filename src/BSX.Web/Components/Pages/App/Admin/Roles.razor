@@ -1,0 +1,147 @@
+@page "/app/admin/roles"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityRolesRead)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Roles.ListRoles
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Roles - BSX Platform</PageTitle>
+
+<PageHeader Title="Roles"
+            Subtitle="Define workspace and platform role permissions.">
+    <Actions>
+        @if (_canCreate)
+        {
+            <a class="button button-primary" href="/app/admin/roles/new">New role</a>
+        }
+    </Actions>
+</PageHeader>
+
+<Card>
+    <div class="list-toolbar">
+        <div class="list-search">
+            <SearchBox @bind-Value="_search"
+                       Label="Search roles"
+                       Placeholder="Search by role name or description" />
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingState Label="Loading roles..." />
+    }
+    else if (_error is not null)
+    {
+        <ErrorState Title="Roles could not be loaded" Message="@_error">
+            <Action>
+                <button type="button" class="button button-secondary" @onclick="LoadAsync">Try again</button>
+            </Action>
+        </ErrorState>
+    }
+    else if (FilteredRoles.Count == 0)
+    {
+        <EmptyState Title="@(string.IsNullOrWhiteSpace(_search) ? "No roles yet" : "No roles match your search")"
+                    Description="@(string.IsNullOrWhiteSpace(_search) ? "Create a tenant role to group permissions." : "Try a different role name or description.")">
+            <Action>
+                @if (_canCreate && string.IsNullOrWhiteSpace(_search))
+                {
+                    <a class="button button-primary" href="/app/admin/roles/new">Create a role</a>
+                }
+            </Action>
+        </EmptyState>
+    }
+    else
+    {
+        <p class="result-summary" aria-live="polite">@FilteredRoles.Count role(s)</p>
+        <DataTable Items="FilteredRoles" Caption="Role results">
+            <HeaderTemplate>
+                <th scope="col">Role</th>
+                <th scope="col">Scope</th>
+                <th scope="col">Permissions</th>
+                <th scope="col">Type</th>
+            </HeaderTemplate>
+            <RowTemplate Context="role">
+                <td>
+                    <a class="table-link" href="@($"/app/admin/roles/{role.Id}")">@role.Name</a>
+                    @if (!string.IsNullOrWhiteSpace(role.Description))
+                    {
+                        <div class="field-hint">@role.Description</div>
+                    }
+                </td>
+                <td>@(role.TenantId is null ? "Platform" : "Workspace")</td>
+                <td>@role.Permissions.Count</td>
+                <td>
+                    @if (role.IsSystem)
+                    {
+                        <span class="status-badge status-primary">System</span>
+                    }
+                    else
+                    {
+                        <span class="status-badge status-inactive">Custom</span>
+                    }
+                </td>
+            </RowTemplate>
+        </DataTable>
+    }
+</Card>
+
+@code {
+    private IReadOnlyList<RoleDto> _roles = [];
+    private string? _search;
+    private string? _error;
+    private bool _loading = true;
+    private bool _canCreate;
+
+    private IReadOnlyList<RoleDto> FilteredRoles => string.IsNullOrWhiteSpace(_search)
+        ? _roles
+        : _roles.Where(role =>
+                role.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || (role.Description?.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase) ?? false))
+            .ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        _canCreate = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(IdentityPermissionCodes.RolesCreate, StringComparer.Ordinal);
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        Result<IReadOnlyList<RoleDto>> tenantRoles = await Dispatcher.SendAsync(
+            new ListRolesQuery(CurrentUser.TenantId));
+        Result<IReadOnlyList<RoleDto>> systemRoles = await Dispatcher.SendAsync(
+            new ListRolesQuery(null));
+
+        _loading = false;
+
+        if (tenantRoles.IsFailure)
+        {
+            _error = IdentityMessages.For(tenantRoles.Error);
+            return;
+        }
+
+        if (systemRoles.IsFailure)
+        {
+            _error = IdentityMessages.For(systemRoles.Error);
+            return;
+        }
+
+        _roles = tenantRoles.Value
+            .Concat(systemRoles.Value)
+            .OrderByDescending(role => role.IsSystem)
+            .ThenBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+}

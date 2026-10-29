@@ -1,11 +1,12 @@
 # Web Foundation
 
-Status: **Application foundation, CRM and Sales web experiences are implemented;** Inventory
-screens are not implemented in this slice.
+Status: **Application foundation, CRM, Sales and Administration web experiences are implemented;**
+Inventory screens are not implemented in this slice.
 
 The web foundation turns `BSX.Web` from a host into a SaaS application shell: authentication,
 workspace selection, permission-aware navigation, a responsive layout and a reusable design
-system. CRM is documented in [crm.md](crm.md) and Sales in [sales.md](sales.md).
+system. CRM is documented in [crm.md](crm.md), Sales in [sales.md](sales.md) and Administration in
+[administration.md](administration.md).
 
 ---
 
@@ -23,6 +24,7 @@ Implemented:
 - CRM organization list, detail, create and edit screens.
 - Customer organization assignment, contact lifecycle and address lifecycle management.
 - Sales lead and opportunity lists, details, forms, lifecycle actions and CRM pickers.
+- Administration users, roles, permission assignment, workspace memberships and sessions.
 - Component, navigation, authorization, accessibility and endpoint tests.
 
 Not implemented:
@@ -223,6 +225,7 @@ The foundation defines patterns for future business screens:
 
 - CRM customer, organization, assignment, contact and address screens (see [crm.md](crm.md)).
 - Sales lead and opportunity screens (see [sales.md](sales.md)).
+- Administration screens (see [administration.md](administration.md)).
 - Design-system component rendering.
 - Navigation visibility by permission and Inventory exclusion.
 - Permission policy and handler behavior.
@@ -237,7 +240,7 @@ Sales endpoints after the smart authentication scheme change.
 
 ## Future Work
 
-- Session list/revoke UI, profile editing and password changes.
+- Profile editing and password changes.
 - Tenant settings, display names and branding.
 - Distributed pending-login storage for multi-instance deployments.
 - A decision on continuing in-process application dispatch for business screens versus a typed

@@ -21,8 +21,14 @@ internal sealed class InMemoryTenantMembershipRepository : ITenantMembershipRepo
     public Task<bool> ExistsAsync(TenantId tenantId, UserId userId, CancellationToken cancellationToken = default)
         => Task.FromResult(_memberships.Exists(membership => membership.TenantId == tenantId && membership.UserId == userId));
 
+    public Task<IReadOnlyCollection<TenantMembership>> ListByTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyCollection<TenantMembership>>(_memberships.Where(membership => membership.TenantId == tenantId).ToList());
+
     public Task<IReadOnlyCollection<TenantMembership>> ListByUserAsync(UserId userId, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyCollection<TenantMembership>>(_memberships.Where(membership => membership.UserId == userId).ToList());
+
+    public Task TrackRoleChangesAsync(TenantMembership membership, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 
     public Task AddAsync(TenantMembership membership, CancellationToken cancellationToken = default)
     {

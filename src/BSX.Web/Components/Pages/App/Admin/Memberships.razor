@@ -1,0 +1,291 @@
+@page "/app/admin/memberships"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityMembershipsRead)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Memberships.AcceptMembership
+@using BSX.Modules.Identity.Application.Memberships.ListTenantMemberships
+@using BSX.Modules.Identity.Application.Memberships.RemoveMembership
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IToastService Toasts
+
+<PageTitle>Memberships - BSX Platform</PageTitle>
+
+<PageHeader Title="Memberships"
+            Subtitle="Manage who belongs to the active workspace and which role they hold.">
+    <Actions>
+        @if (_canManage)
+        {
+            <a class="button button-primary" href="/app/admin/memberships/invite">Invite member</a>
+        }
+    </Actions>
+</PageHeader>
+
+<Card>
+    <div class="list-toolbar">
+        <div class="list-search">
+            <SearchBox @bind-Value="_search"
+                       Label="Search memberships"
+                       Placeholder="Search by member name or email" />
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">
+            <strong>The membership could not be updated.</strong>
+            <span>@_error</span>
+            <button type="button" class="link-button" @onclick="LoadAsync">Reload memberships</button>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <LoadingState Label="Loading memberships..." />
+    }
+    else if (_memberships.Count == 0)
+    {
+        <EmptyState Title="No memberships" Description="Invite a user to this workspace to get started.">
+            <Action>
+                @if (_canManage)
+                {
+                    <a class="button button-primary" href="/app/admin/memberships/invite">Invite member</a>
+                }
+            </Action>
+        </EmptyState>
+    }
+    else if (FilteredMemberships.Count == 0)
+    {
+        <EmptyState Title="No members match your search" Description="Try a different name or email." />
+    }
+    else
+    {
+        <p class="result-summary" aria-live="polite">@FilteredMemberships.Count member(s)</p>
+        <DataTable Items="VisibleMemberships" Caption="Workspace memberships">
+            <HeaderTemplate>
+                <th scope="col">Member</th>
+                <th scope="col">Status</th>
+                <th scope="col">Roles</th>
+                <th scope="col">Joined</th>
+                <th scope="col" class="table-actions-column">Actions</th>
+            </HeaderTemplate>
+            <RowTemplate Context="membership">
+                <td>
+                    <span class="table-primary">@membership.Name</span>
+                    <div class="field-hint">@membership.Email</div>
+                </td>
+                <td>
+                    <span class="@AdministrationDisplay.MembershipStatusClass(membership.Status)">@membership.Status</span>
+                    @if (membership.UserId == _currentUserId)
+                    {
+                        <span class="status-badge status-primary">You</span>
+                    }
+                </td>
+                <td>
+                    @if (membership.RoleNames.Count == 0)
+                    {
+                        <span class="text-muted">No role</span>
+                    }
+                    else
+                    {
+                        @string.Join(", ", membership.RoleNames)
+                    }
+                </td>
+                <td>@AdministrationDisplay.Timestamp(membership.JoinedOnUtc)</td>
+                <td>
+                    @if (_canManage)
+                    {
+                        <div class="table-actions">
+                            @if (membership.Status == "Invited")
+                            {
+                                <button type="button"
+                                        class="button button-quiet button-small"
+                                        disabled="@_busy"
+                                        @onclick="() => OpenAcceptDialog(membership)">
+                                    Accept
+                                </button>
+                            }
+                            @if (membership.Status != "Removed")
+                            {
+                                <a class="button button-quiet button-small"
+                                   href="@($"/app/admin/memberships/{membership.Id}/role")">
+                                    Change role
+                                </a>
+                            }
+                            @if (membership.Status != "Removed" && membership.UserId != _currentUserId)
+                            {
+                                <button type="button"
+                                        class="button button-danger-ghost button-small"
+                                        disabled="@_busy"
+                                        @onclick="() => OpenRemoveDialog(membership)">
+                                    Remove
+                                </button>
+                            }
+                        </div>
+                    }
+                </td>
+            </RowTemplate>
+        </DataTable>
+
+        <Pagination Page="_page"
+                    PageSize="_pageSize"
+                    TotalCount="FilteredMemberships.Count"
+                    PageChanged="ChangePage" />
+    }
+</Card>
+
+<ConfirmDialog Open="_confirmAccept"
+               Title="Accept workspace invitation?"
+               Message="@($"Activate {_pendingMembership?.Name ?? "this member"}'s membership so they can sign in to the workspace.")"
+               ConfirmText="Accept invitation"
+               Busy="_busy"
+               Confirm="AcceptAsync"
+               Cancel="CloseDialogs" />
+
+<ConfirmDialog Open="_confirmRemove"
+               Title="Remove workspace member?"
+               Message="@($"Remove {_pendingMembership?.Name ?? "this member"} from the workspace? Their membership will be marked removed.")"
+               ConfirmText="Remove member"
+               Busy="_busy"
+               Confirm="RemoveAsync"
+               Cancel="CloseDialogs" />
+
+@code {
+    private const int PageSize = 20;
+    private IReadOnlyList<MembershipDto> _memberships = [];
+    private MembershipDto? _pendingMembership;
+    private string? _search;
+    private string? _error;
+    private Guid? _currentUserId;
+    private int _page = 1;
+    private int _pageSize = PageSize;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _canManage;
+    private bool _confirmAccept;
+    private bool _confirmRemove;
+
+    private IReadOnlyList<MembershipDto> FilteredMemberships => string.IsNullOrWhiteSpace(_search)
+        ? _memberships
+        : _memberships.Where(membership =>
+                membership.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)
+                || membership.Email.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+    private IReadOnlyList<MembershipDto> VisibleMemberships => FilteredMemberships
+        .Skip((_page - 1) * _pageSize)
+        .Take(_pageSize)
+        .ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        _currentUserId = CurrentUser.UserId;
+        _canManage = NavigationCatalog.PermissionsOf(state.User)
+            .Contains(IdentityPermissionCodes.MembershipsManage, StringComparer.Ordinal);
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        Result<IReadOnlyList<MembershipDto>> result = await Dispatcher.SendAsync(
+            new ListTenantMembershipsQuery());
+
+        _loading = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        _memberships = result.Value;
+        _page = 1;
+    }
+
+    private void ChangePage(int page) => _page = page;
+
+    private void OpenAcceptDialog(MembershipDto membership)
+    {
+        _pendingMembership = membership;
+        _confirmAccept = true;
+    }
+
+    private void OpenRemoveDialog(MembershipDto membership)
+    {
+        _pendingMembership = membership;
+        _confirmRemove = true;
+    }
+
+    private void CloseDialogs()
+    {
+        _confirmAccept = false;
+        _confirmRemove = false;
+        _pendingMembership = null;
+    }
+
+    private async Task AcceptAsync()
+    {
+        if (_busy || _pendingMembership is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        Result result = await IdentityWebResults.ExecuteAsync(
+            () => Dispatcher.SendAsync(new AcceptMembershipCommand(_pendingMembership.Id)));
+
+        _busy = false;
+        _confirmAccept = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            _pendingMembership = null;
+            return;
+        }
+
+        Toasts.Success("Membership accepted", "The member can now access the workspace.");
+        _pendingMembership = null;
+        await LoadAsync();
+    }
+
+    private async Task RemoveAsync()
+    {
+        if (_busy || _pendingMembership is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        Result result = await IdentityWebResults.ExecuteAsync(
+            () => Dispatcher.SendAsync(new RemoveMembershipCommand(_pendingMembership.Id)));
+
+        _busy = false;
+        _confirmRemove = false;
+
+        if (result.IsFailure)
+        {
+            _error = IdentityMessages.For(result.Error);
+            _pendingMembership = null;
+            return;
+        }
+
+        Toasts.Success("Membership removed", "The member no longer belongs to the workspace.");
+        _pendingMembership = null;
+        await LoadAsync();
+    }
+}

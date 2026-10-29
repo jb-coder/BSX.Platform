@@ -1,0 +1,158 @@
+@page "/app/admin/roles/{Id:guid}"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityRolesRead)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Permissions.ListPermissions
+@using BSX.Modules.Identity.Application.Roles.GetRoleById
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(_role?.Name ?? "Role") - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading role..." />
+}
+else if (_role is null)
+{
+    <PageHeader Title="Role not found" Subtitle="The role may have been removed." />
+
+    <Card>
+        <EmptyState Title="Role not found" Description="Return to the role list to choose another role.">
+            <Action>
+                <a class="button button-primary" href="/app/admin/roles">Back to roles</a>
+            </Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@_role.Name" Subtitle="@(_role.Description ?? "Role permissions and scope.")">
+        <Actions>
+            <a class="button button-secondary" href="/app/admin/roles">Back to roles</a>
+            @if (!_role.IsSystem && _canUpdate)
+            {
+                <a class="button button-secondary" href="@($"/app/admin/roles/{_role.Id}/edit")">Edit role</a>
+            }
+            @if (!_role.IsSystem && _canSetPermissions)
+            {
+                <a class="button button-primary" href="@($"/app/admin/roles/{_role.Id}/permissions")">
+                    Manage permissions
+                </a>
+            }
+        </Actions>
+    </PageHeader>
+
+    <div class="detail-grid">
+        <Card Title="Role" Subtitle="Scope and classification.">
+            <dl class="definition-list">
+                <div>
+                    <dt>Scope</dt>
+                    <dd>@(_role.TenantId is null ? "Platform" : "Workspace")</dd>
+                </div>
+                <div>
+                    <dt>Type</dt>
+                    <dd>
+                        @if (_role.IsSystem)
+                        {
+                            <span class="status-badge status-primary">System role</span>
+                        }
+                        else
+                        {
+                            <span class="status-badge status-inactive">Custom role</span>
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt>Permissions</dt>
+                    <dd>@_role.Permissions.Count</dd>
+                </div>
+            </dl>
+        </Card>
+    </div>
+
+    <Card Title="Permissions" Subtitle="Capabilities granted by this role." CssClass="detail-card-spaced">
+        @if (_role.Permissions.Count == 0)
+        {
+            <EmptyState Title="No permissions"
+                        Description="This role grants no capabilities." />
+        }
+        else
+        {
+            @foreach (IGrouping<string, string> group in _role.Permissions
+                .GroupBy(code => code.Split('.')[0], StringComparer.Ordinal)
+                .OrderBy(group => group.Key, StringComparer.Ordinal))
+            {
+                <section class="permission-group">
+                    <header>
+                        <h3>@AdministrationDisplay.PermissionModule(group.Key)</h3>
+                        <span>@group.Count() permission(s)</span>
+                    </header>
+                    <ul class="permission-summary">
+                        @foreach (string permissionCode in group.OrderBy(value => value, StringComparer.Ordinal))
+                        {
+                            <li>
+                                <strong>@PermissionDescription(permissionCode)</strong>
+                                <code>@permissionCode</code>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+        }
+    </Card>
+}
+
+@code {
+    private RoleDto? _role;
+    private Dictionary<string, string> _descriptions = new(StringComparer.Ordinal);
+    private bool _loading = true;
+    private bool _canUpdate;
+    private bool _canSetPermissions;
+
+    /// <summary>The role identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canUpdate = permissions.Contains(IdentityPermissionCodes.RolesUpdate, StringComparer.Ordinal);
+        _canSetPermissions = permissions.Contains(IdentityPermissionCodes.RolesSetPermissions, StringComparer.Ordinal);
+
+        Result<RoleDto> role = await Dispatcher.SendAsync(new GetRoleByIdQuery(Id));
+        Result<IReadOnlyList<PermissionDto>> catalog = await Dispatcher.SendAsync(new ListPermissionsQuery());
+        _loading = false;
+
+        if (role.IsFailure)
+        {
+            if (role.Error.Code == "Identity.Role.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            return;
+        }
+
+        _role = role.Value;
+
+        if (catalog.IsSuccess)
+        {
+            _descriptions = catalog.Value.ToDictionary(
+                permission => permission.Code,
+                permission => permission.Description,
+                StringComparer.Ordinal);
+        }
+    }
+
+    private string PermissionDescription(string code)
+        => _descriptions.GetValueOrDefault(code) ?? code;
+}

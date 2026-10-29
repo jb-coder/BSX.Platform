@@ -74,4 +74,36 @@ public sealed class RepositoryTests
         loaded.Should().NotBeNull();
         loaded!.RoleIds.Should().Contain(roleId);
     }
+
+    [Fact]
+    public async Task Should_PersistRoleAssignedAfterMembershipIsLoaded()
+    {
+        await using SqliteIdentityDatabase database = await SqliteIdentityDatabase.CreateAsync();
+        var userRepository = new UserRepository(database.Context);
+        var membershipRepository = new TenantMembershipRepository(database.Context);
+        var unitOfWork = new IdentityUnitOfWork(database.Context, new RecordingDomainEventDispatcher());
+
+        User user = TestData.CreateUser();
+        await userRepository.AddAsync(user);
+        var tenantId = TenantId.New();
+        var membership = BSX.Modules.Identity.Domain.Memberships.TenantMembership
+            .Invite(MembershipId.New(), tenantId, user.Id, null, TestData.Now).Value;
+        membership.Accept(TestData.Now);
+        await membershipRepository.AddAsync(membership);
+        await unitOfWork.SaveChangesAsync();
+        database.Context.ChangeTracker.Clear();
+
+        var loaded = await membershipRepository.GetByIdAsync(membership.Id);
+        loaded.Should().NotBeNull();
+        var roleId = RoleId.New();
+        loaded!.AssignRole(roleId);
+        await membershipRepository.TrackRoleChangesAsync(loaded);
+        await unitOfWork.SaveChangesAsync();
+        database.Context.ChangeTracker.Clear();
+
+        var reloaded = await membershipRepository.GetByIdAsync(membership.Id);
+
+        reloaded.Should().NotBeNull();
+        reloaded!.RoleIds.Should().Contain(roleId);
+    }
 }
