@@ -11,7 +11,7 @@
                     <li>
                         <NavLink class="nav-link"
                                  href="@item.Href"
-                                 Match="NavLinkMatch.Prefix"
+                                 Match="@(item.Href == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)"
                                  @onclick="NotifyNavigated">
                             <span class="nav-icon nav-icon-@item.Icon" aria-hidden="true"></span>
                             <span>@item.Label</span>

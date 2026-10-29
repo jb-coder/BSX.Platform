@@ -36,6 +36,7 @@ public sealed class AdministrationWebTests : IClassFixture<IdentityApiFactory>
         userHtml.Should().Contain("Pending");
         userHtml.Should().Contain("Edit user");
         userHtml.Should().Contain("Activate user");
+        userHtml.Should().Contain("Invite to workspace");
 
         HttpResponseMessage userCreate = await client.GetAsync("/app/admin/users/new");
         userCreate.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -81,6 +82,11 @@ public sealed class AdministrationWebTests : IClassFixture<IdentityApiFactory>
         HttpResponseMessage invite = await client.GetAsync("/app/admin/memberships/invite");
         invite.StatusCode.Should().Be(HttpStatusCode.OK);
         (await invite.Content.ReadAsStringAsync()).Should().Contain("Choose user");
+
+        HttpResponseMessage invitePrefill = await client.GetAsync(
+            $"/app/admin/memberships/invite?userId={userId}");
+        invitePrefill.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await invitePrefill.Content.ReadAsStringAsync()).Should().Contain("Managed UI User");
 
         HttpResponseMessage changeRole = await client.GetAsync($"/app/admin/memberships/{membershipId}/role");
         changeRole.StatusCode.Should().Be(HttpStatusCode.OK);

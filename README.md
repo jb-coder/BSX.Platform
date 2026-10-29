@@ -148,6 +148,25 @@ Key documentation includes:
 - Roadmap
 - Mermaid Diagrams
 
+### Demo Quickstart
+
+For a customer demonstration or pilot, the Development host can seed a complete demo workspace:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:Demo__SeedIdentity = "true"
+$env:Demo__SeedSampleData = "true"
+$env:Identity__Permissions__SynchronizeOnStartup = "true"
+
+dotnet run --project src/BSX.Web --launch-profile http
+```
+
+Sign in at `http://localhost:5272` with `admin@bsx.local` / `Passw0rd!`.
+
+The sample seeder is opt-in, idempotent and Development-only. It creates customers, organizations,
+leads, opportunities and invite-ready users. See [demo readiness](docs/demo/demo-readiness.md) for
+the full walkthrough and pilot checklist.
+
 ---
 
 ## Git Workflow

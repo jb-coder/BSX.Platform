@@ -40,6 +40,20 @@
     }
 
     <Card>
+        @if (_canReadLeads && LeadId is null)
+        {
+            <div class="next-step-banner">
+                <div>
+                    <strong>Start with a qualified lead</strong>
+                    <span>
+                        Opportunities are created from leads after they are contacted and qualified.
+                        Open a lead, complete qualification, then use Create opportunity.
+                    </span>
+                </div>
+                <a class="button button-secondary" href="/app/sales/leads">Go to leads</a>
+            </div>
+        }
+
         @if (_loadingLead)
         {
             <LoadingState Label="Loading lead..." />

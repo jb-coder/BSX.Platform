@@ -8,13 +8,13 @@ namespace BSX.Web.IntegrationTests.WebFoundation;
 public sealed class NavigationCatalogTests
 {
     [Fact]
-    public void For_ShouldHideEverythingExceptAdministration_WhenNoPermissions()
+    public void For_ShouldAlwaysExposeHome_AndKeepAdministrationSelfService()
     {
         IReadOnlyList<NavigationSection> sections = NavigationCatalog.For([]);
 
-        sections.Should().ContainSingle();
-        sections[0].Label.Should().Be("Administration");
-        sections[0].Items.Select(item => item.Label).Should().BeEquivalentTo("Sessions");
+        sections.Select(section => section.Label).Should().BeEquivalentTo("Workspace", "Administration");
+        sections.SelectMany(section => section.Items).Select(item => item.Label)
+            .Should().BeEquivalentTo("Home", "Sessions");
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public sealed class NavigationCatalogTests
         IReadOnlyList<NavigationSection> sections = NavigationCatalog.For([CrmPermissionCodes.CustomersRead]);
 
         sections.SelectMany(section => section.Items).Select(item => item.Label)
-            .Should().BeEquivalentTo("Customers", "Sessions");
+            .Should().BeEquivalentTo("Home", "Customers", "Sessions");
     }
 
     [Fact]
@@ -41,8 +41,8 @@ public sealed class NavigationCatalogTests
         ]);
 
         sections.Select(section => section.Label)
-            .Should().BeEquivalentTo("CRM", "Sales", "Administration");
-        sections.SelectMany(section => section.Items).Should().HaveCount(8);
+            .Should().BeEquivalentTo("Workspace", "CRM", "Sales", "Administration");
+        sections.SelectMany(section => section.Items).Should().HaveCount(9);
     }
 
     [Fact]
@@ -54,10 +54,10 @@ public sealed class NavigationCatalogTests
     }
 
     [Fact]
-    public void GetLandingRoute_ShouldChooseTheFirstAccessibleSection()
+    public void GetLandingRoute_ShouldOpenHome()
     {
-        NavigationCatalog.GetLandingRoute([]).Should().Be("/app/admin/sessions");
-        NavigationCatalog.GetLandingRoute([SalesPermissionCodes.LeadsRead]).Should().Be("/app/sales/leads");
+        NavigationCatalog.GetLandingRoute([]).Should().Be("/");
+        NavigationCatalog.GetLandingRoute([SalesPermissionCodes.LeadsRead]).Should().Be("/");
     }
 
     [Fact]
@@ -70,5 +70,9 @@ public sealed class NavigationCatalogTests
 
         NavigationCatalog.FindByPath("/app/crm/customers/00000000-0000-0000-0000-000000000000/edit")
             .Should().Be(item);
+
+        NavigationItem? home = NavigationCatalog.FindByPath("/");
+        home.Should().NotBeNull();
+        home!.Label.Should().Be("Home");
     }
 }

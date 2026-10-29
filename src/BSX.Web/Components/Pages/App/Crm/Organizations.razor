@@ -125,7 +125,7 @@
         : "No organizations match your search";
 
     private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
-        ? "Create an organization to group customers and centralize billing details."
+        ? "Organizations are optional. Create one when several customers belong to the same company group or billing entity."
         : $"No organization name or tax identifier contains \"{Search.Trim()}\".";
 
     protected override async Task OnParametersSetAsync()

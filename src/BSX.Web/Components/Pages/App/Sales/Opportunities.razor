@@ -62,9 +62,9 @@
         {
             <EmptyState Title="@EmptyTitle" Description="@EmptyDescription">
                 <Action>
-                    @if (_canCreate)
+                    @if (_canReadLeads)
                     {
-                        <a class="button button-primary" href="/app/sales/opportunities/new">Create an opportunity</a>
+                        <a class="button button-primary" href="/app/sales/leads">Go to leads</a>
                     }
                 </Action>
             </EmptyState>
@@ -107,6 +107,7 @@
     private string? _error;
     private bool _loading = true;
     private bool _canCreate;
+    private bool _canReadLeads;
 
     /// <summary>The requested one-based page.</summary>
     [SupplyParameterFromQuery(Name = "page")]
@@ -131,7 +132,7 @@
         : "No opportunities match your search";
 
     private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
-        ? "Qualify a lead and convert it into the first opportunity."
+        ? "Opportunities come from qualified leads. Open a lead, mark it contacted, qualify it, then convert it."
         : $"No opportunity title or customer ID contains \"{Search.Trim()}\".";
 
     protected override async Task OnParametersSetAsync()
@@ -141,8 +142,9 @@
 
         _loading = true;
         _error = null;
-        _canCreate = NavigationCatalog.PermissionsOf(state.User)
-            .Contains(SalesPermissionCodes.OpportunitiesCreate, StringComparer.Ordinal);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canCreate = permissions.Contains(SalesPermissionCodes.OpportunitiesCreate, StringComparer.Ordinal);
+        _canReadLeads = permissions.Contains(SalesPermissionCodes.LeadsRead, StringComparer.Ordinal);
 
         Result<PagedResult<OpportunitySummaryDto>> result = await Sender.SendAsync(
             new ListOpportunitiesQuery(Page, PageSize, Search));

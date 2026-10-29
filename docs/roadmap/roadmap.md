@@ -110,6 +110,10 @@ permission enforcement, health checks, endpoint integration tests) implemented. 
 experience (leads, lifecycle, opportunities, stage timeline and CRM pickers) is implemented;
 quotations, orders and invoices remain out of scope for this slice.
 
+Demo readiness is complete for CRM, Sales and Administration: opt-in sample data, guided home,
+first-run progress, contextual empty states and a reusable customer/pilot walkthrough in
+[demo-readiness.md](../demo/demo-readiness.md). Reporting remains out of scope.
+
 ---
 
 ## Phase 6

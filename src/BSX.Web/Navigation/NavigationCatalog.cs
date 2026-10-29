@@ -15,6 +15,15 @@ public static class NavigationCatalog
 
     private static readonly NavigationSection[] Sections =
     [
+        new("Workspace",
+        [
+            new(
+                "Home",
+                "/",
+                null,
+                "Workspace overview and first-run guidance.",
+                "home"),
+        ]),
         new("CRM",
         [
             new(

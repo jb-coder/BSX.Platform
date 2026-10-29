@@ -121,7 +121,7 @@
     private string EmptyTitle => string.IsNullOrWhiteSpace(Search) ? "No leads yet" : "No leads match your search";
 
     private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
-        ? "Create the first lead to start the sales pipeline."
+        ? "A lead is a potential opportunity. Create one, mark it contacted, then qualify it when the prospect is ready."
         : $"No lead title contains \"{Search.Trim()}\".";
 
     protected override async Task OnParametersSetAsync()

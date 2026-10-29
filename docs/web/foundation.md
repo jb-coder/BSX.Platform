@@ -1,12 +1,13 @@
 # Web Foundation
 
-Status: **Application foundation, CRM, Sales and Administration web experiences are implemented;**
+Status: **Application foundation, CRM, Sales, Administration and demo-readiness experiences are implemented;**
 Inventory screens are not implemented in this slice.
 
 The web foundation turns `BSX.Web` from a host into a SaaS application shell: authentication,
 workspace selection, permission-aware navigation, a responsive layout and a reusable design
-system. CRM is documented in [crm.md](crm.md), Sales in [sales.md](sales.md) and Administration in
-[administration.md](administration.md).
+system. CRM is documented in [crm.md](crm.md), Sales in [sales.md](sales.md), Administration in
+[administration.md](administration.md) and customer demonstrations in
+[demo-readiness.md](../demo/demo-readiness.md).
 
 ---
 
@@ -25,6 +26,7 @@ Implemented:
 - Customer organization assignment, contact lifecycle and address lifecycle management.
 - Sales lead and opportunity lists, details, forms, lifecycle actions and CRM pickers.
 - Administration users, roles, permission assignment, workspace memberships and sessions.
+- Guided first-run home, demo workspace data and contextual next-step flows.
 - Component, navigation, authorization, accessibility and endpoint tests.
 
 Not implemented:
@@ -149,6 +151,9 @@ is in-process; a multi-instance deployment needs a distributed store for workspa
 The navigation catalog is the single source of truth:
 
 ```text
+Workspace
+  Home            /                        authenticated
+
 CRM
   Customers       /app/crm/customers       crm.customers.read
   Organizations   /app/crm/organizations   crm.organizations.read
@@ -158,7 +163,9 @@ Sales
   Opportunities   /app/sales/opportunities sales.opportunities.read
 
 Administration
-  Profile         /app/admin/profile       authenticated
+  Users           /app/admin/users         identity.users.read
+  Roles           /app/admin/roles         identity.roles.read
+  Memberships     /app/admin/memberships   identity.memberships.read
   Sessions        /app/admin/sessions      authenticated
 ```
 

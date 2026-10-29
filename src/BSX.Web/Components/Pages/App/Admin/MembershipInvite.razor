@@ -15,7 +15,13 @@
 
 <PageHeader Title="Invite member"
             Subtitle="Invite an existing user to the active workspace.">
-    <Actions><a class="button button-secondary" href="/app/admin/memberships">Cancel</a></Actions>
+    <Actions>
+        @if (_canCreateUsers)
+        {
+            <a class="button button-secondary" href="/app/admin/users/new">New user</a>
+        }
+        <a class="button button-secondary" href="/app/admin/memberships">Cancel</a>
+    </Actions>
 </PageHeader>
 
 <div class="content-medium">
@@ -38,7 +44,13 @@
             <UserLookupPicker @bind-Value="_selectedUserId" CanRead="_canReadUsers" />
 
             <p class="field-hint">
-                The membership starts as Invited. Accept the invitation from the membership list to activate workspace access.
+                Choose an active user who is not already a member. The membership starts as Invited; accept it from
+                the membership list to activate workspace access.
+                @if (_canCreateUsers)
+                {
+                    <a href="/app/admin/users/new">Create a user account first</a>
+                    <span> if the person is not listed.</span>
+                }
             </p>
 
             <div class="form-actions">
@@ -56,13 +68,20 @@
     private string? _error;
     private bool _saving;
     private bool _canReadUsers;
+    private bool _canCreateUsers;
+
+    /// <summary>The optional user supplied by the user detail page.</summary>
+    [SupplyParameterFromQuery(Name = "userId")]
+    public Guid? UserId { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         CurrentUser.SetPrincipal(state.User);
-        _canReadUsers = NavigationCatalog.PermissionsOf(state.User)
-            .Contains(IdentityPermissionCodes.UsersRead, StringComparer.Ordinal);
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        _canReadUsers = permissions.Contains(IdentityPermissionCodes.UsersRead, StringComparer.Ordinal);
+        _canCreateUsers = permissions.Contains(IdentityPermissionCodes.UsersCreate, StringComparer.Ordinal);
+        _selectedUserId = UserId;
     }
 
     private async Task InviteAsync()

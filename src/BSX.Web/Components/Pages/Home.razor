@@ -1,50 +1,290 @@
 @page "/"
 @attribute [Authorize]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Crm.Application.Customers.ListCustomers
+@using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Memberships.ListTenantMemberships
+@using BSX.Modules.Sales.Application.Dtos
+@using BSX.Modules.Sales.Application.Leads.ListLeads
+@using BSX.Modules.Sales.Application.Opportunities.ListOpportunities
+@using BSX.Modules.Sales.Contracts.Permissions
+@using BSX.SharedKernel.Results
+@using BSX.Web.Home
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISender Sender
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
 
-<PageTitle>Workspace - BSX Platform</PageTitle>
+<PageTitle>Home - BSX Platform</PageTitle>
 
-<PageHeader Title="@_greeting"
-            Subtitle="Choose an area from the navigation to continue." />
+<section class="home-hero">
+    <div class="home-hero-copy">
+        <p class="eyebrow">Workspace home</p>
+        <h1>@_greeting</h1>
+        <p class="home-hero-lead">
+            BSX brings customers, leads and revenue opportunities together with the team that runs them.
+            Start with a customer, turn a prospect into a qualified lead, then track the opportunity.
+        </p>
+        <div class="home-hero-actions">
+            @if (_canCreateCustomer)
+            {
+                <a class="button button-primary" href="/app/crm/customers/new">Create customer</a>
+            }
+            <a class="button button-secondary" href="#getting-started">See the four-step path</a>
+        </div>
+        @if (_isNewWorkspace)
+        {
+            <p class="home-helper">This workspace is ready for its first customer.</p>
+        }
+    </div>
 
-<div class="landing-grid">
-    @foreach (NavigationSection section in _sections)
+    <ol class="home-flow" aria-label="Customer to opportunity workflow">
+        <li>
+            <span class="home-flow-number">1</span>
+            <strong>Customer</strong>
+            <small>Who you serve</small>
+        </li>
+        <li>
+            <span class="home-flow-number">2</span>
+            <strong>Lead</strong>
+            <small>Potential work</small>
+        </li>
+        <li>
+            <span class="home-flow-number">3</span>
+            <strong>Opportunity</strong>
+            <small>Revenue in motion</small>
+        </li>
+        <li>
+            <span class="home-flow-number">4</span>
+            <strong>Team</strong>
+            <small>People with access</small>
+        </li>
+    </ol>
+</section>
+
+@if (_loading)
+{
+    <Card>
+        <LoadingState Label="Loading your workspace..." />
+    </Card>
+}
+else
+{
+    if (_loadWarning)
     {
-        <Card Title="@section.Label" Subtitle="@SectionDescription(section)">
-            <ul class="landing-links">
-                @foreach (NavigationItem item in section.Items)
-                {
-                    <li>
-                        <a class="landing-link" href="@item.Href">
-                            <span class="landing-link-copy">
-                                <strong>@item.Label</strong>
-                                <span>@item.Description</span>
-                            </span>
-                            <span class="landing-link-arrow" aria-hidden="true"></span>
-                        </a>
-                    </li>
-                }
-            </ul>
-        </Card>
+        <div class="alert alert-warning" role="status">
+            Some workspace activity could not be loaded. The guidance below is still available.
+        </div>
     }
-</div>
+
+    <div id="getting-started">
+        <Card Title="Getting started"
+              Subtitle="@ProgressText">
+            @if (_visibleSteps.Count == 0)
+            {
+                <EmptyState Title="Your role has a focused starting point"
+                            Description="Use the workspace areas below or ask an administrator to grant access to CRM, Sales or memberships." />
+            }
+            else
+            {
+                <ol class="getting-started-list">
+                    @foreach (GettingStartedStep step in _visibleSteps)
+                    {
+                        <li class="getting-started-step @(step.IsComplete ? "is-complete" : step.IsNext ? "is-next" : null)">
+                            <span class="getting-started-marker" aria-hidden="true">
+                                @if (step.IsComplete)
+                                {
+                                    <span class="getting-started-check">&#10003;</span>
+                                }
+                                else
+                                {
+                                    @step.Number
+                                }
+                            </span>
+                            <div class="getting-started-copy">
+                                <div class="getting-started-heading">
+                                    <h3>@step.Title</h3>
+                                    <span class="getting-started-status">@step.StatusLabel</span>
+                                </div>
+                                <p>@step.Description</p>
+                            </div>
+                            <a class="@(step.IsNext ? "button button-primary button-small" : "button button-secondary button-small")"
+                               href="@step.Href"
+                               aria-current="@(step.IsNext ? "step" : null)">
+                                @step.ActionLabel
+                            </a>
+                        </li>
+                    }
+                </ol>
+            }
+        </Card>
+    </div>
+
+    <section class="home-area-section" aria-labelledby="workspace-areas-title">
+        <div class="home-section-heading">
+            <h2 id="workspace-areas-title">Explore your workspace</h2>
+            <p>Each area is permission-aware. You only see the work available to your role.</p>
+        </div>
+
+        <div class="landing-grid">
+            @foreach (NavigationSection section in _productSections)
+            {
+                <Card Title="@section.Label" Subtitle="@SectionDescription(section)">
+                    <ul class="landing-links">
+                        @foreach (NavigationItem item in section.Items)
+                        {
+                            <li>
+                                <a class="landing-link" href="@item.Href">
+                                    <span class="landing-link-copy">
+                                        <strong>@item.Label</strong>
+                                        <span>@item.Description</span>
+                                    </span>
+                                    <span class="landing-link-arrow" aria-hidden="true"></span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </Card>
+            }
+        </div>
+    </section>
+}
 
 @code {
     private string _greeting = "Welcome to your workspace";
-    private IReadOnlyList<NavigationSection> _sections = [];
+    private IReadOnlyList<NavigationSection> _productSections = [];
+    private IReadOnlyList<GettingStartedStep> _visibleSteps = [];
+    private bool _loading = true;
+    private bool _isNewWorkspace;
+    private bool _loadWarning;
+    private bool _canCreateCustomer;
+
+    private string ProgressText => _visibleSteps.Count == 0
+        ? "Your first steps in BSX."
+        : $"{_visibleSteps.Count(step => step.IsComplete)} of {_visibleSteps.Count} complete";
 
     protected override async Task OnInitializedAsync()
     {
         AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
         string? name = state.User.Identity?.Name;
         _greeting = string.IsNullOrWhiteSpace(name) ? "Welcome to your workspace" : $"Welcome, {name}";
-        _sections = NavigationCatalog.For(NavigationCatalog.PermissionsOf(state.User));
+
+        IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
+        IReadOnlyList<NavigationSection> sections = NavigationCatalog.For(permissions);
+        _productSections = sections
+            .Where(section => !string.Equals(section.Label, "Workspace", StringComparison.Ordinal))
+            .ToArray();
+
+        bool canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
+        bool canReadLeads = permissions.Contains(SalesPermissionCodes.LeadsRead, StringComparer.Ordinal);
+        bool canReadOpportunities = permissions.Contains(
+            SalesPermissionCodes.OpportunitiesRead,
+            StringComparer.Ordinal);
+        bool canReadMemberships = permissions.Contains(
+            IdentityPermissionCodes.MembershipsRead,
+            StringComparer.Ordinal);
+
+        _canCreateCustomer = permissions.Contains(CrmPermissionCodes.CustomersCreate, StringComparer.Ordinal);
+
+        int customerCount = 0;
+        int leadCount = 0;
+        int opportunityCount = 0;
+        int membershipCount = 0;
+        Guid? qualifiedLeadId = null;
+        HashSet<Guid> convertedLeadIds = [];
+        IReadOnlyList<LeadSummaryDto> leadItems = [];
+
+        if (canReadCustomers)
+        {
+            var customers = await Sender.SendAsync(
+                new ListCustomersQuery(1, 1, null));
+            if (customers.IsSuccess)
+            {
+                customerCount = customers.Value.TotalCount;
+            }
+            else
+            {
+                _loadWarning = true;
+            }
+        }
+
+        if (canReadLeads)
+        {
+            var leads = await Sender.SendAsync(
+                new ListLeadsQuery(1, 100, null));
+            if (leads.IsSuccess)
+            {
+                leadCount = leads.Value.TotalCount;
+                leadItems = leads.Value.Items;
+            }
+            else
+            {
+                _loadWarning = true;
+            }
+        }
+
+        if (canReadOpportunities)
+        {
+            var opportunities = await Sender.SendAsync(
+                new ListOpportunitiesQuery(1, 100, null));
+            if (opportunities.IsSuccess)
+            {
+                opportunityCount = opportunities.Value.TotalCount;
+                convertedLeadIds = opportunities.Value.Items
+                    .Select(opportunity => opportunity.LeadId)
+                    .ToHashSet();
+            }
+            else
+            {
+                _loadWarning = true;
+            }
+        }
+
+        if (canReadLeads && canReadOpportunities)
+        {
+            qualifiedLeadId = leadItems
+                .FirstOrDefault(lead =>
+                    string.Equals(lead.Status, "Qualified", StringComparison.Ordinal)
+                    && !convertedLeadIds.Contains(lead.Id))
+                ?.Id;
+        }
+
+        if (canReadMemberships)
+        {
+            Result<IReadOnlyList<MembershipDto>> memberships = await Dispatcher.SendAsync(
+                new ListTenantMembershipsQuery());
+            if (memberships.IsSuccess)
+            {
+                membershipCount = memberships.Value.Count;
+            }
+            else
+            {
+                _loadWarning = true;
+            }
+        }
+
+        var input = new GettingStartedInput(
+            permissions,
+            customerCount,
+            leadCount,
+            opportunityCount,
+            membershipCount,
+            qualifiedLeadId);
+
+        _visibleSteps = HomeExperience.BuildSteps(input)
+            .Where(step => step.IsAvailable)
+            .ToArray();
+        _isNewWorkspace = HomeExperience.IsNewWorkspace(input);
+        _loading = false;
     }
 
     private static string SectionDescription(NavigationSection section) => section.Label switch
     {
-        "CRM" => "Customers and organizations you work with.",
-        "Sales" => "Leads and opportunities across the revenue lifecycle.",
+        "CRM" => "Customer records, contacts, addresses and organizations.",
+        "Sales" => "Leads, qualification and the opportunities that follow.",
         _ => "Users, roles, workspace memberships and sessions.",
     };
 }

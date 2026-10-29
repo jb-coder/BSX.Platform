@@ -275,6 +275,7 @@ dotnet ef database update `
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 $env:Identity__Permissions__SynchronizeOnStartup = "true"
 $env:Demo__SeedIdentity = "true"
+$env:Demo__SeedSampleData = "true"
 
 dotnet run --project src/BSX.Web --launch-profile http
 ```

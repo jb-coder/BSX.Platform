@@ -52,6 +52,8 @@ public sealed class CrmCustomerWebTests : IClassFixture<IdentityApiFactory>
         detailHtml.Should().Contain(code.ToUpperInvariant());
         detailHtml.Should().Contain("TAX-100");
         detailHtml.Should().Contain("Customer created successfully.");
+        detailHtml.Should().Contain("Next step: capture a lead for this customer");
+        detailHtml.Should().Contain($"/app/sales/leads/new?customerId={id}");
         detailHtml.Should().Contain("Edit customer");
         detailHtml.Should().Contain("No contacts yet");
         detailHtml.Should().Contain("No addresses yet");

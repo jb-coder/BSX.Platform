@@ -32,6 +32,7 @@ environment or a secret store, never from committed files.
 | `Outbox:BaseBackoff` | No | `00:00:05` | Exponential retry base. |
 | `Outbox:StaleProcessingAfter` | No | `00:05:00` | Requeue claims older than this after a crash. |
 | `Demo:SeedIdentity` | No | `false` | Development-only demo administrator and workspace bootstrap. Ignored outside Development. |
+| `Demo:SeedSampleData` | No | `false` | Development-only, idempotent CRM, Sales and invite-ready user sample data. Requires the demo administrator. Ignored outside Development. |
 
 ## Security-sensitive defaults
 
@@ -43,8 +44,10 @@ environment or a secret store, never from committed files.
   fallbacks use local credentials only.
 - **JWT keys.** Outside Development the host fails fast when signing keys are missing
   ([jwt-key-management.md](jwt-key-management.md)).
-- **Demo seeding.** `Demo:SeedIdentity` is honoured only when `ASPNETCORE_ENVIRONMENT=Development`.
-  Never enable it for a shared or production environment; the demo credentials are public.
+- **Demo seeding.** `Demo:SeedIdentity` and `Demo:SeedSampleData` are honoured only when
+  `ASPNETCORE_ENVIRONMENT=Development`. Never enable them for a shared or production environment;
+  the demo credentials and seeded records are public. See
+  [demo readiness](../demo/demo-readiness.md).
 - **HSTS / HTTPS redirection** are enabled outside Development.
 
 ## Environment variable mapping

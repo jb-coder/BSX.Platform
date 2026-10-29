@@ -124,7 +124,7 @@ internal static class DemoIdentitySeeder
         {
             logger.LogWarning(
                 exception,
-                "Demo identity seeding was skipped. Apply the Identity and CRM migrations before enabling demo seeding.");
+                "Demo identity seeding was skipped. Apply the Identity, CRM and Sales migrations before enabling demo seeding.");
         }
     }
 }

@@ -132,7 +132,7 @@
         : "No customers match your search";
 
     private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
-        ? "Create the first customer for this workspace to get started."
+        ? "Customers are the companies or people you serve. Add the first one, then capture a lead for them."
         : $"No customer code or name contains \"{Search.Trim()}\".";
 
     protected override async Task OnParametersSetAsync()

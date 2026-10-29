@@ -4,6 +4,7 @@
 @using BSX.Modules.Crm.Application.Customers.GetCustomerById
 @using BSX.Modules.Crm.Application.Dtos
 @using BSX.Modules.Crm.Contracts.Permissions
+@using BSX.Modules.Sales.Contracts.Permissions
 @using BSX.SharedKernel.Results
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Http
@@ -50,6 +51,16 @@ else
         <div class="alert alert-success" role="status">
             Customer created successfully.
         </div>
+        @if (_canCreateLead)
+        {
+            <div class="next-step-banner">
+                <div>
+                    <strong>Next step: capture a lead for this customer</strong>
+                    <span>Turn the relationship into pipeline by creating a lead, then contact and qualify it.</span>
+                </div>
+                <a class="button button-primary" href="@CreateLeadUrl">Create lead</a>
+            </div>
+        }
     }
     else if (Updated)
     {
@@ -108,6 +119,7 @@ else
     private CustomerDto? _customer;
     private string? _reloadError;
     private bool _canEdit;
+    private bool _canCreateLead;
     private bool _canReadOrganizations;
     private bool _loading = true;
 
@@ -129,6 +141,7 @@ else
         CurrentUser.SetPrincipal(state.User);
         IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
         _canEdit = permissions.Contains(CrmPermissionCodes.CustomersUpdate, StringComparer.Ordinal);
+        _canCreateLead = permissions.Contains(SalesPermissionCodes.LeadsCreate, StringComparer.Ordinal);
         _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
 
         Result<CustomerDto> result = await Sender.SendAsync(new GetCustomerByIdQuery(Id));
@@ -160,6 +173,10 @@ else
 
         _customer = result.Value;
     }
+
+    private string CreateLeadUrl => _customer?.OrganizationId is { } organizationId
+        ? $"/app/sales/leads/new?customerId={_customer.Id}&organizationId={organizationId}"
+        : $"/app/sales/leads/new?customerId={_customer?.Id}";
 
     private static string Display(string? value)
         => string.IsNullOrWhiteSpace(value) ? "Not provided" : value;

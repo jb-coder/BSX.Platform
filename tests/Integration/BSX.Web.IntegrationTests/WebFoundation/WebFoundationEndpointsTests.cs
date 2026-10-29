@@ -32,9 +32,16 @@ public sealed class WebFoundationEndpointsTests : IClassFixture<IdentityApiFacto
         home.StatusCode.Should().Be(HttpStatusCode.OK);
         string homeHtml = await home.Content.ReadAsStringAsync();
         homeHtml.Should().Contain("Welcome");
-        homeHtml.Should().Contain("Workspace");
+        homeHtml.Should().Contain("Workspace home");
+        homeHtml.Should().Contain("Getting started");
+        homeHtml.Should().Contain("Add your first customer");
+        homeHtml.Should().Contain("Capture a lead");
+        homeHtml.Should().Contain("Create an opportunity");
+        homeHtml.Should().Contain("Invite your team");
+        homeHtml.Should().Contain("Explore your workspace");
         homeHtml.Should().Contain("CRM");
         homeHtml.Should().Contain("Sales");
+        homeHtml.Should().Contain("aria-current=\"step\"");
         homeHtml.Should().Contain("class=\"skip-link\"");
         homeHtml.Should().Contain("aria-label=\"Primary navigation\"");
         homeHtml.Should().Contain("aria-label=\"Breadcrumb\"");

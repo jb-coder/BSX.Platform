@@ -93,6 +93,17 @@ PostgreSQL parity (when Docker is available) and endpoint integration suites gre
 None of the above block a single-instance production release. For HA, complete
 [deployment-ha.md](deployment-ha.md) prerequisites (shared keys, distributed limiter).
 
+## Demo readiness
+
+A development-only, opt-in demo workspace is available for customer demonstrations and pilot
+onboarding. `Demo:SeedIdentity` and `Demo:SeedSampleData` create an administrator, sample CRM and
+Sales records, and active users that are ready to invite. The seeders are idempotent and use the
+normal application commands. They are ignored outside Development and are not part of a production
+deployment. See [demo readiness](../demo/demo-readiness.md).
+
+The authenticated home experience, first-run checklist and contextual empty states cover the
+customer → lead → opportunity → invitation journey without external guidance.
+
 ## Statement
 
 The Identity, CRM and Sales modules are production-ready for a controlled release. All Identity D1-D8, CRM C1-C4 and Sales S1-S6 findings are resolved or formally documented, security controls are fail-closed, tenant isolation is fail-closed, and the build/test pipeline enforces quality gates on the production provider.

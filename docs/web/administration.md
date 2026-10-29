@@ -221,7 +221,8 @@ authoritative.
 2. `ASPNETCORE_ENVIRONMENT=Development`.
 3. `Identity__Permissions__SynchronizeOnStartup=true`.
 4. `Demo__SeedIdentity=true`.
-5. Application started with `dotnet run --project src/BSX.Web --launch-profile http`.
+5. `Demo__SeedSampleData=true` for the invite-ready demo users and sample CRM/Sales data.
+6. Application started with `dotnet run --project src/BSX.Web --launch-profile http`.
 
 Sign in at `http://localhost:5272` with:
 

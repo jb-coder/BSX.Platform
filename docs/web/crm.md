@@ -269,6 +269,7 @@ to sign in. It is idempotent and refuses to seed outside the Development environ
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 $env:Demo__SeedIdentity = "true"
+$env:Demo__SeedSampleData = "true"
 ```
 
 Permission synchronization must be enabled so the `Administrator` system role exists. It is enabled

@@ -54,6 +54,14 @@
     private bool _canReadCustomers;
     private bool _canReadOrganizations;
 
+    /// <summary>The optional customer supplied by the originating customer page.</summary>
+    [SupplyParameterFromQuery(Name = "customerId")]
+    public Guid? CustomerId { get; set; }
+
+    /// <summary>The optional organization supplied by the originating customer page.</summary>
+    [SupplyParameterFromQuery(Name = "organizationId")]
+    public Guid? OrganizationId { get; set; }
+
     /// <summary>The lead form model.</summary>
     public LeadFormModel Form { get; set; } = new();
 
@@ -64,6 +72,12 @@
         IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
         _canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
         _canReadOrganizations = permissions.Contains(CrmPermissionCodes.OrganizationsRead, StringComparer.Ordinal);
+
+        Form = new LeadFormModel
+        {
+            CustomerId = CustomerId,
+            OrganizationId = OrganizationId,
+        };
     }
 
     private async Task CreateAsync()

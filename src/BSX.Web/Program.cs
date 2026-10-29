@@ -137,6 +137,7 @@ WebApplication app = builder.Build();
 await app.ApplyIdentityMigrationsAsync();
 await app.SynchronizeIdentityPermissionsAsync();
 await DemoIdentitySeeder.SeedAsync(app);
+await DemoSampleDataSeeder.SeedAsync(app);
 
 app.UseSerilogRequestLogging();
 

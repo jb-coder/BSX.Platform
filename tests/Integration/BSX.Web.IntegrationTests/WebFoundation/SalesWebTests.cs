@@ -42,6 +42,13 @@ public sealed class SalesWebTests : IClassFixture<IdentityApiFactory>
         createHtml.Should().Contain("for=\"lead-title\"");
         createHtml.Should().Contain("for=\"lead-notes\"");
 
+        HttpResponseMessage linkedCreate = await client.GetAsync(
+            $"/app/sales/leads/new?customerId={customerId}&organizationId={organizationId}");
+        linkedCreate.StatusCode.Should().Be(HttpStatusCode.OK);
+        string linkedHtml = await linkedCreate.Content.ReadAsStringAsync();
+        linkedHtml.Should().Contain("Sales UI Customer");
+        linkedHtml.Should().Contain("Sales UI Organization");
+
         HttpResponseMessage detail = await client.GetAsync($"/app/sales/leads/{leadId}");
         detail.StatusCode.Should().Be(HttpStatusCode.OK);
         string detailHtml = await detail.Content.ReadAsStringAsync();
@@ -83,6 +90,10 @@ public sealed class SalesWebTests : IClassFixture<IdentityApiFactory>
         HttpResponseMessage leadDetail = await client.GetAsync($"/app/sales/leads/{leadId}");
         leadDetail.StatusCode.Should().Be(HttpStatusCode.OK);
         (await leadDetail.Content.ReadAsStringAsync()).Should().Contain("Create opportunity");
+
+        HttpResponseMessage startOpportunity = await client.GetAsync("/app/sales/opportunities/new");
+        startOpportunity.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await startOpportunity.Content.ReadAsStringAsync()).Should().Contain("Start with a qualified lead");
 
         HttpResponseMessage createOpportunity = await client.GetAsync($"/app/sales/opportunities/new?leadId={leadId}");
         createOpportunity.StatusCode.Should().Be(HttpStatusCode.OK);

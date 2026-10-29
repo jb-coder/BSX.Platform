@@ -118,7 +118,7 @@
     private string EmptyTitle => string.IsNullOrWhiteSpace(Search) ? "No users yet" : "No users match your search";
 
     private string EmptyDescription => string.IsNullOrWhiteSpace(Search)
-        ? "Create the first user for this platform."
+        ? "Create a user account first, then invite the person to this workspace from Memberships."
         : $"No user name or email contains \"{Search.Trim()}\".";
 
     protected override async Task OnParametersSetAsync()
