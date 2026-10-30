@@ -205,13 +205,19 @@ administration UI, which now filters them out.
 
 - Effective permissions are carried as `permission` claims in the access token and surfaced by
   `ICurrentUser.Permissions`.
-- Because access tokens are stateless and short-lived ([jwt-strategy.md](jwt-strategy.md)),
-  permission changes take effect on the next token issuance.
-- Security-critical changes (password, credentials, status) rotate the security stamp and revoke
-  refresh sessions, forcing re-authentication (ADR-017).
-- **Ordinary role/permission changes do not revoke sessions** (ADR-017/ADR-018); they propagate
-  within the access-token TTL. `RolePermissionsChanged` and `UserRolesChanged` integration events
-  let consumer caches invalidate.
+- Claims are a cache, not the authority. Every permission-gated operation revalidates the session,
+  account and membership against the Identity store and uses the freshly resolved permissions
+  (ADR-021). A removed permission is therefore denied on the next operation, not at the next token
+  issuance.
+- The Blazor circuit principal is revalidated periodically
+  (`AuthorizationRevalidation:CircuitIntervalSeconds`) and signed out when the session is no longer
+  valid. Cookie requests are revalidated at
+  `AuthorizationRevalidation:CookieIntervalSeconds`.
+- Security-critical changes (password, credentials, status) rotate the security stamp; sessions
+  whose stamp no longer matches are rejected by revalidation and at refresh (ADR-017).
+- **Ordinary role/permission changes do not revoke the session** (ADR-017/ADR-018), but they are
+  observed by the next revalidated operation. `RolePermissionsChanged` and `UserRolesChanged`
+  integration events let external caches invalidate.
 - `GetMyPermissionsQuery` returns the current effective permissions for clients that need to
   render capability-aware UI.
 

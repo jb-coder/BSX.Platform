@@ -34,6 +34,7 @@ public static class BuildingBlocksServiceCollectionExtensions
         services.TryAddScoped<ICurrentUser, AnonymousCurrentUser>();
         services.TryAddScoped<ITenantContext, CurrentUserTenantContext>();
         services.TryAddScoped<IPermissionChecker, ClaimsPermissionChecker>();
+        services.TryAddScoped<IAuthorizationRevalidator, NullAuthorizationRevalidator>();
         services.TryAddSingleton<IRateLimitStore, InMemoryRateLimitStore>();
 
         // Canonical pipeline order (outermost first): Logging, Validation, Authorization, Transaction.

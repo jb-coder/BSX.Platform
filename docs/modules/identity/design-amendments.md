@@ -106,6 +106,22 @@ Amends [permissions-model.md](permissions-model.md).
 
 ---
 
+## ADR-021 - Authorization Revalidation and Access Revocation
+
+Amends [permissions-model.md](permissions-model.md), [authentication.md](authentication.md).
+
+- Claims are a cache, not the authority. Every permission-gated operation revalidates the session,
+  account and membership and uses freshly resolved permissions.
+- `AuthorizationSnapshotReader` is the authoritative read model (session status, tenant binding,
+  security stamp, membership status and effective permissions).
+- `RevalidatingServerAuthenticationStateProvider` revalidates each Blazor circuit at a configurable
+  interval, replaces changed principals and signs out invalid ones.
+- Cookie validation revalidates the web session at a configurable interval and clears the cookies
+  when the session is invalid.
+- Any failure to verify freshness denies the operation (fail closed).
+
+---
+
 ## Result
 
 With these amendments, the Identity module is implementation-ready and supports enterprise and

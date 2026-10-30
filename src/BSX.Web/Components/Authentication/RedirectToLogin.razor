@@ -1,4 +1,5 @@
 @inject NavigationManager Navigation
+@inject BSX.Web.Authentication.WebSessionState SessionState
 
 <LoadingState Label="Redirecting to sign in..." />
 
@@ -7,6 +8,7 @@
     {
         string relative = Navigation.ToBaseRelativePath(Navigation.Uri);
         string returnUrl = "/" + relative.TrimStart('/');
-        Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", replace: true);
+        string expired = SessionState.Expired ? "&expired=true" : string.Empty;
+        Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}{expired}", replace: true);
     }
 }

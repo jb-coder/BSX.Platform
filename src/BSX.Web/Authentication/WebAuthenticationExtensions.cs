@@ -3,6 +3,7 @@ using BSX.Web.Authorization;
 using BSX.Web.Notifications;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace BSX.Web.Authentication;
@@ -12,10 +13,15 @@ public static class WebAuthenticationExtensions
 {
     /// <summary>Adds cookie authentication for the Blazor app, JWT for the APIs and permission policies.</summary>
     /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The application configuration.</param>
     /// <returns>The same service collection for chaining.</returns>
-    public static IServiceCollection AddWebAuthentication(this IServiceCollection services)
+    public static IServiceCollection AddWebAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        services.Configure<AuthorizationRevalidationOptions>(
+            configuration.GetSection(AuthorizationRevalidationOptions.SectionName));
 
         services.AddAuthentication(options =>
             {
@@ -44,12 +50,20 @@ public static class WebAuthenticationExtensions
 
         services.TryAddScoped<WebCookieAuthenticationEvents>();
         services.TryAddScoped<WebCurrentUser>();
+        services.TryAddScoped<WebSessionState>();
         services.TryAddScoped<BSX.Web.Administration.AdministrationDispatcher>();
         services.Replace(ServiceDescriptor.Scoped<ICurrentUser>(
             provider => provider.GetRequiredService<WebCurrentUser>()));
         services.TryAddSingleton<PendingLoginStore>();
         services.TryAddScoped<IToastService, ToastService>();
         services.AddCascadingAuthenticationState();
+
+        // Authorization revalidation (ADR-021): per-operation store check plus framework-aligned
+        // circuit revalidation.
+        services.TryAddScoped<WebAuthorizationRevalidator>();
+        services.Replace(ServiceDescriptor.Scoped<IAuthorizationRevalidator>(
+            provider => provider.GetRequiredService<WebAuthorizationRevalidator>()));
+        services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider, BsxRevalidatingAuthenticationStateProvider>());
 
         services.AddAuthorization();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();

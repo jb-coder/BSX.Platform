@@ -65,6 +65,25 @@ flowchart TD
 - Unknown permission codes contribute nothing.
 - The web UI hides disallowed permissions, but the backend and the resolver remain authoritative.
 
+## Authorization Revalidation (ADR-021)
+
+```mermaid
+flowchart TD
+    REQ[Authenticated request] --> SNAP["AuthorizationSnapshotReader<br/>(session + user + membership + permissions)"]
+    SNAP -->|invalid| DENY["Denied<br/>(Authorization.SessionExpired)"]
+    SNAP -->|valid| PERM["Fresh permission gate"]
+    PERM --> HND[Handler]
+
+    CIRCUIT["Blazor circuit"] -->|"every CircuitIntervalSeconds"| SNAP
+    CIRCUIT -->|invalid| SIGNOUT["Sign out circuit<br/>(redirect to /login?expired=true)"]
+    COOKIE["Cookie request"] -->|"every CookieIntervalSeconds"| SNAP
+    COOKIE -->|invalid| EXPIRE["Delete cookies<br/>(redirect to /login?expired=true)"]
+```
+
+- The snapshot is authoritative; cached token claims are never trusted for the gate.
+- A missing, revoked, expired, deactivated or tenant-mismatched principal is denied.
+- A store failure is treated as denied.
+
 ## Defaults Before Identity
 
 ```mermaid

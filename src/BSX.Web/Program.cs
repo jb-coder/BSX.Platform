@@ -63,7 +63,7 @@ builder.Services.AddIdentityJwt(options =>
     JwtOptionsConfiguration.Apply(options, builder.Environment.IsDevelopment());
 });
 builder.Services.AddIdentityAuthentication();
-builder.Services.AddWebAuthentication();
+builder.Services.AddWebAuthentication(builder.Configuration);
 builder.Services.AddIdentityHealthChecks();
 
 if (builder.Configuration.GetValue("Identity:Database:VerifySchema", false))

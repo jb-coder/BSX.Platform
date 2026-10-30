@@ -18,7 +18,7 @@ public sealed class WebCurrentUser : ICurrentUser
     public WebCurrentUser(IHttpContextAccessor httpContextAccessor)
         => _httpContextAccessor = httpContextAccessor;
 
-    private ClaimsPrincipal? Principal
+    internal ClaimsPrincipal? Principal
         => _circuitPrincipal ?? _httpContextAccessor.HttpContext?.User;
 
     /// <inheritdoc />

@@ -17,6 +17,7 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBeha
 {
     private const string UnauthenticatedCode = "Authorization.Unauthenticated";
     private const string ForbiddenCode = "Authorization.Forbidden";
+    private const string SessionExpiredCode = "Authorization.SessionExpired";
 
     private static readonly bool AllowsAnonymous = typeof(TRequest)
         .GetCustomAttribute<AllowAnonymousAttribute>(inherit: true) is not null;
@@ -28,14 +29,20 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBeha
 
     private readonly IPermissionChecker _permissionChecker;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuthorizationRevalidator _revalidator;
 
     /// <summary>Initializes a new instance of the <see cref="AuthorizationBehavior{TRequest, TResponse}"/> class.</summary>
     /// <param name="permissionChecker">The permission checker.</param>
     /// <param name="currentUser">The current user.</param>
-    public AuthorizationBehavior(IPermissionChecker permissionChecker, ICurrentUser currentUser)
+    /// <param name="revalidator">The principal revalidator.</param>
+    public AuthorizationBehavior(
+        IPermissionChecker permissionChecker,
+        ICurrentUser currentUser,
+        IAuthorizationRevalidator revalidator)
     {
         _permissionChecker = permissionChecker;
         _currentUser = currentUser;
+        _revalidator = revalidator;
     }
 
     /// <inheritdoc />
@@ -56,9 +63,22 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBeha
             return Failure(Error.Unauthorized(UnauthenticatedCode, "Authentication is required."));
         }
 
+        // Sensitive operations never trust a cached principal: the session, account and membership
+        // are checked against the authoritative store before the permission gate (ADR-021).
+        AuthorizationRevalidationResult revalidation = await _revalidator
+            .RevalidateAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!revalidation.IsValid)
+        {
+            return Failure(Error.Unauthorized(SessionExpiredCode, "The session is no longer valid."));
+        }
+
         foreach (string permission in RequiredPermissions)
         {
-            bool granted = await _permissionChecker.HasPermissionAsync(permission, cancellationToken).ConfigureAwait(false);
+            bool granted = revalidation.IsAuthoritative
+                ? revalidation.Permissions.Contains(permission, StringComparer.Ordinal)
+                : await _permissionChecker.HasPermissionAsync(permission, cancellationToken).ConfigureAwait(false);
 
             if (!granted)
             {

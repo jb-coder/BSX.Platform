@@ -21,6 +21,9 @@ public static class WebAuthDefaults
     /// <summary>The request item used to signal that a session expired during cookie validation.</summary>
     public const string SessionExpiredItemKey = "BSX.Web.SessionExpired";
 
+    /// <summary>The authentication-ticket item recording the last successful revalidation.</summary>
+    public const string LastRevalidatedAtItemKey = "BSX.Web.LastRevalidatedAt";
+
     /// <summary>The claim type carrying the user identifier.</summary>
     public const string UserIdClaim = "sub";
 

@@ -39,6 +39,8 @@ internal static class IdentityMessages
             "Identity.Role.TenantMismatch" => "That role belongs to another workspace.",
             "Identity.Tenant.InvalidId" => "The workspace identifier is invalid.",
             "Authorization.TenantForbidden" => "You cannot manage records outside the active workspace.",
+            "Authorization.SessionExpired" => "Your session has expired. Sign in again to continue.",
+            "Authorization.Unauthenticated" => "Your session has expired. Sign in again to continue.",
             "Identity.Concurrency.Conflict" => "This record changed while you were editing it. Reload and try again.",
             "Identity.Session.NotFound" => "The session no longer exists.",
             "Identity.Session.Forbidden" => "You can only revoke your own sessions.",

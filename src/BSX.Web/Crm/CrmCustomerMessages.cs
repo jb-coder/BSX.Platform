@@ -57,6 +57,10 @@ internal static class CrmCustomerMessages
                 "Choose a workspace before managing CRM records.",
             "CRM.ConcurrencyConflict" =>
                 "This record was changed by someone else. Reload it and try again.",
+            "Authorization.SessionExpired" =>
+                "Your session has expired. Sign in again to continue.",
+            "Authorization.Unauthenticated" =>
+                "Your session has expired. Sign in again to continue.",
             _ => string.IsNullOrWhiteSpace(error.Message)
                 ? "The request could not be completed. Please try again."
                 : error.Message,

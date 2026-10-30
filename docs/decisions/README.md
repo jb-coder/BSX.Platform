@@ -25,6 +25,7 @@ affects long-term maintainability, module boundaries, or the technology baseline
 | [ADR-018](ADR-018-Role-Lifecycle-And-Permission-Cache-Strategy.md) | Role Lifecycle and Permission Cache Strategy | Accepted |
 | [ADR-019](ADR-019-Inventory-Quantity-Strategy.md) | Inventory Quantity Strategy | Accepted |
 | [ADR-020](ADR-020-Permission-Scope-Boundaries.md) | Permission Scope Boundaries | Accepted |
+| [ADR-021](ADR-021-Authorization-Revalidation.md) | Authorization Revalidation and Access Revocation | Accepted |
 
 ## Conventions
 

@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using BSX.BuildingBlocks.Authorization;
 using BSX.Modules.Crm.Infrastructure.Persistence;
 using BSX.Modules.Crm.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Identity.Application.Abstractions;
@@ -13,6 +14,7 @@ using BSX.Modules.Identity.Infrastructure.Persistence.Interceptors;
 using BSX.Modules.Sales.Infrastructure.Persistence;
 using BSX.Modules.Sales.Infrastructure.Persistence.Interceptors;
 using BSX.Persistence.Outbox;
+using BSX.Web.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -303,6 +305,14 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<TimeProvider>(Clock);
             services.RemoveAll<IPasswordResetNotifier>();
             services.AddSingleton<IPasswordResetNotifier>(_notifier);
+
+            // Revalidate on every cookie request so revocation tests are deterministic.
+            services.Configure<AuthorizationRevalidationOptions>(options => options.CookieIntervalSeconds = 0);
+
+            // Keep legacy claim-only test principals working while exercising the production
+            // revalidation path for real sessions.
+            services.RemoveAll<IAuthorizationRevalidator>();
+            services.AddScoped<IAuthorizationRevalidator, TestAuthorizationRevalidator>();
         });
     }
 
