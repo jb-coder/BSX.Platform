@@ -4,6 +4,7 @@ using BSX.Modules.Crm.Application.DependencyInjection;
 using BSX.Modules.Crm.Endpoints;
 using BSX.Modules.Crm.Endpoints.HealthChecks;
 using BSX.Modules.Crm.Infrastructure.DependencyInjection;
+using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Application.DependencyInjection;
 using BSX.Modules.Identity.Endpoints;
 using BSX.Modules.Identity.Endpoints.Authentication;
@@ -56,6 +57,8 @@ if (string.IsNullOrWhiteSpace(identityConnectionString))
 }
 
 builder.Services.AddIdentityApplication();
+builder.Services.Configure<LockoutOptions>(
+    builder.Configuration.GetSection(LockoutOptions.SectionName));
 builder.Services.AddIdentityInfrastructure(identityConnectionString);
 builder.Services.AddIdentityJwt(options =>
 {

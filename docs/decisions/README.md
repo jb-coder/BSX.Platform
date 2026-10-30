@@ -26,6 +26,7 @@ affects long-term maintainability, module boundaries, or the technology baseline
 | [ADR-019](ADR-019-Inventory-Quantity-Strategy.md) | Inventory Quantity Strategy | Accepted |
 | [ADR-020](ADR-020-Permission-Scope-Boundaries.md) | Permission Scope Boundaries | Accepted |
 | [ADR-021](ADR-021-Authorization-Revalidation.md) | Authorization Revalidation and Access Revocation | Accepted |
+| [ADR-022](ADR-022-Account-Lockout-Hardening.md) | Account Lockout Hardening | Accepted |
 
 ## Conventions
 

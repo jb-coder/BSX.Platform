@@ -15,6 +15,7 @@ namespace BSX.Modules.Identity.Application.Authentication.RefreshToken;
 public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, AuthenticationTokensResponse>
 {
     private const string UserPrincipalType = "User";
+    private const string ReuseErrorCode = "Identity.Session.RefreshTokenReuse";
 
     private readonly IUserRepository _users;
     private readonly IUserSessionRepository _sessions;
@@ -23,6 +24,8 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
     private readonly IRefreshTokenHasher _refreshTokenHasher;
     private readonly ISecureTokenGenerator _tokenGenerator;
     private readonly IAccessTokenIssuer _accessTokenIssuer;
+    private readonly IAccountSecurityStore _securityStore;
+    private readonly IPostCommandActionQueue _postCommandActions;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly IRateLimiter _rateLimiter;
@@ -37,6 +40,8 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
         IRefreshTokenHasher refreshTokenHasher,
         ISecureTokenGenerator tokenGenerator,
         IAccessTokenIssuer accessTokenIssuer,
+        IAccountSecurityStore securityStore,
+        IPostCommandActionQueue postCommandActions,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         IRateLimiter rateLimiter,
@@ -49,6 +54,8 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
         _refreshTokenHasher = refreshTokenHasher;
         _tokenGenerator = tokenGenerator;
         _accessTokenIssuer = accessTokenIssuer;
+        _securityStore = securityStore;
+        _postCommandActions = postCommandActions;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _rateLimiter = rateLimiter;
@@ -78,11 +85,18 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
             return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidRefreshToken);
         }
 
+        // Lockout is authoritative: a locked, disabled or pending account cannot refresh even with a
+        // cryptographically valid token. The session is revoked durably after the failed command.
+        if (user.Status != UserStatus.Active)
+        {
+            RevokeSessionAfterFailure(session, "account_not_active");
+            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidRefreshToken);
+        }
+
         // Security stamp is validated here, at refresh, not on every request (ADR-017).
         if (!string.Equals(session.SecurityStamp, user.SecurityStamp.Value, StringComparison.Ordinal))
         {
-            session.Revoke(nowUtc, "security_stamp_changed");
-            await TrySaveAsync(cancellationToken).ConfigureAwait(false);
+            RevokeSessionAfterFailure(session, "security_stamp_changed");
             return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidRefreshToken);
         }
 
@@ -91,7 +105,11 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
 
         if (rotation.IsFailure)
         {
-            await TrySaveAsync(cancellationToken).ConfigureAwait(false);
+            if (string.Equals(rotation.Error.Code, ReuseErrorCode, StringComparison.Ordinal))
+            {
+                RevokeSessionAfterFailure(session, "refresh_token_reuse");
+            }
+
             return Result.Failure<AuthenticationTokensResponse>(rotation.Error);
         }
 
@@ -126,6 +144,13 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
         }
 
         return Result.Success(new AuthenticationTokensResponse(accessToken.Token, accessToken.ExpiresAtUtc, newRefreshToken));
+    }
+
+    private void RevokeSessionAfterFailure(UserSession session, string reason)
+    {
+        // The command transaction rolls back failed results, so the revocation is queued to run in
+        // an independent scope after the transaction (ADR-022).
+        _postCommandActions.Enqueue(ct => _securityStore.RevokeSessionAsync(session.Id, reason, ct));
     }
 
     private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)

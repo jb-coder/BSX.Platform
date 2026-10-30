@@ -12,11 +12,12 @@ public sealed class DiscoverTenantOptionsCommandHandlerTests
     private readonly InMemoryUserRepository _users = new();
     private readonly InMemoryTenantMembershipRepository _memberships = new();
     private readonly FakePasswordHasher _passwordHasher = new();
-    private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeAccountSecurityStore _securityStore = new();
+    private readonly FakePostCommandActionQueue _postCommandActions = new();
     private readonly MutableTimeProvider _timeProvider = new(TestData.Now);
 
     private DiscoverTenantOptionsCommandHandler CreateHandler() => new(
-        new CredentialAuthenticator(_users, _passwordHasher, _unitOfWork, _timeProvider),
+        new CredentialAuthenticator(_users, _passwordHasher, _securityStore, _postCommandActions, _timeProvider),
         _memberships,
         new FakeRateLimiter(),
         new RateLimitOptions());
@@ -60,6 +61,10 @@ public sealed class DiscoverTenantOptionsCommandHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Identity.Authentication.InvalidCredentials");
+
+        _postCommandActions.Count.Should().Be(1);
+        await _postCommandActions.FlushAsync();
+        _securityStore.Failures.Should().ContainSingle();
     }
 
     [Fact]
@@ -67,7 +72,7 @@ public sealed class DiscoverTenantOptionsCommandHandlerTests
     {
         SeedUser();
         var handler = new DiscoverTenantOptionsCommandHandler(
-            new CredentialAuthenticator(_users, _passwordHasher, _unitOfWork, _timeProvider),
+            new CredentialAuthenticator(_users, _passwordHasher, _securityStore, _postCommandActions, _timeProvider),
             _memberships,
             new FakeRateLimiter(maxRequests: 1),
             new RateLimitOptions());

@@ -15,6 +15,8 @@ public sealed class LoginCommandHandlerTests
     private readonly InMemoryTenantMembershipRepository _memberships = new();
     private readonly InMemoryRoleRepository _roles = new();
     private readonly FakePasswordHasher _passwordHasher = new();
+    private readonly FakeAccountSecurityStore _securityStore = new();
+    private readonly FakePostCommandActionQueue _postCommandActions = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly MutableTimeProvider _timeProvider = new(TestData.Now);
 
@@ -22,7 +24,7 @@ public sealed class LoginCommandHandlerTests
         _sessions,
         _memberships,
         new PermissionResolver(_roles, TestPermissionCatalog.Platform),
-        new CredentialAuthenticator(_users, _passwordHasher, _unitOfWork, _timeProvider),
+        new CredentialAuthenticator(_users, _passwordHasher, _securityStore, _postCommandActions, _timeProvider),
         new FakeSecureTokenGenerator(),
         new FakeRefreshTokenHasher(),
         new FakeAccessTokenIssuer(),
@@ -69,6 +71,24 @@ public sealed class LoginCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Identity.Authentication.InvalidCredentials");
         _sessions.Sessions.Should().BeEmpty();
+
+        // The command transaction would roll back in production; the failure is queued instead.
+        _postCommandActions.Count.Should().Be(1);
+        await _postCommandActions.FlushAsync();
+        _securityStore.Failures.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Should_RejectLockedUser_WithoutCountingAnotherFailure()
+    {
+        User user = SeedUser(activate: true);
+        user.Lock(TestData.Now.AddMinutes(15), TestData.Now).IsSuccess.Should().BeTrue();
+
+        var result = await CreateHandler().HandleAsync(new LoginCommand("user@example.com", "Passw0rd!", null, null, null));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Authentication.InvalidCredentials");
+        _postCommandActions.Count.Should().Be(0);
     }
 
     [Fact]

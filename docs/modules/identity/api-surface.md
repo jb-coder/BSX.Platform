@@ -39,7 +39,7 @@ Login and refresh are anonymous because the credential is in the body. Failures 
 | POST | `/identity/users/{userId}/activate` | `identity.users.manage-status` | `200` |
 | POST | `/identity/users/{userId}/deactivate` | `identity.users.manage-status` | `200` |
 | POST | `/identity/users/{userId}/lock` | `identity.users.lock` | `200` |
-| POST | `/identity/users/{userId}/unlock` | `identity.users.lock` | `200` |
+| POST | `/identity/users/{userId}/unlock` | `identity.users.manage-status` | `200` |
 | POST | `/identity/users/{userId}/roles` | `identity.users.assign-role` | `200` |
 | DELETE | `/identity/users/{userId}/roles/{roleId}` | `identity.users.assign-role` | `200` |
 | POST | `/identity/users/{userId}/password` | `identity.users.reset-password` | `200` |

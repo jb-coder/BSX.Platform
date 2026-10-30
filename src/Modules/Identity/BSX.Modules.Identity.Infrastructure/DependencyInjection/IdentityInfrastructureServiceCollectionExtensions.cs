@@ -57,6 +57,7 @@ public static class IdentityInfrastructureServiceCollectionExtensions
         services.TryAddScoped<IUserSessionRepository, UserSessionRepository>();
         services.TryAddScoped<IAuthorizationSnapshotReader, AuthorizationSnapshotReader>();
         services.TryAddScoped<IUserReadRepository, UserReadRepository>();
+        services.TryAddSingleton<IAccountSecurityStore, AccountSecurityStore>();
         services.TryAddScoped<IRoleReadRepository, RoleReadRepository>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IModuleUnitOfWork, IdentityUnitOfWork>());
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IOutboxStore, EfOutboxStore<IdentityDbContext>>());

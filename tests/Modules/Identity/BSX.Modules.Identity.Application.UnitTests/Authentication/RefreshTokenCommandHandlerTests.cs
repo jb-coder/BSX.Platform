@@ -15,6 +15,8 @@ public sealed class RefreshTokenCommandHandlerTests
     private readonly InMemoryTenantMembershipRepository _memberships = new();
     private readonly InMemoryRoleRepository _roles = new();
     private readonly FakePasswordHasher _passwordHasher = new();
+    private readonly FakeAccountSecurityStore _securityStore = new();
+    private readonly FakePostCommandActionQueue _postCommandActions = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly MutableTimeProvider _timeProvider = new(TestData.Now);
 
@@ -22,7 +24,7 @@ public sealed class RefreshTokenCommandHandlerTests
         _sessions,
         _memberships,
         new PermissionResolver(_roles, TestPermissionCatalog.Platform),
-        new CredentialAuthenticator(_users, _passwordHasher, _unitOfWork, _timeProvider),
+        new CredentialAuthenticator(_users, _passwordHasher, _securityStore, _postCommandActions, _timeProvider),
         new FakeSecureTokenGenerator(),
         new FakeRefreshTokenHasher(),
         new FakeAccessTokenIssuer(),
@@ -39,6 +41,8 @@ public sealed class RefreshTokenCommandHandlerTests
         new FakeRefreshTokenHasher(),
         new FakeSecureTokenGenerator(),
         new FakeAccessTokenIssuer(),
+        _securityStore,
+        _postCommandActions,
         _unitOfWork,
         _timeProvider,
         rateLimiter ?? new FakeRateLimiter(),
@@ -68,9 +72,10 @@ public sealed class RefreshTokenCommandHandlerTests
     }
 
     [Fact]
-    public async Task Should_DetectReuse_BeyondGrace()
+    public async Task Should_DetectReuse_BeyondGrace_AndPersistRevocation()
     {
         string refreshToken = await LoginAsync();
+        Guid sessionId = _sessions.Sessions.Single().Id.Value;
 
         var first = await CreateRefreshHandler().HandleAsync(new RefreshTokenCommand(refreshToken));
         first.IsSuccess.Should().BeTrue();
@@ -81,7 +86,62 @@ public sealed class RefreshTokenCommandHandlerTests
 
         replay.IsFailure.Should().BeTrue();
         replay.Error.Code.Should().Be("Identity.Session.RefreshTokenReuse");
-        _sessions.Sessions.Should().OnlyContain(session => session.Status == Domain.Sessions.SessionStatus.Revoked);
+
+        await _postCommandActions.FlushAsync();
+        _securityStore.Revocations.Should().ContainSingle(revocation =>
+            revocation.SessionId.Value == sessionId
+            && revocation.Reason == "refresh_token_reuse");
+    }
+
+    [Fact]
+    public async Task Should_Reject_Refresh_WhenUserLocked_AndPersistRevocation()
+    {
+        string refreshToken = await LoginAsync();
+        User user = _users.Users.Single();
+        user.Lock(TestData.Now.AddMinutes(15), TestData.Now).IsSuccess.Should().BeTrue();
+
+        var result = await CreateRefreshHandler().HandleAsync(new RefreshTokenCommand(refreshToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Authentication.InvalidRefreshToken");
+
+        await _postCommandActions.FlushAsync();
+        _securityStore.Revocations.Should().ContainSingle(revocation =>
+            revocation.Reason == "account_not_active");
+    }
+
+    [Fact]
+    public async Task Should_Reject_Refresh_WhenUserDisabled_AndPersistRevocation()
+    {
+        string refreshToken = await LoginAsync();
+        User user = _users.Users.Single();
+        user.Deactivate().IsSuccess.Should().BeTrue();
+
+        var result = await CreateRefreshHandler().HandleAsync(new RefreshTokenCommand(refreshToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Authentication.InvalidRefreshToken");
+
+        await _postCommandActions.FlushAsync();
+        _securityStore.Revocations.Should().ContainSingle(revocation =>
+            revocation.Reason == "account_not_active");
+    }
+
+    [Fact]
+    public async Task Should_RevokeSession_WhenSecurityStampChanged()
+    {
+        string refreshToken = await LoginAsync();
+        User user = _users.Users.Single();
+        user.ChangeEmail(TestData.CreateEmail("changed@example.com")).IsSuccess.Should().BeTrue();
+
+        var result = await CreateRefreshHandler().HandleAsync(new RefreshTokenCommand(refreshToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Authentication.InvalidRefreshToken");
+
+        await _postCommandActions.FlushAsync();
+        _securityStore.Revocations.Should().ContainSingle(revocation =>
+            revocation.Reason == "security_stamp_changed");
     }
 
     [Fact]

@@ -14,10 +14,16 @@ internal sealed class TransactionBehavior<TRequest, TResponse> : IPipelineBehavi
     where TRequest : IRequest<TResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPostCommandActionQueue _postCommandActions;
 
     /// <summary>Initializes a new instance of the <see cref="TransactionBehavior{TRequest, TResponse}"/> class.</summary>
     /// <param name="unitOfWork">The unit of work that owns the transaction and the dispatch seam.</param>
-    public TransactionBehavior(IUnitOfWork unitOfWork) => _unitOfWork = unitOfWork;
+    /// <param name="postCommandActions">The queue of side effects that must run after the transaction.</param>
+    public TransactionBehavior(IUnitOfWork unitOfWork, IPostCommandActionQueue postCommandActions)
+    {
+        _unitOfWork = unitOfWork;
+        _postCommandActions = postCommandActions;
+    }
 
     /// <inheritdoc />
     public async Task<TResponse> HandleAsync(
@@ -32,19 +38,29 @@ internal sealed class TransactionBehavior<TRequest, TResponse> : IPipelineBehavi
             return await next().ConfigureAwait(false);
         }
 
-        await using IDatabaseTransaction transaction = await _unitOfWork
+        TResponse response;
+
+        await using (IDatabaseTransaction transaction = await _unitOfWork
             .BeginTransactionAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        TResponse response = await next().ConfigureAwait(false);
-
-        if (response is Result result && result.IsFailure)
+            .ConfigureAwait(false))
         {
-            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
-            return response;
+            response = await next().ConfigureAwait(false);
+
+            if (response is Result result && result.IsFailure)
+            {
+                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await _unitOfWork.SaveChangesAndDispatchAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
 
-        await _unitOfWork.SaveChangesAndDispatchAsync(cancellationToken).ConfigureAwait(false);
+        // Security state such as failed sign-in counters must survive a rolled-back command and a
+        // client abort (ADR-022). The queue runs only after the transaction has been disposed and is
+        // not cancellable by the request.
+        await _postCommandActions.FlushAsync(CancellationToken.None).ConfigureAwait(false);
+
         return response;
     }
 }

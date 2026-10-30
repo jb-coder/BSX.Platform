@@ -147,9 +147,17 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
 
         Status = UserStatus.Locked;
         LockoutEndUtc = untilUtc;
+        RotateSecurityStamp();
         RaiseDomainEvent(new UserLocked(Id, untilUtc));
         return Result.Success();
     }
+
+    /// <summary>Determines whether the user is currently locked out.</summary>
+    /// <param name="nowUtc">The current UTC time.</param>
+    public bool IsLockedOut(DateTimeOffset nowUtc)
+        => Status == UserStatus.Locked
+            && LockoutEndUtc is { } lockoutEnd
+            && nowUtc < lockoutEnd;
 
     /// <summary>Unlocks the user.</summary>
     public Result Unlock()
@@ -162,6 +170,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         Status = HasAnyCredential ? UserStatus.Active : UserStatus.Pending;
         LockoutEndUtc = null;
         AccessFailedCount = 0;
+        RotateSecurityStamp();
         RaiseDomainEvent(new UserUnlocked(Id));
         return Result.Success();
     }
@@ -179,6 +188,9 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
             TimeSpan duration = lockoutDuration ?? DefaultLockoutDuration;
             Status = UserStatus.Locked;
             LockoutEndUtc = nowUtc.Add(duration);
+            // A lockout invalidates every authentication artifact minted before it. Refresh tokens
+            // and access tokens are rejected by the security-stamp and status checks.
+            RotateSecurityStamp();
             RaiseDomainEvent(new UserLocked(Id, LockoutEndUtc.Value));
         }
 

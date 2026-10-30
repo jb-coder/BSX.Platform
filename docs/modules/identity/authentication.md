@@ -15,12 +15,15 @@ sequenceDiagram
     participant C as Client
     participant H as LoginCommandHandler
     participant U as User
+    participant Q as PostCommandActionQueue
     participant S as UserSession
     participant J as JwtAccessTokenIssuer
     C->>H: LoginCommand(email, password, tenant?)
-    H->>U: load + verify password (IPasswordHasher.Verify)
-    alt invalid
-        H->>U: RecordAccessFailure
+    H->>U: load user
+    alt locked or inactive
+        H-->>C: InvalidCredentials (no password verification)
+    else password invalid
+        H->>Q: queue durable RecordAccessFailure
         H-->>C: InvalidCredentials
     else valid + active
         H->>H: resolve tenant + permissions
@@ -97,6 +100,24 @@ the **active tenant membership** role permissions.
   returns `Authorization.TenantForbidden`.
 - Applied to tenant-scoped commands (invite user, create service account, set role permissions,
   assign role to membership). System roles are exempt from the tenant check (platform-level).
+
+## Account Lockout
+
+Follows [ADR-022](../../decisions/ADR-022-Account-Lockout-Hardening.md) and
+[account-lockout.md](../../security/account-lockout.md).
+
+- `CredentialAuthenticator` queues a durable failure write through `IPostCommandActionQueue`;
+  `TransactionBehavior` flushes it after the command transaction, so a failed login cannot roll it
+  back. Tenant discovery uses the same path.
+- Threshold: `Identity:Lockout:MaxFailedAttempts` (default 5). Duration:
+  `Identity:Lockout:LockoutDurationMinutes` (default 15).
+- Reaching the threshold persists `Locked`, rotates the security stamp and revokes all active
+  sessions.
+- A locked account is rejected before password verification; attempts do not extend the lockout.
+- Once the lockout expires, the next login unlocks the account and proceeds.
+- `RefreshTokenCommandHandler` rejects any non-`Active` account and durably revokes the session.
+- `UnlockUserCommand` (`identity.users.manage-status`) clears the lockout and counter, rotates the
+  stamp and does not revive sessions. Exposed at `POST /identity/users/{id}/unlock`.
 
 ## Authentication Rate Limiting
 

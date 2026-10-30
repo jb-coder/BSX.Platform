@@ -6,6 +6,7 @@
 @using BSX.Modules.Identity.Application.Users.ActivateUser
 @using BSX.Modules.Identity.Application.Users.DeactivateUser
 @using BSX.Modules.Identity.Application.Users.GetUserById
+@using BSX.Modules.Identity.Application.Users.UnlockUser
 @using BSX.SharedKernel.Results
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Http
@@ -108,9 +109,15 @@ else
 
     @if (_canManageStatus)
     {
-        <Card Title="Lifecycle actions" Subtitle="Activate or deactivate the account." CssClass="detail-card-spaced">
+        <Card Title="Lifecycle actions" Subtitle="Activate, unlock or deactivate the account." CssClass="detail-card-spaced">
             <div class="action-row">
-                @if (_user.Status != "Active")
+                @if (_user.Status == "Locked")
+                {
+                    <button type="button" class="button button-primary" disabled="@_busy" @onclick="UnlockAsync">
+                        @(_busy ? "Updating..." : "Unlock user")
+                    </button>
+                }
+                else if (_user.Status != "Active")
                 {
                     <button type="button" class="button button-primary" disabled="@_busy" @onclick="ActivateAsync">
                         @(_busy ? "Updating..." : "Activate user")
@@ -246,6 +253,31 @@ else
         }
 
         Toasts.Success("User deactivated", "The user account has been disabled.");
+        await ReloadAsync();
+    }
+
+    private async Task UnlockAsync()
+    {
+        if (_busy || _user is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _actionError = null;
+
+        Result result = await IdentityWebResults.ExecuteAsync(
+            () => Dispatcher.SendAsync(new UnlockUserCommand(_user.Id)));
+
+        _busy = false;
+
+        if (result.IsFailure)
+        {
+            _actionError = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("User unlocked", "The lockout was cleared. The user must sign in again.");
         await ReloadAsync();
     }
 

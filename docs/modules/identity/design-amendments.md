@@ -122,6 +122,20 @@ Amends [permissions-model.md](permissions-model.md), [authentication.md](authent
 
 ---
 
+## ADR-022 - Account Lockout Hardening
+
+Amends [authentication.md](authentication.md).
+
+- Failed sign-in counters are persisted outside the login command transaction through
+  `IPostCommandActionQueue` and `IAccountSecurityStore`, so a failed command cannot roll them back.
+- Reaching the threshold persists the lockout, rotates the security stamp and revokes all active
+  sessions.
+- Refresh rejects non-active accounts and durably revokes the session on rejection or reuse.
+- Administrator unlock clears the lockout and counter, rotates the stamp and requires a new sign-in.
+- Thresholds are configurable through `Identity:Lockout`.
+
+---
+
 ## Result
 
 With these amendments, the Identity module is implementation-ready and supports enterprise and

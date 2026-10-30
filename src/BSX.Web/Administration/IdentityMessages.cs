@@ -18,6 +18,7 @@ internal static class IdentityMessages
             "Identity.User.AlreadyActive" => "This user is already active.",
             "Identity.User.AlreadyDeactivated" => "This user is already deactivated.",
             "Identity.User.CredentialRequired" => "The user needs a password credential before activation.",
+            "Identity.User.NotLocked" => "This user is not locked.",
             "Identity.User.Email.Invalid" => "Enter a valid email address.",
             "Identity.User.Name.Invalid" => "Enter a valid display name.",
             "Identity.Role.NotFound" => "The role no longer exists.",

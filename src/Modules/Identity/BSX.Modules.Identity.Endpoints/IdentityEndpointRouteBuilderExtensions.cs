@@ -15,6 +15,7 @@ using BSX.Modules.Identity.Application.Sessions.RevokeSession;
 using BSX.Modules.Identity.Application.Users.GetUserById;
 using BSX.Modules.Identity.Application.Users.ListUsers;
 using BSX.Modules.Identity.Application.Users.RegisterUser;
+using BSX.Modules.Identity.Application.Users.UnlockUser;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -107,6 +108,9 @@ public static class IdentityEndpointRouteBuilderExtensions
 
         users.MapPost("/", async (CreateUserRequest request, ISender sender, CancellationToken cancellationToken) =>
             IdentityResults.FromCreated(await sender.SendAsync(new RegisterUserCommand(request.Email, request.Name, request.Password), cancellationToken)));
+
+        users.MapPost("/{id:guid}/unlock", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
+            IdentityResults.From(await sender.SendAsync(new UnlockUserCommand(id), cancellationToken)));
 
         RouteGroupBuilder roles = group.MapGroup("/roles").RequireAuthorization();
 

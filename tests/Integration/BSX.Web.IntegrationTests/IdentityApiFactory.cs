@@ -244,6 +244,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             ["Identity:Jwt:SigningKeys:0:PrivateKeyPem"] = SigningKeyPem,
             // The test factory seeds its own system role after the schema exists.
             ["Identity:Permissions:SynchronizeOnStartup"] = "false",
+            // Small, deterministic lockout policy for adversarial tests.
+            ["Identity:Lockout:MaxFailedAttempts"] = "3",
+            ["Identity:Lockout:LockoutDurationMinutes"] = "1",
             // Outbox rows are still written so tests can assert durability; the recovery loop is
             // driven explicitly by outbox tests instead of racing the request pipeline.
             ["Outbox:ProcessingEnabled"] = "false",
