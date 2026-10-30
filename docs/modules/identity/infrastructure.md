@@ -115,4 +115,8 @@ dotnet ef migrations add <Name> \
 ## Notes
 
 - Partial unique indexes for soft-deleted rows (ADR-010) are a follow-up.
-- Integration tests run on SQLite; run against PostgreSQL for provider-specific validation.
+- Integration tests run on SQLite in memory for speed; the Testcontainers PostgreSQL parity suite
+  (`PostgreSqlMigrationTests`, `PostgreSqlParityTests`, `PostgreSqlSecurityParityTests`) validates
+  migrations, schema constraints, concurrency, lockout hardening, permission scope and
+  authorization revalidation on the production provider. See
+  [postgresql-parity.md](../../testing/postgresql-parity.md).

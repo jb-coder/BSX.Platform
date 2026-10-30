@@ -23,9 +23,11 @@ every push and pull request, plus tags.
 
 ## PostgreSQL parity
 
-The CRM infrastructure test project contains Testcontainers-based parity tests. GitHub-hosted
-Ubuntu runners provide a Docker daemon, so these tests run in CI and validate the production
-provider (migrations, indexes, constraints, tenant filters, search, soft delete, concurrency).
+The Identity, CRM and Sales infrastructure test projects contain Testcontainers-based parity tests.
+GitHub-hosted Ubuntu runners provide a Docker daemon, so these tests run in CI and validate the
+production provider (migrations, indexes, constraints, tenant filters, search, soft delete,
+concurrency, lockout hardening, permission scope and authorization revalidation). See
+[postgresql-parity.md](../testing/postgresql-parity.md) for the strategy and coverage matrix.
 
 When Docker is not available the tests are reported as **skipped** with an explanatory message,
 keeping the default local suite green. Set `DOCKER_AVAILABLE=true` to require Docker and fail

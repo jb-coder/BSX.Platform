@@ -43,6 +43,15 @@ production gates. They are resolved before API exposure.
 | S5 | Sales health checks | Medium | **Resolved** | `sales-database` and opt-in `sales-database-schema` readiness checks. |
 | S6 | API surface | High | **Resolved** | `BSX.Modules.Sales.Endpoints` exposes the lead and opportunity endpoints under `/sales`. |
 
+## Identity provider parity
+
+The Identity audit found that the module had no PostgreSQL integration coverage. The behavior was
+not known to be broken, but it had not been proven against the production provider.
+
+| ID | Finding | Severity | Status | Resolution |
+| --- | --- | --- | --- | --- |
+| I1 | Identity had no PostgreSQL integration coverage | Medium | **Resolved** | Testcontainers PostgreSQL parity suite (`PostgreSqlMigrationTests`, `PostgreSqlParityTests`, `PostgreSqlSecurityParityTests`) validates the full migration chain, schema, unique indexes, cascading foreign keys, concurrency tokens, transactions/outbox, user/role/membership/session persistence, refresh-token rotation and revocation, lockout hardening (ADR-022), permission scope boundaries (ADR-020) and authorization revalidation dependencies (ADR-021). See [postgresql-parity.md](../testing/postgresql-parity.md). |
+
 ## Platform hardening (v0.4.0)
 
 The platform foundation was hardened for the next business modules. No new business module was

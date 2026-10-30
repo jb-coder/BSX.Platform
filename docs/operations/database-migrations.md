@@ -122,6 +122,15 @@ Identity seeds/synchronizes system roles from the registered module permission c
 logged and skipped. Ensure the Identity migrations have been applied before enabling it in a
 production rollout.
 
+## Migration verification in tests
+
+Each module's PostgreSQL parity suite applies the full migration chain to an empty Testcontainers
+database and asserts the resulting schema. For Identity,
+`Migrations_Should_Apply_AndCreateTheIdentitySchema` verifies the applied chain
+(`InitialIdentity` → `AddAuthentication` → `AddPlatformOutboxDurability`), the `identity` tables,
+the `Version` concurrency columns, the unique indexes and the cascading foreign keys. See
+[postgresql-parity.md](../testing/postgresql-parity.md).
+
 ## Guidance
 
 - Always run migrations **before** rolling out the application version that requires them.
