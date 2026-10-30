@@ -55,7 +55,8 @@ has been disposed, so:
 
 The store loads the user, applies the domain transition and saves in its own scope/transaction. On
 PostgreSQL it acquires a transaction-scoped advisory lock per user so concurrent failures cannot
-lose an increment.
+lose an increment. If a concurrent writer changes the user row, the store re-reads the user and
+re-applies the failure on a bounded retry; the rolled-back increment is never double-counted.
 
 ### Thresholds
 
@@ -69,13 +70,21 @@ The values are read through `LockoutOptions`; the domain defaults
 
 ### Lockout transition
 
-When the threshold is reached, in one durable transaction:
+When the threshold is reached, the user security state is committed **first**, in its own durable
+transaction:
 
 1. `AccessFailedCount` is persisted.
 2. `Status` becomes `Locked` and `LockoutEndUtc` is set.
 3. The **security stamp is rotated**.
-4. **All active sessions for the user are revoked** with reason `account_locked`.
-5. A `UserLocked` domain event is recorded (outbox).
+4. A `UserLocked` domain event is recorded (outbox).
+
+Session cleanup is a **separate, best-effort pass** that runs only after the lockout is durable:
+
+5. **All active sessions for the user are revoked** with reason `account_locked`.
+
+Lockout durability never depends on session revocation. A concurrency conflict while revoking a
+session cannot roll back the counter, lockout or stamp. If cleanup cannot complete, the sessions
+retain the pre-lockout security stamp and are rejected by authorization revalidation and refresh.
 
 ### Automatic unlock
 
@@ -160,10 +169,12 @@ token remains unusable because the session was revoked and the security stamp wa
 3. A locked account cannot sign in, even with the correct password, while the lockout is active.
 4. A locked account cannot refresh.
 5. Lockout revokes all active sessions and rotates the security stamp.
-6. Administrator unlock clears the lockout but does not revive sessions or refresh tokens.
-7. Tenant discovery cannot bypass the failure counter.
-8. Client aborts cannot skip the failure write.
-9. No account-status disclosure through login errors.
+6. A concurrency conflict during session revocation cannot roll back the lockout, the counter or the
+   stamp; the lockout is durable before cleanup starts.
+7. Administrator unlock clears the lockout but does not revive sessions or refresh tokens.
+8. Tenant discovery cannot bypass the failure counter.
+9. Client aborts cannot skip the failure write.
+10. No account-status disclosure through login errors.
 
 ---
 
@@ -178,6 +189,9 @@ token remains unusable because the session was revoked and the security stamp wa
   clocks synchronized.
 - **Concurrent failures** are serialized with a PostgreSQL advisory lock. On the SQLite test
   provider the write is serialized by the database.
+- **Session revocation is best effort.** The lockout and stamp rotation are committed before cleanup.
+  If a session revocation keeps conflicting, the session row may stay active transiently; it is still
+  rejected because its security stamp no longer matches the user's.
 - **Failure persistence occurs after the command transaction.** A process crash in the narrow window
   between rollback and the post-command write can lose one increment; the login still fails. This is
   the deliberate trade-off that keeps the write independent of the command transaction.
@@ -197,5 +211,12 @@ Adversarial coverage:
   - disabled refresh is rejected and the session is revoked;
   - administrator unlock clears the lockout and requires a new sign-in;
   - lockout expiry allows sign-in and clears the counter.
+- `tests/Integration/BSX.Web.IntegrationTests/Security/AccountLockoutConcurrencyTests.cs`
+  - a concurrent session revoke does not roll back the lockout;
+  - a concurrent session update does not roll back the lockout;
+  - a user-row/security-stamp conflict is retried and the lockout persists;
+  - a session that remains active transiently is still rejected by authorization revalidation;
+  - multiple active sessions are all revoked even when one conflicts;
+  - the real login threshold path still locks under a concurrent session revoke.
 - Domain tests cover `IsLockedOut`, stamp rotation on lock/unlock/lockout.
 - Handler tests cover failure recording, locked rejection and refresh revocation paths.

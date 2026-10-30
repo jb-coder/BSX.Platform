@@ -257,13 +257,15 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<DbContextOptions<IdentityDbContext>>();
             services.RemoveAll<IdentityDbContext>();
             services.RemoveAll<IDbContextOptionsConfiguration<IdentityDbContext>>();
+            services.AddSingleton<ForcedIdentityConcurrencySaveChangesInterceptor>();
 
             services.AddDbContext<IdentityDbContext>((provider, options) =>
             {
                 options.UseSqlite(_connection);
                 options.AddInterceptors(
                     provider.GetRequiredService<AuditingSaveChangesInterceptor>(),
-                    provider.GetRequiredService<OutboxSaveChangesInterceptor>());
+                    provider.GetRequiredService<OutboxSaveChangesInterceptor>(),
+                    provider.GetRequiredService<ForcedIdentityConcurrencySaveChangesInterceptor>());
             });
 
             services.RemoveAll<DbContextOptions<CrmDbContext>>();

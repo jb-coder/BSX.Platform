@@ -45,15 +45,32 @@ transaction-scoped advisory lock per user so concurrent failures cannot lose an 
 
 ### 2. Lockout transition
 
-When the configured threshold is reached, in one durable transaction:
+When the configured threshold is reached, the user security state is committed first, in its own
+durable transaction:
 
 - `AccessFailedCount` is persisted;
 - `Status` becomes `Locked` and `LockoutEndUtc` is set;
-- the **security stamp is rotated**;
-- **all active sessions are revoked** with reason `account_locked`.
+- the **security stamp is rotated**.
 
 The security stamp rotation is part of the `User` aggregate (`Lock`, `Unlock` and the lockout branch
 of `RecordAccessFailure`).
+
+Session cleanup is a separate, best-effort pass that runs only after the lockout is durable:
+
+- **all active sessions are revoked** with reason `account_locked`.
+
+### 2a. Concurrency isolation of session revocation
+
+Session rows carry an optimistic `Version` token. Saving the lockout and the session revocations in
+one `SaveChanges` meant that a concurrent session mutation (`RevokeSessionCommand`, refresh rotation)
+could raise `DbUpdateConcurrencyException` and roll back the whole transaction, including the
+lockout. That is a lockout bypass.
+
+The store now commits the user security state before touching sessions. The session pass is
+independently retried and never propagates a concurrency conflict; if it cannot complete, the
+lockout and stamp remain in effect and the stale sessions are rejected by revalidation. User-row
+conflicts are retried by re-reading the user and re-applying the failure, so a stamp-rotation
+conflict cannot lose the lockout either.
 
 ### 3. Session strategy
 
@@ -137,6 +154,7 @@ Cons
 
 - Failed logins persist despite the command rollback.
 - Lockout persists and is authoritative.
+- A concurrent session revocation or update cannot roll back the lockout or the security stamp.
 - Refresh tokens cannot bypass lockout.
 - Lockout revokes sessions and rotates the stamp.
 - Tenant discovery cannot bypass the counter.
@@ -147,6 +165,8 @@ Cons
 
 - Security writes run after the command transaction, in a separate scope. A process crash in the
   narrow post-rollback window can lose one increment; the login still fails.
+- Session revocation is best effort. If it keeps conflicting, a session row may stay active
+  transiently, but its stale security stamp makes it unusable.
 - Lockout can be used to deny access to a known account for the configured duration.
 - Administrator unlock forces a fresh sign-in.
 
@@ -157,4 +177,5 @@ Cons
 - Referenced by: [account-lockout.md](../security/account-lockout.md),
   [authentication.md](../modules/identity/authentication.md),
   [ADR-017](ADR-017-Token-Invalidation-And-Session-Strategy.md).
-- Adversarial tests: `tests/Integration/BSX.Web.IntegrationTests/Security/AccountLockoutTests.cs`.
+- Adversarial tests: `tests/Integration/BSX.Web.IntegrationTests/Security/AccountLockoutTests.cs`
+  and `tests/Integration/BSX.Web.IntegrationTests/Security/AccountLockoutConcurrencyTests.cs`.

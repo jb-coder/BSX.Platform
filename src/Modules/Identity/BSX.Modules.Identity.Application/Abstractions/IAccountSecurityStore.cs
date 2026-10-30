@@ -12,7 +12,8 @@ public interface IAccountSecurityStore
 {
     /// <summary>
     /// Records a failed credential attempt durably. When the threshold is reached the account is
-    /// locked, the security stamp is rotated and all active sessions are revoked.
+    /// locked and the security stamp is rotated. Active sessions are revoked on a best-effort basis:
+    /// a session-revocation concurrency conflict must never roll back the lockout or the stamp.
     /// </summary>
     /// <param name="userId">The user identifier.</param>
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
