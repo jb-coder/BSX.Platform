@@ -1,3 +1,5 @@
+using BSX.Web.Deployment;
+
 namespace BSX.Web.Authentication;
 
 /// <summary>Writes and removes the HttpOnly refresh-token cookie.</summary>
@@ -15,14 +17,17 @@ public static class WebAuthCookieWriter
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
 
+        WebCookieOptions options = ResolveOptions(httpContext);
+
         httpContext.Response.Cookies.Append(
             WebAuthDefaults.RefreshTokenCookieName,
             refreshToken,
             new CookieOptions
             {
                 HttpOnly = true,
-                Secure = httpContext.Request.IsHttps,
-                SameSite = SameSiteMode.Strict,
+                Secure = IsSecure(httpContext, options),
+                SameSite = options.RefreshSameSite,
+                Domain = options.Domain,
                 Path = "/",
                 Expires = expiresAtUtc,
                 IsEssential = true,
@@ -35,8 +40,26 @@ public static class WebAuthCookieWriter
     {
         ArgumentNullException.ThrowIfNull(httpContext);
 
+        WebCookieOptions options = ResolveOptions(httpContext);
+
         httpContext.Response.Cookies.Delete(
             WebAuthDefaults.RefreshTokenCookieName,
-            new CookieOptions { Path = "/" });
+            new CookieOptions
+            {
+                Path = "/",
+                Domain = options.Domain,
+                Secure = IsSecure(httpContext, options),
+            });
     }
+
+    internal static WebCookieOptions ResolveOptions(HttpContext httpContext)
+        => httpContext.RequestServices.GetRequiredService<WebCookieOptions>();
+
+    internal static bool IsSecure(HttpContext httpContext, WebCookieOptions options)
+        => options.SecurePolicy switch
+        {
+            CookieSecurePolicy.Always => true,
+            CookieSecurePolicy.SameAsRequest => httpContext.Request.IsHttps,
+            _ => false,
+        };
 }

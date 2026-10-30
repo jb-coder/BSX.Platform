@@ -12,9 +12,15 @@
 1. Configure `Identity:Jwt:Issuer`, `Audience`, `AccessTokenLifetimeMinutes`, and **shared**
    signing keys from a secret store ([jwt-key-management.md](jwt-key-management.md)).
 2. Ensure all instances share the same keys and issuer/audience.
-3. Confirm time synchronisation (NTP) across instances and clients — validation allows 30s skew.
+3. Confirm time synchronisation (NTP) across instances and clients - validation allows 30s skew.
 4. Terminate TLS in front of the host and keep HSTS enabled (default outside Development).
-5. Publish `https://<host>/.well-known/jwks.json` equivalents? Not required — validation keys are
+5. Configure forwarded headers: the proxy must send `X-Forwarded-Proto`, `X-Forwarded-Host` and
+   `X-Forwarded-For`, and `ReverseProxy:KnownProxies`/`KnownNetworks` must trust the proxy hop.
+6. Configure `DataProtection:ApplicationName` and a persistent, shared `DataProtection:KeysPath`.
+   Outside Development the host fails fast if the path is missing or not writable.
+7. Set `AllowedHosts` to the public host name(s); `*` and the development default are rejected
+   outside Development.
+8. Publish `https://<host>/.well-known/jwks.json` equivalents? Not required - validation keys are
    loaded from configuration. External consumers can obtain validation keys from the same secret
    store distribution mechanism.
 
@@ -47,9 +53,17 @@ tenant (`TenantGuard`).
   using JWT bearer authentication.
 - The web cookie contains identity/permission claims, not raw tokens. The refresh token is held in a
   separate HttpOnly cookie and is rotated by cookie validation.
-- **Data Protection keys must be shared** across all web instances (`DataProtection` key ring) so
-  authentication cookies remain readable after a rolling deployment or behind a load balancer.
-  Persist the key ring in the deployment secret store or a shared protected store.
+- **Data Protection keys are persistent and shared** across all web instances. Set
+  `DataProtection:ApplicationName` to the same value on every instance and `DataProtection:KeysPath`
+  to a persistent, writable, shared directory. Outside Development the host fails fast when the path
+  is missing or unwritable. The `data-protection` readiness check protects and unprotects a payload,
+  so a broken key ring fails `/health/ready`. See
+  [deployment-hardening.md](../deployment/deployment-hardening.md).
+- **Cookies.** The authentication, refresh and antiforgery cookies are `HttpOnly`. Outside
+  Development `Web:Cookies:SecurePolicy` defaults to `Always`, so a proxy that forgets
+  `X-Forwarded-Proto` cannot downgrade the cookies. `SameSite` defaults are `Lax` for the
+  authentication cookie and `Strict` for the refresh and antiforgery cookies.
 - Workspace selection is held in an in-process pending store for five minutes. A multi-instance
   deployment must replace it with a distributed store or the selection may fail between nodes.
-- Keep TLS enabled; cookies use `Secure` when the request is HTTPS.
+- Keep TLS enabled and make sure the proxy forwards the original scheme; the application redirects
+  HTTP to HTTPS by default and must not create a redirect loop.

@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Authorization;
 using BSX.Web.Authorization;
+using BSX.Web.Deployment;
 using BSX.Web.Notifications;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -14,14 +15,21 @@ public static class WebAuthenticationExtensions
     /// <summary>Adds cookie authentication for the Blazor app, JWT for the APIs and permission policies.</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
+    /// <param name="isDevelopment">Whether the host runs in the Development environment.</param>
     /// <returns>The same service collection for chaining.</returns>
-    public static IServiceCollection AddWebAuthentication(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddWebAuthentication(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool isDevelopment)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.Configure<AuthorizationRevalidationOptions>(
             configuration.GetSection(AuthorizationRevalidationOptions.SectionName));
+
+        WebCookieOptions cookieOptions = BindCookieOptions(configuration, isDevelopment);
+        services.AddSingleton(cookieOptions);
 
         services.AddAuthentication(options =>
             {
@@ -38,8 +46,9 @@ public static class WebAuthenticationExtensions
             {
                 options.Cookie.Name = WebAuthDefaults.AuthCookieName;
                 options.Cookie.HttpOnly = true;
-                options.Cookie.SameSite = SameSiteMode.Lax;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                options.Cookie.SameSite = cookieOptions.AuthSameSite;
+                options.Cookie.SecurePolicy = cookieOptions.SecurePolicy;
+                options.Cookie.Domain = cookieOptions.Domain;
                 options.LoginPath = "/login";
                 options.AccessDeniedPath = "/access-denied";
                 options.ReturnUrlParameter = "returnUrl";
@@ -47,6 +56,16 @@ public static class WebAuthenticationExtensions
                 options.SlidingExpiration = false;
                 options.EventsType = typeof(WebCookieAuthenticationEvents);
             });
+
+        services.AddAntiforgery(options =>
+        {
+            options.Cookie.Name = WebAuthDefaults.AntiforgeryCookieName;
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = cookieOptions.AntiforgerySameSite;
+            options.Cookie.SecurePolicy = cookieOptions.SecurePolicy;
+            options.Cookie.Domain = cookieOptions.Domain;
+            options.HeaderName = "X-CSRF-TOKEN";
+        });
 
         services.TryAddScoped<WebCookieAuthenticationEvents>();
         services.TryAddScoped<WebCurrentUser>();
@@ -71,6 +90,22 @@ public static class WebAuthenticationExtensions
             ServiceDescriptor.Singleton<IAuthorizationHandler, PermissionAuthorizationHandler>());
 
         return services;
+    }
+
+    private static WebCookieOptions BindCookieOptions(IConfiguration configuration, bool isDevelopment)
+    {
+        IConfigurationSection section = configuration.GetSection(WebCookieOptions.SectionName);
+        var options = new WebCookieOptions();
+        section.Bind(options);
+
+        // Preserve the HTTP launch profile in Development. In every other environment the
+        // production-safe default is Secure=Always, even if a proxy forwards the wrong scheme.
+        if (isDevelopment && !section.Exists())
+        {
+            options.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        }
+
+        return options;
     }
 
     private static string SelectAuthenticationScheme(HttpContext context)

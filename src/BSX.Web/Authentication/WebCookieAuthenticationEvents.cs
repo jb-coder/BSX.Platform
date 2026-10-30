@@ -186,9 +186,18 @@ public sealed class WebCookieAuthenticationEvents : CookieAuthenticationEvents
     {
         context.RejectPrincipal();
         context.HttpContext.Items[WebAuthDefaults.SessionExpiredItemKey] = reason;
+
+        BSX.Web.Deployment.WebCookieOptions options =
+            WebAuthCookieWriter.ResolveOptions(context.HttpContext);
+
         context.HttpContext.Response.Cookies.Delete(
             WebAuthDefaults.AuthCookieName,
-            new CookieOptions { Path = "/" });
+            new CookieOptions
+            {
+                Path = "/",
+                Domain = options.Domain,
+                Secure = WebAuthCookieWriter.IsSecure(context.HttpContext, options),
+            });
         WebAuthCookieWriter.DeleteRefreshToken(context.HttpContext);
     }
 }

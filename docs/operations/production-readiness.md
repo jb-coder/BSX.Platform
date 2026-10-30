@@ -52,6 +52,19 @@ not known to be broken, but it had not been proven against the production provid
 | --- | --- | --- | --- | --- |
 | I1 | Identity had no PostgreSQL integration coverage | Medium | **Resolved** | Testcontainers PostgreSQL parity suite (`PostgreSqlMigrationTests`, `PostgreSqlParityTests`, `PostgreSqlSecurityParityTests`) validates the full migration chain, schema, unique indexes, cascading foreign keys, concurrency tokens, transactions/outbox, user/role/membership/session persistence, refresh-token rotation and revocation, lockout hardening (ADR-022), permission scope boundaries (ADR-020) and authorization revalidation dependencies (ADR-021). See [postgresql-parity.md](../testing/postgresql-parity.md). |
 
+## Deployment hardening
+
+The deployment audit identified reverse-proxy, cookie and Data Protection concerns. They are
+resolved below.
+
+| ID | Finding | Severity | Status | Resolution |
+| --- | --- | --- | --- | --- |
+| DP1 | Reverse proxy topology not proven | High | **Resolved** | Forwarded-header processing (`X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-For`) runs before HTTPS redirection, HSTS and authentication; trust is limited to configured proxies/networks. Covered by `DeploymentHardeningTests`. |
+| DP2 | Forwarded headers missing/unverified | High | **Resolved** | `ReverseProxyOptions` with `KnownProxies`, `KnownNetworks`, `ForwardLimit` and a loopback-only default; untrusted-proxy spoofing is tested. |
+| DP3 | Cookies behind TLS termination | High | **Resolved** | `Web:Cookies:SecurePolicy` defaults to `Always` outside Development; auth/refresh/antiforgery cookies are `HttpOnly` with explicit `SameSite`; forwarded HTTPS issues `Secure` cookies. |
+| DP4 | Data Protection persistence unvalidated | High | **Resolved** | Persistent, shared key ring via `DataProtection:KeysPath`; identical `ApplicationName`; startup fails fast when the path is missing/unwritable; a `data-protection` readiness check and a persistence test prove restart behavior. See [deployment-hardening.md](../deployment/deployment-hardening.md). |
+| DP5 | Production deployment assumptions unverified | Medium | **Resolved** | `AllowedHosts` rejects `*`/the development default outside Development; security headers and HSTS are emitted; the pre/post-deployment runbook covers health, authentication, cookies and rollback. |
+
 ## Platform hardening (v0.4.0)
 
 The platform foundation was hardened for the next business modules. No new business module was

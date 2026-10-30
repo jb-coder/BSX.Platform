@@ -135,6 +135,10 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
     private readonly SqliteConnection _crmConnection = new("DataSource=:memory:");
     private readonly SqliteConnection _salesConnection = new("DataSource=:memory:");
     private readonly CapturingPasswordResetNotifier _notifier = new();
+    private readonly string _dataProtectionKeysPath = Path.Combine(
+        Path.GetTempPath(),
+        "bsx-tests-dp-keys",
+        Guid.NewGuid().ToString("N"));
 
     /// <summary>Initializes a new instance of the <see cref="IdentityApiFactory"/> class.</summary>
     public IdentityApiFactory()
@@ -164,6 +168,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
 
     /// <summary>Gets the seeded administrator's user identifier.</summary>
     public Guid AdminUserId { get; private set; }
+
+    /// <summary>Gets the isolated Data Protection key directory used by the test host.</summary>
+    public string DataProtectionKeysPath => _dataProtectionKeysPath;
 
     /// <summary>Gets the restricted user's identifier.</summary>
     public Guid RestrictedUserId { get; private set; }
@@ -250,10 +257,16 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             // Outbox rows are still written so tests can assert durability; the recovery loop is
             // driven explicitly by outbox tests instead of racing the request pipeline.
             ["Outbox:ProcessingEnabled"] = "false",
+            // The real host fails fast outside Development when the key ring is not persistent;
+            // tests use an isolated persistent directory to exercise the same code path.
+            ["DataProtection:ApplicationName"] = "BSX.Platform.Tests",
+            ["DataProtection:KeysPath"] = _dataProtectionKeysPath,
         }));
 
         builder.ConfigureServices(services =>
         {
+            services.AddSingleton<IStartupFilter, LoopbackRemoteIpStartupFilter>();
+
             services.RemoveAll<DbContextOptions<IdentityDbContext>>();
             services.RemoveAll<IdentityDbContext>();
             services.RemoveAll<IDbContextOptionsConfiguration<IdentityDbContext>>();
@@ -332,6 +345,18 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             _crmConnection.Dispose();
             _salesConnection.Dispose();
             Rsa.Dispose();
+
+            try
+            {
+                if (Directory.Exists(_dataProtectionKeysPath))
+                {
+                    Directory.Delete(_dataProtectionKeysPath, recursive: true);
+                }
+            }
+            catch (IOException)
+            {
+                // Best-effort test cleanup.
+            }
         }
     }
 

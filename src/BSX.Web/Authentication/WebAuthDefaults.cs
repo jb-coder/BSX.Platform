@@ -15,6 +15,9 @@ public static class WebAuthDefaults
     /// <summary>The HttpOnly refresh-token cookie name.</summary>
     public const string RefreshTokenCookieName = "BSX.Web.Refresh";
 
+    /// <summary>The antiforgery cookie name.</summary>
+    public const string AntiforgeryCookieName = "BSX.Web.Antiforgery";
+
     /// <summary>The protected pending-login cookie used during tenant selection.</summary>
     public const string PendingLoginCookieName = "BSX.Web.PendingLogin";
 

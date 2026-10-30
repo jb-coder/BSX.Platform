@@ -18,11 +18,15 @@ Client ──TLS──▶ BSX.Web (1 replica) ──▶ PostgreSQL
   uses its own `crm` schema.
 - **JWT signing keys** via secret: `Identity__Jwt__SigningKeys__0__PrivateKeyPem` (and `...__Kid`).
   The host fails fast at startup if they are missing outside Development.
+- **Data Protection** via `DataProtection__ApplicationName` and `DataProtection__KeysPath`. The path
+  must be a persistent, writable directory so authentication cookies and antiforgery tokens survive
+  restarts. The host fails fast outside Development if it is missing.
 - **TLS** terminated at the host or a reverse proxy; `UseHttpsRedirection` and HSTS are active
-  outside Development.
+  outside Development. If a proxy terminates TLS, configure `ReverseProxy:KnownProxies`/`KnownNetworks`
+  and make sure the proxy forwards `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-For`.
 - **Migrations** applied before startup, or `Identity__Database__ApplyMigrationsOnStartup=true`
-  for Identity (safe only with a single instance). **CRM migrations are always applied out of
-  band**; there is no CRM startup-migration hook.
+  for Identity (safe only with a single instance). **CRM and Sales migrations are always applied out
+  of band**; there are no CRM/Sales startup-migration hooks.
 
 ## Characteristics
 
@@ -46,6 +50,19 @@ Client ──TLS──▶ BSX.Web (1 replica) ──▶ PostgreSQL
   },
   "Crm": {
     "Database": { "VerifySchema": true }
+  },
+  "Sales": {
+    "Database": { "VerifySchema": true }
+  },
+  "DataProtection": {
+    "ApplicationName": "BSX.Platform",
+    "KeysPath": "/var/bsx/data-protection-keys"
+  },
+  "ReverseProxy": {
+    "Enabled": true,
+    "RedirectHttpToHttps": true,
+    "ForwardLimit": 1,
+    "KnownProxies": [ "127.0.0.1" ]
   },
   "AllowedHosts": "your.domain.example"
 }

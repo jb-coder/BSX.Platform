@@ -11,6 +11,7 @@ production.
 | [password-reset-delivery.md](password-reset-delivery.md) | Reset delivery and the Notifications seam (D3) |
 | [deployment-single-instance.md](deployment-single-instance.md) | Single-instance topology (D4) |
 | [deployment-ha.md](deployment-ha.md) | High-availability topology (D4) |
+| [../deployment/deployment-hardening.md](../deployment/deployment-hardening.md) | Reverse proxy, TLS, cookies, Data Protection and deployment hardening |
 | [rate-limiting.md](rate-limiting.md) | Rate limiter behaviour and scaling (D4) |
 | [authentication-deployment.md](authentication-deployment.md) | Authentication deployment guidance (D4) |
 | [health-checks.md](health-checks.md) | Liveness and readiness probes (D6) |

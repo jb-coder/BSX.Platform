@@ -20,6 +20,7 @@ using BSX.Persistence.DependencyInjection;
 using BSX.Web.Authentication;
 using BSX.Web.Components;
 using BSX.Web.Demo;
+using BSX.Web.Deployment;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -65,8 +66,11 @@ builder.Services.AddIdentityJwt(options =>
     builder.Configuration.GetSection(JwtOptions.SectionName).Bind(options);
     JwtOptionsConfiguration.Apply(options, builder.Environment.IsDevelopment());
 });
+// Deployment hardening: forwarded headers, Data Protection key persistence, security headers and
+// deployment configuration validation. Configuration is bound when the host starts.
+builder.Services.AddWebDeploymentHardening();
 builder.Services.AddIdentityAuthentication();
-builder.Services.AddWebAuthentication(builder.Configuration);
+builder.Services.AddWebAuthentication(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddIdentityHealthChecks();
 
 if (builder.Configuration.GetValue("Identity:Database:VerifySchema", false))
@@ -137,6 +141,9 @@ builder.Services
 
 WebApplication app = builder.Build();
 
+// Validate deployment configuration and install the first middleware before any startup work.
+app.UseWebDeploymentHardening();
+
 await app.ApplyIdentityMigrationsAsync();
 await app.SynchronizeIdentityPermissionsAsync();
 await DemoIdentitySeeder.SeedAsync(app);
@@ -151,7 +158,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+
+if (app.Configuration.GetValue("ReverseProxy:RedirectHttpToHttps", true))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();

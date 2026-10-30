@@ -41,8 +41,24 @@ Review before every production release. Each item should have an owner and evide
 ## Transport & host
 
 - [ ] TLS terminates in front of the host; HSTS and HTTPS redirection are enabled.
-- [ ] Host-header filtering is effective (`AllowedHosts`).
+- [ ] The proxy sends `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-For`, and preserves
+      the original `Host` header.
+- [ ] `ReverseProxy:KnownProxies`/`KnownNetworks` trust only the proxy hop(s); direct access to the
+      application is restricted.
+- [ ] Host-header filtering is effective (`AllowedHosts`); `*` and the development default are
+      rejected outside Development.
 - [ ] Antiforgery is configured appropriately for browser vs API clients.
+
+## Cookies & Data Protection
+
+- [ ] `DataProtection:ApplicationName` is identical on every instance.
+- [ ] `DataProtection:KeysPath` is a persistent, writable, shared directory; it survives restarts
+      and rolling deployments.
+- [ ] The key directory is not world-readable and is included in backups where required.
+- [ ] `Web:Cookies:SecurePolicy=Always` outside Development.
+- [ ] Authentication, refresh and antiforgery cookies are `HttpOnly` with the intended `SameSite`
+      policy.
+- [ ] The `data-protection` readiness check is green before routing traffic.
 
 ## Data
 
