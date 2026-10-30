@@ -18,7 +18,8 @@ public sealed class CreateApiKeyCommandHandlerTests
         new FakeSecureTokenGenerator(),
         new FakeApiKeyHasher(),
         _unitOfWork,
-        _timeProvider);
+        _timeProvider,
+        TestPermissionCatalog.Platform);
 
     [Fact]
     public async Task Should_CreateApiKey_AndReturnSecretOnce()
@@ -34,6 +35,34 @@ public sealed class CreateApiKeyCommandHandlerTests
         _apiKeys.Keys.Should().ContainSingle();
         _apiKeys.Keys.Single().Scopes.Should().ContainSingle();
         _unitOfWork.SaveCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Should_RejectPlatformScope_OnATenantScopedApiKey()
+    {
+        ServiceAccount account = TestData.CreateServiceAccount(TenantId.From(Guid.NewGuid()), "billing-bot");
+        _accounts.Seed(account);
+
+        var result = await CreateHandler().HandleAsync(
+            new CreateApiKeyCommand(account.Id.Value, "deploy", null, ["identity.users.read"]));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Permission.ScopeForbidden");
+        _apiKeys.Keys.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_RejectUnknownScope_OnAnApiKey()
+    {
+        ServiceAccount account = TestData.CreateServiceAccount(TenantId.From(Guid.NewGuid()), "billing-bot");
+        _accounts.Seed(account);
+
+        var result = await CreateHandler().HandleAsync(
+            new CreateApiKeyCommand(account.Id.Value, "deploy", null, ["crm.orders.read"]));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Permission.Unknown");
+        _apiKeys.Keys.Should().BeEmpty();
     }
 
     [Fact]

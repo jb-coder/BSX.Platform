@@ -32,6 +32,28 @@ public static class IdentityApplicationErrors
     /// <summary>The role does not belong to the membership's tenant.</summary>
     public static Error RoleTenantMismatch => Error.Conflict("Identity.Role.TenantMismatch", "The role does not belong to the membership's tenant.");
 
+    /// <summary>Platform roles cannot be created through the tenant role workflow.</summary>
+    public static Error PlatformRoleCreationForbidden => Error.Forbidden(
+        "Identity.Role.PlatformRoleCreationForbidden",
+        "Platform roles are managed by the platform administrator and cannot be created here.");
+
+    /// <summary>A platform role cannot be assigned as a workspace membership role.</summary>
+    public static Error RoleNotAssignableToMembership => Error.Forbidden(
+        "Identity.Role.NotAssignableToMembership",
+        "Platform roles cannot be assigned as workspace membership roles.");
+
+    /// <summary>The permission is not declared by the platform permission catalog.</summary>
+    /// <param name="code">The unknown permission code.</param>
+    public static Error PermissionUnknown(string code) => Error.Validation(
+        "Identity.Permission.Unknown",
+        $"The permission '{code}' is not declared by the platform permission catalog.");
+
+    /// <summary>The permission is platform-scoped and cannot be granted to a tenant role.</summary>
+    /// <param name="code">The platform-scoped permission code.</param>
+    public static Error PermissionScopeForbidden(string code) => Error.Forbidden(
+        "Identity.Permission.ScopeForbidden",
+        $"The permission '{code}' is platform-scoped and cannot be granted to a workspace role.");
+
     /// <summary>The user identifier is invalid.</summary>
     public static Error InvalidUserId => Error.Validation("Identity.User.InvalidId", "The user identifier is invalid.");
 

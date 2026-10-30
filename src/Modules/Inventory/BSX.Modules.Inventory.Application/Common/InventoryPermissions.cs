@@ -39,13 +39,13 @@ public sealed class InventoryPermissionCatalog : IPermissionCatalogSource
     /// <inheritdoc />
     public IReadOnlyCollection<PermissionDefinition> Permissions { get; } =
     [
-        new(InventoryPermissions.ProductsRead, "Read products."),
-        new(InventoryPermissions.ProductsCreate, "Create products."),
-        new(InventoryPermissions.ProductsUpdate, "Update products and change their lifecycle."),
-        new(InventoryPermissions.WarehousesRead, "Read warehouses."),
-        new(InventoryPermissions.WarehousesCreate, "Create warehouses."),
-        new(InventoryPermissions.WarehousesUpdate, "Update warehouses and change their lifecycle."),
-        new(InventoryPermissions.StockRead, "Read inventory stock positions."),
-        new(InventoryPermissions.StockUpdate, "Receive, reserve, release and adjust stock."),
+        new(InventoryPermissions.ProductsRead, "Read products.", PermissionScope.Tenant),
+        new(InventoryPermissions.ProductsCreate, "Create products.", PermissionScope.Tenant),
+        new(InventoryPermissions.ProductsUpdate, "Update products and change their lifecycle.", PermissionScope.Tenant),
+        new(InventoryPermissions.WarehousesRead, "Read warehouses.", PermissionScope.Tenant),
+        new(InventoryPermissions.WarehousesCreate, "Create warehouses.", PermissionScope.Tenant),
+        new(InventoryPermissions.WarehousesUpdate, "Update warehouses and change their lifecycle.", PermissionScope.Tenant),
+        new(InventoryPermissions.StockRead, "Read inventory stock positions.", PermissionScope.Tenant),
+        new(InventoryPermissions.StockUpdate, "Receive, reserve, release and adjust stock.", PermissionScope.Tenant),
     ];
 }

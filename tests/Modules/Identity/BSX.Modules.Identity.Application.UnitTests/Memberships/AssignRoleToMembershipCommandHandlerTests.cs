@@ -61,4 +61,43 @@ public sealed class AssignRoleToMembershipCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Authorization.TenantForbidden");
     }
+
+    [Fact]
+    public async Task Should_RejectSystemRole()
+    {
+        var tenantId = TenantId.From(Guid.NewGuid());
+        var membership = TestData.CreateActiveMembership(tenantId, UserId.New());
+        Role role = TestData.CreateRole(tenantId: null, name: "Administrator", isSystem: true);
+        _memberships.Seed(membership);
+        _roles.Seed(role);
+
+        var result = await CreateHandler(tenantId.Value).HandleAsync(
+            new AssignRoleToMembershipCommand(membership.Id.Value, role.Id.Value));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Role.NotAssignableToMembership");
+        membership.RoleIds.Should().BeEmpty();
+        _unitOfWork.SaveCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Should_RejectPlatformRole_ThatIsNotASystemRole()
+    {
+        var tenantId = TenantId.From(Guid.NewGuid());
+        var membership = TestData.CreateActiveMembership(tenantId, UserId.New());
+        Role role = Role.Create(
+            RoleId.New(),
+            tenantId: null,
+            RoleName.Create("Legacy Platform").Value,
+            []).Value;
+        _memberships.Seed(membership);
+        _roles.Seed(role);
+
+        var result = await CreateHandler(tenantId.Value).HandleAsync(
+            new AssignRoleToMembershipCommand(membership.Id.Value, role.Id.Value));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Role.NotAssignableToMembership");
+        membership.RoleIds.Should().BeEmpty();
+    }
 }

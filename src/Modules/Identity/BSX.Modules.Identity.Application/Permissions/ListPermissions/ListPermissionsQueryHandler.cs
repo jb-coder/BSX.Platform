@@ -21,7 +21,7 @@ public sealed class ListPermissionsQueryHandler
     {
         IReadOnlyList<PermissionDto> permissions = _catalog.Permissions
             .OrderBy(permission => permission.Code, StringComparer.Ordinal)
-            .Select(permission => new PermissionDto(permission.Code, permission.Description))
+            .Select(permission => new PermissionDto(permission.Code, permission.Description, permission.Scope))
             .ToArray();
 
         return Task.FromResult(Result.Success(permissions));

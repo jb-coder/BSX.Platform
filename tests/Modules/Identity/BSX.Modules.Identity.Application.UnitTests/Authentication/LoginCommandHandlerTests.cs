@@ -21,7 +21,7 @@ public sealed class LoginCommandHandlerTests
     private LoginCommandHandler CreateHandler(IRateLimiter? rateLimiter = null) => new(
         _sessions,
         _memberships,
-        new PermissionResolver(_roles),
+        new PermissionResolver(_roles, TestPermissionCatalog.Platform),
         new CredentialAuthenticator(_users, _passwordHasher, _unitOfWork, _timeProvider),
         new FakeSecureTokenGenerator(),
         new FakeRefreshTokenHasher(),

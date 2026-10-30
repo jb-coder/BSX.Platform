@@ -1,5 +1,7 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
+using BSX.Contracts.Permissions;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Application.Errors;
 using BSX.Modules.Identity.Domain.Roles;
@@ -13,28 +15,45 @@ public sealed class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand
 {
     private readonly IRoleRepository _roles;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly PermissionCatalog _catalog;
+    private readonly TenantGuard _tenantGuard;
 
     /// <summary>Initializes a new instance of the <see cref="CreateRoleCommandHandler"/> class.</summary>
-    public CreateRoleCommandHandler(IRoleRepository roles, IUnitOfWork unitOfWork)
+    public CreateRoleCommandHandler(
+        IRoleRepository roles,
+        IUnitOfWork unitOfWork,
+        PermissionCatalog catalog,
+        TenantGuard tenantGuard)
     {
         _roles = roles;
         _unitOfWork = unitOfWork;
+        _catalog = catalog;
+        _tenantGuard = tenantGuard;
     }
 
     /// <inheritdoc />
     public async Task<Result<CreateRoleResponse>> HandleAsync(CreateRoleCommand request, CancellationToken cancellationToken = default)
     {
-        TenantId? tenantId = null;
-
-        if (request.TenantId.HasValue)
+        // Tenant roles are the only roles created through this workflow. Platform roles are owned by
+        // the platform synchronizer and are never exposed to tenant administration (ADR-020).
+        if (request.TenantId is not { } tenantValue)
         {
-            if (request.TenantId.Value == Guid.Empty)
-            {
-                return Result.Failure<CreateRoleResponse>(IdentityApplicationErrors.InvalidTenantId);
-            }
-
-            tenantId = TenantId.From(request.TenantId.Value);
+            return Result.Failure<CreateRoleResponse>(IdentityApplicationErrors.PlatformRoleCreationForbidden);
         }
+
+        if (tenantValue == Guid.Empty)
+        {
+            return Result.Failure<CreateRoleResponse>(IdentityApplicationErrors.InvalidTenantId);
+        }
+
+        Result guard = _tenantGuard.Ensure(tenantValue);
+
+        if (guard.IsFailure)
+        {
+            return Result.Failure<CreateRoleResponse>(guard.Error);
+        }
+
+        var tenantId = TenantId.From(tenantValue);
 
         var nameResult = RoleName.Create(request.Name);
 
@@ -43,7 +62,7 @@ public sealed class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand
             return Result.Failure<CreateRoleResponse>(nameResult.Error);
         }
 
-        var permissionsResult = PermissionCodes.Parse(request.Permissions);
+        var permissionsResult = PermissionGrantValidator.ParseTenantGrantable(_catalog, request.Permissions);
 
         if (permissionsResult.IsFailure)
         {

@@ -21,7 +21,7 @@ public sealed class RefreshTokenCommandHandlerTests
     private LoginCommandHandler CreateLoginHandler() => new(
         _sessions,
         _memberships,
-        new PermissionResolver(_roles),
+        new PermissionResolver(_roles, TestPermissionCatalog.Platform),
         new CredentialAuthenticator(_users, _passwordHasher, _unitOfWork, _timeProvider),
         new FakeSecureTokenGenerator(),
         new FakeRefreshTokenHasher(),
@@ -35,7 +35,7 @@ public sealed class RefreshTokenCommandHandlerTests
         _users,
         _sessions,
         _memberships,
-        new PermissionResolver(_roles),
+        new PermissionResolver(_roles, TestPermissionCatalog.Platform),
         new FakeRefreshTokenHasher(),
         new FakeSecureTokenGenerator(),
         new FakeAccessTokenIssuer(),

@@ -47,7 +47,7 @@ public sealed class TenantIsolationEndpointsTests : IClassFixture<IdentityApiFac
             IdentityApiFactory.AdminPassword);
         HttpResponseMessage created = await tenantA.PostAsJsonAsync(
             "/identity/roles",
-            new { name = roleName, description = "tenant A only", permissions = new[] { "identity.users.read" } });
+            new { name = roleName, description = "tenant A only", permissions = new[] { "crm.customers.read" } });
         created.StatusCode.Should().Be(HttpStatusCode.Created);
 
         HttpClient tenantB = await _factory.CreateAuthenticatedClientAsync(

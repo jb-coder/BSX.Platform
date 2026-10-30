@@ -11,11 +11,11 @@ public sealed class CrmPermissionCatalog : IPermissionCatalogSource
     /// <inheritdoc />
     public IReadOnlyCollection<PermissionDefinition> Permissions { get; } =
     [
-        new(CrmPermissionCodes.CustomersRead, "Read customers."),
-        new(CrmPermissionCodes.CustomersCreate, "Create customers."),
-        new(CrmPermissionCodes.CustomersUpdate, "Update customers, contacts and addresses."),
-        new(CrmPermissionCodes.OrganizationsRead, "Read organizations."),
-        new(CrmPermissionCodes.OrganizationsCreate, "Create organizations."),
-        new(CrmPermissionCodes.OrganizationsUpdate, "Update organizations."),
+        new(CrmPermissionCodes.CustomersRead, "Read customers.", PermissionScope.Tenant),
+        new(CrmPermissionCodes.CustomersCreate, "Create customers.", PermissionScope.Tenant),
+        new(CrmPermissionCodes.CustomersUpdate, "Update customers, contacts and addresses.", PermissionScope.Tenant),
+        new(CrmPermissionCodes.OrganizationsRead, "Read organizations.", PermissionScope.Tenant),
+        new(CrmPermissionCodes.OrganizationsCreate, "Create organizations.", PermissionScope.Tenant),
+        new(CrmPermissionCodes.OrganizationsUpdate, "Update organizations.", PermissionScope.Tenant),
     ];
 }

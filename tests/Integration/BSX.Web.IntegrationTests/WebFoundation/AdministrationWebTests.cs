@@ -62,7 +62,7 @@ public sealed class AdministrationWebTests : IClassFixture<IdentityApiFactory>
         roleHtml.Should().Contain(roleName);
         roleHtml.Should().Contain("Edit role");
         roleHtml.Should().Contain("Manage permissions");
-        roleHtml.Should().Contain("Read users.");
+        roleHtml.Should().Contain("Read customers.");
 
         HttpResponseMessage rolePermissions = await client.GetAsync($"/app/admin/roles/{roleId}/permissions");
         rolePermissions.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -192,7 +192,7 @@ public sealed class AdministrationWebTests : IClassFixture<IdentityApiFactory>
             {
                 name,
                 description = "Administration UI test role",
-                permissions = new[] { "identity.users.read" },
+                permissions = new[] { "crm.customers.read" },
             });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);

@@ -1,3 +1,4 @@
+@using BSX.Contracts.Permissions
 @using BSX.Modules.Identity.Application.Dtos
 @using BSX.Web.Administration
 
@@ -7,6 +8,17 @@
         Select the capabilities granted by this role. Permissions are grouped by module.
         <strong>@_selected.Count selected.</strong>
     </p>
+
+    @if (Scope == PermissionScope.Tenant && HiddenCount > 0)
+    {
+        <div class="alert alert-warning" role="note">
+            <strong>Platform permissions are not shown.</strong>
+            <span>
+                @HiddenCount platform-scoped permission(s) are managed by the platform administrator
+                and cannot be granted to workspace roles.
+            </span>
+        </div>
+    }
 
     <SearchBox @bind-Value="_search"
                Label="Search permissions"
@@ -48,6 +60,10 @@
     [Parameter, EditorRequired]
     public IReadOnlyList<PermissionDto> Permissions { get; set; } = [];
 
+    /// <summary>The permission scope this editor may grant.</summary>
+    [Parameter]
+    public PermissionScope Scope { get; set; } = PermissionScope.Tenant;
+
     /// <summary>The selected permission codes.</summary>
     [Parameter]
     public HashSet<string> Selected { get; set; } = new(StringComparer.Ordinal);
@@ -60,6 +76,8 @@
     [Parameter]
     public bool Disabled { get; set; }
 
+    private int HiddenCount => Permissions.Count(permission => permission.Scope != Scope);
+
     protected override void OnParametersSet()
     {
         if (!ReferenceEquals(_selected, Selected))
@@ -70,7 +88,7 @@
 
     private IEnumerable<IGrouping<string, PermissionDto>> FilteredGroups()
     {
-        IEnumerable<PermissionDto> filtered = Permissions;
+        IEnumerable<PermissionDto> filtered = Permissions.Where(permission => permission.Scope == Scope);
 
         if (!string.IsNullOrWhiteSpace(_search))
         {

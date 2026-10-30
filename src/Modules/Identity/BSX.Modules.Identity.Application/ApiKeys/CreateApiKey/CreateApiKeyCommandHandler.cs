@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
+using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Application.Errors;
@@ -22,6 +23,7 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
     private readonly IApiKeyHasher _apiKeyHasher;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
+    private readonly PermissionCatalog _catalog;
 
     /// <summary>Initializes a new instance of the <see cref="CreateApiKeyCommandHandler"/> class.</summary>
     public CreateApiKeyCommandHandler(
@@ -30,7 +32,8 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
         ISecureTokenGenerator tokenGenerator,
         IApiKeyHasher apiKeyHasher,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        PermissionCatalog catalog)
     {
         _serviceAccounts = serviceAccounts;
         _apiKeys = apiKeys;
@@ -38,6 +41,7 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
         _apiKeyHasher = apiKeyHasher;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
+        _catalog = catalog;
     }
 
     /// <inheritdoc />
@@ -61,7 +65,9 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
 
         if (request.Scopes is { Count: > 0 })
         {
-            var parsed = PermissionCodes.Parse(request.Scopes);
+            // Service accounts are tenant-scoped, so an API key may only carry tenant permissions
+            // that exist in the catalog (ADR-020).
+            var parsed = PermissionGrantValidator.ParseTenantGrantable(_catalog, request.Scopes);
 
             if (parsed.IsFailure)
             {

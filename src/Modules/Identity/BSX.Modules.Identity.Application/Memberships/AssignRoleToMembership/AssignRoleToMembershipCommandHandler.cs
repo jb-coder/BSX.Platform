@@ -65,7 +65,15 @@ public sealed class AssignRoleToMembershipCommandHandler : ICommandHandler<Assig
             return Result.Failure(IdentityApplicationErrors.RoleNotFound);
         }
 
-        if (!role.IsSystem && role.TenantId is not null && role.TenantId != membership.TenantId)
+        // Membership roles are always tenant roles. Platform roles are attached to the user account
+        // by the platform administrator and must never be reachable through tenant membership
+        // administration (ADR-020).
+        if (role.IsSystem || role.TenantId is null)
+        {
+            return Result.Failure(IdentityApplicationErrors.RoleNotAssignableToMembership);
+        }
+
+        if (role.TenantId != membership.TenantId)
         {
             return Result.Failure(IdentityApplicationErrors.RoleTenantMismatch);
         }

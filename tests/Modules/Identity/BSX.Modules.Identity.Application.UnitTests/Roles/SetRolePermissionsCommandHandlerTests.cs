@@ -12,7 +12,11 @@ public sealed class SetRolePermissionsCommandHandlerTests
     private readonly FakeUnitOfWork _unitOfWork = new();
 
     private SetRolePermissionsCommandHandler CreateHandler(Guid? activeTenantId)
-        => new(_roles, _unitOfWork, new TenantGuard(new FakeTenantContext(activeTenantId)));
+        => new(
+            _roles,
+            _unitOfWork,
+            new TenantGuard(new FakeTenantContext(activeTenantId)),
+            TestPermissionCatalog.Platform);
 
     [Fact]
     public async Task Should_ReplacePermissions()
@@ -22,11 +26,43 @@ public sealed class SetRolePermissionsCommandHandlerTests
         _roles.Seed(role);
 
         var result = await CreateHandler(tenantId.Value).HandleAsync(
-            new SetRolePermissionsCommand(role.Id.Value, ["crm.customers.create", "crm.orders.read"]));
+            new SetRolePermissionsCommand(role.Id.Value, ["crm.customers.create", "sales.leads.read"]));
 
         result.IsSuccess.Should().BeTrue();
         role.Permissions.Select(permission => permission.Code)
-            .Should().BeEquivalentTo(["crm.customers.create", "crm.orders.read"]);
+            .Should().BeEquivalentTo(["crm.customers.create", "sales.leads.read"]);
+    }
+
+    [Fact]
+    public async Task Should_RejectPlatformPermission_WhenEditingARole()
+    {
+        var tenantId = TenantId.From(Guid.NewGuid());
+        Role role = TestData.CreateRole(tenantId: tenantId, permission: "crm.customers.read");
+        _roles.Seed(role);
+
+        var result = await CreateHandler(tenantId.Value).HandleAsync(
+            new SetRolePermissionsCommand(role.Id.Value, ["identity.users.read"]));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Permission.ScopeForbidden");
+        role.Permissions.Select(permission => permission.Code)
+            .Should().BeEquivalentTo(["crm.customers.read"]);
+        _unitOfWork.SaveCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Should_RejectUnknownPermission_WhenEditingARole()
+    {
+        var tenantId = TenantId.From(Guid.NewGuid());
+        Role role = TestData.CreateRole(tenantId: tenantId, permission: "crm.customers.read");
+        _roles.Seed(role);
+
+        var result = await CreateHandler(tenantId.Value).HandleAsync(
+            new SetRolePermissionsCommand(role.Id.Value, ["crm.orders.read"]));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Permission.Unknown");
+        _unitOfWork.SaveCount.Should().Be(0);
     }
 
     [Fact]

@@ -89,6 +89,23 @@ Amends [permissions-model.md](permissions-model.md).
 
 ---
 
+## ADR-020 - Permission Scope Boundaries
+
+Amends [permissions-model.md](permissions-model.md).
+
+- Every permission declares a `PermissionScope`: `Platform` (global data) or `Tenant`
+  (tenant-confined data).
+- A **tenant role can never grant a platform-scoped permission**. Platform roles may hold both
+  scopes because tenant data access remains confined by the tenant guard and query filters.
+- Scope is enforced by catalog membership, scope validation, membership assignment and
+  `PermissionResolver` (the authorization backstop), not by the web UI.
+- `CreateRoleCommand` only creates tenant roles; platform roles are owned by the platform
+  synchronizer. Membership role assignment rejects system/platform roles.
+- Existing tenant roles that hold platform permissions are inert and are remediated through the
+  documented audit query or by re-saving the role.
+
+---
+
 ## Result
 
 With these amendments, the Identity module is implementation-ready and supports enterprise and

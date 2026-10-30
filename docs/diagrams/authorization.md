@@ -49,6 +49,22 @@ flowchart TD
     PERM -->|yes| ALLOW
 ```
 
+## Permission Scope (ADR-020)
+
+```mermaid
+flowchart TD
+    DEF["PermissionDefinition<br/>(module catalog)"] --> SCOPE{"Scope"}
+    SCOPE -->|Platform| PLAT["Platform roles only<br/>(TenantId is null)"]
+    SCOPE -->|Tenant| TEN["Tenant roles and platform roles"]
+    PLAT --> RES["PermissionResolver"]
+    TEN --> RES
+    RES -->|"tenant role + platform scope"| DROP["Dropped (fail closed)"]
+```
+
+- A tenant role can never grant a platform-scoped permission.
+- Unknown permission codes contribute nothing.
+- The web UI hides disallowed permissions, but the backend and the resolver remain authoritative.
+
 ## Defaults Before Identity
 
 ```mermaid

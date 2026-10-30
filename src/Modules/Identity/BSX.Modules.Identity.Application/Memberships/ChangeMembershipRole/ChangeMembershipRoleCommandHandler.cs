@@ -72,7 +72,14 @@ public sealed class ChangeMembershipRoleCommandHandler : ICommandHandler<ChangeM
                 return Result.Failure(IdentityApplicationErrors.RoleNotFound);
             }
 
-            if (!role.IsSystem && role.TenantId is not null && role.TenantId != membership.TenantId)
+            // Membership roles are always tenant roles; platform roles are never assignable here
+            // (ADR-020).
+            if (role.IsSystem || role.TenantId is null)
+            {
+                return Result.Failure(IdentityApplicationErrors.RoleNotAssignableToMembership);
+            }
+
+            if (role.TenantId != membership.TenantId)
             {
                 return Result.Failure(IdentityApplicationErrors.RoleTenantMismatch);
             }

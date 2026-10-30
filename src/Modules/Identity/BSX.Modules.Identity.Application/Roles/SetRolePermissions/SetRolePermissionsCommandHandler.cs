@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
+using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Application.Errors;
@@ -16,13 +17,19 @@ public sealed class SetRolePermissionsCommandHandler : ICommandHandler<SetRolePe
     private readonly IRoleRepository _roles;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TenantGuard _tenantGuard;
+    private readonly PermissionCatalog _catalog;
 
     /// <summary>Initializes a new instance of the <see cref="SetRolePermissionsCommandHandler"/> class.</summary>
-    public SetRolePermissionsCommandHandler(IRoleRepository roles, IUnitOfWork unitOfWork, TenantGuard tenantGuard)
+    public SetRolePermissionsCommandHandler(
+        IRoleRepository roles,
+        IUnitOfWork unitOfWork,
+        TenantGuard tenantGuard,
+        PermissionCatalog catalog)
     {
         _roles = roles;
         _unitOfWork = unitOfWork;
         _tenantGuard = tenantGuard;
+        _catalog = catalog;
     }
 
     /// <inheritdoc />
@@ -31,13 +38,6 @@ public sealed class SetRolePermissionsCommandHandler : ICommandHandler<SetRolePe
         if (request.RoleId == Guid.Empty)
         {
             return Result.Failure(IdentityApplicationErrors.InvalidRoleId);
-        }
-
-        var permissionsResult = PermissionCodes.Parse(request.Permissions);
-
-        if (permissionsResult.IsFailure)
-        {
-            return Result.Failure(permissionsResult.Error);
         }
 
         Role? role = await _roles.GetByIdAsync(RoleId.From(request.RoleId), cancellationToken).ConfigureAwait(false);
@@ -56,6 +56,15 @@ public sealed class SetRolePermissionsCommandHandler : ICommandHandler<SetRolePe
         if (guard.IsFailure)
         {
             return guard;
+        }
+
+        // A tenant role may only hold tenant-scoped permissions (ADR-020). The scope is resolved from
+        // the catalog, never from the request.
+        var permissionsResult = PermissionGrantValidator.ParseTenantGrantable(_catalog, request.Permissions);
+
+        if (permissionsResult.IsFailure)
+        {
+            return Result.Failure(permissionsResult.Error);
         }
 
         HashSet<Permission> target = permissionsResult.Value.ToHashSet();

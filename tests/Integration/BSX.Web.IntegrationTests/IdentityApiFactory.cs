@@ -52,6 +52,9 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
     /// <summary>The email of a user who belongs to both seeded tenants.</summary>
     public const string TenantAdminEmail = "tenant-admin@example.com";
 
+    /// <summary>The email of a tenant administrator who holds only workspace-role permissions.</summary>
+    public const string WorkspaceAdminEmail = "workspace-admin@example.com";
+
     /// <summary>The email of a user with no tenant membership at all.</summary>
     public const string InviteeEmail = "invitee@example.com";
 
@@ -109,6 +112,23 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         "identity.permissions.read",
     ];
 
+    /// <summary>
+    /// The tenant-scoped permissions granted to the seeded workspace administrator. The account has
+    /// no platform role, so it exercises the tenant-role authorization boundary.
+    /// </summary>
+    public static readonly string[] WorkspaceAdminPermissions =
+    [
+        "identity.roles.read",
+        "identity.roles.create",
+        "identity.roles.update",
+        "identity.roles.set-permissions",
+        "identity.permissions.read",
+        "identity.memberships.read",
+        "identity.memberships.manage",
+        "crm.customers.read",
+        "sales.leads.read",
+    ];
+
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly SqliteConnection _crmConnection = new("DataSource=:memory:");
     private readonly SqliteConnection _salesConnection = new("DataSource=:memory:");
@@ -157,6 +177,12 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
 
     /// <summary>Gets the two-tenant user's identifier.</summary>
     public Guid TenantAdminUserId { get; private set; }
+
+    /// <summary>Gets the tenant-only workspace administrator's identifier.</summary>
+    public Guid WorkspaceAdminUserId { get; private set; }
+
+    /// <summary>Gets the workspace administrator role identifier.</summary>
+    public Guid WorkspaceAdminRoleId { get; private set; }
 
     /// <summary>Gets the membership-less user's identifier.</summary>
     public Guid InviteeUserId { get; private set; }
@@ -343,6 +369,25 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
 
         AdministrationReaderUserId = AddUser(context, passwordHasher, AdministrationReaderEmail, "Administration Reader", now, platformRoleId: adminReaderRole.Id.Value, memberships: [TenantId]);
         TenantAdminUserId = AddUser(context, passwordHasher, TenantAdminEmail, "Tenant Admin", now, platformRoleId: role.Id.Value, memberships: [TenantId, OtherTenantId]);
+
+        Role workspaceAdminRole = Role.Create(
+            RoleId.New(),
+            ValueObjects.TenantId.From(TenantId),
+            RoleName.Create("Workspace Administrator").Value,
+            WorkspaceAdminPermissions.Select(code => Permission.Create(code).Value)).Value;
+        context.Roles.Add(workspaceAdminRole);
+        WorkspaceAdminRoleId = workspaceAdminRole.Id.Value;
+
+        WorkspaceAdminUserId = AddUser(
+            context,
+            passwordHasher,
+            WorkspaceAdminEmail,
+            "Workspace Admin",
+            now,
+            platformRoleId: null,
+            memberships: [TenantId],
+            membershipRoleId: workspaceAdminRole.Id.Value);
+
         InviteeUserId = AddUser(context, passwordHasher, InviteeEmail, "Invitee", now, platformRoleId: null, memberships: []);
 
         context.SaveChanges();
@@ -363,7 +408,8 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         string name,
         DateTimeOffset now,
         Guid? platformRoleId,
-        IReadOnlyCollection<Guid> memberships)
+        IReadOnlyCollection<Guid> memberships,
+        Guid? membershipRoleId = null)
     {
         User user = User.Register(UserId.New(), Email.Create(email).Value, PersonName.Create(name).Value, now).Value;
         user.SetPassword(passwordHasher.Hash(AdminPassword), now);
@@ -383,6 +429,12 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
                 .Invite(MembershipId.New(), ValueObjects.TenantId.From(tenantId), user.Id, null, now)
                 .Value;
             membership.Accept(now);
+
+            if (membershipRoleId is { } assignedRoleId)
+            {
+                membership.AssignRole(RoleId.From(assignedRoleId));
+            }
+
             context.TenantMemberships.Add(membership);
         }
 

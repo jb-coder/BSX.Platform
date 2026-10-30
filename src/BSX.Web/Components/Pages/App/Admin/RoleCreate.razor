@@ -1,6 +1,7 @@
 @page "/app/admin/roles/new"
 @attribute [Authorize(Policy = PermissionPolicies.IdentityRolesCreate)]
 @using BSX.BuildingBlocks.Cqrs
+@using BSX.Contracts.Permissions
 @using BSX.Modules.Identity.Application.Dtos
 @using BSX.Modules.Identity.Application.Permissions.ListPermissions
 @using BSX.Modules.Identity.Application.Roles.CreateRole
@@ -52,7 +53,9 @@
                     </div>
                 </FormSection>
 
-                <PermissionSelector Permissions="Form.Catalog" @bind-Selected="Form.Permissions" />
+                <PermissionSelector Permissions="Form.Catalog"
+                                    Scope="PermissionScope.Tenant"
+                                    @bind-Selected="Form.Permissions" />
 
                 <div class="form-actions">
                     <button type="submit" class="button button-primary" disabled="@_saving">

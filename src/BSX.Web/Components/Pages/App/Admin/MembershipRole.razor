@@ -34,7 +34,7 @@ else if (_membership is null)
 else
 {
     <PageHeader Title="@($"Change role · {_membership.Name}")"
-                Subtitle="Assign one workspace or platform role to this member.">
+                Subtitle="Assign one workspace role to this member.">
         <Actions><a class="button button-secondary" href="/app/admin/memberships">Cancel</a></Actions>
     </PageHeader>
 
@@ -69,7 +69,7 @@ else
                     <option value="">No role</option>
                     @foreach (RoleDto role in _roles)
                     {
-                        <option value="@role.Id">@role.Name · @(role.TenantId is null ? "Platform" : "Workspace")</option>
+                        <option value="@role.Id">@role.Name</option>
                     }
                 </InputSelect>
                 <span class="field-hint">Changing the role replaces the member's current role assignment.</span>
@@ -108,8 +108,6 @@ else
 
         Result<IReadOnlyList<RoleDto>> tenantRoles = await Dispatcher.SendAsync(
             new ListRolesQuery(CurrentUser.TenantId));
-        Result<IReadOnlyList<RoleDto>> systemRoles = await Dispatcher.SendAsync(
-            new ListRolesQuery(null));
 
         _loading = false;
 
@@ -131,21 +129,17 @@ else
             return;
         }
 
-        if (tenantRoles.IsSuccess && systemRoles.IsSuccess)
+        if (tenantRoles.IsSuccess)
         {
+            // Platform roles are attached to the user account by the platform administrator and are
+            // never assignable through workspace membership administration (ADR-020).
             _roles = tenantRoles.Value
-                .Concat(systemRoles.Value)
-                .OrderByDescending(role => role.IsSystem)
-                .ThenBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
-        else if (tenantRoles.IsFailure)
+        else
         {
             _error = IdentityMessages.For(tenantRoles.Error);
-        }
-        else if (systemRoles.IsFailure)
-        {
-            _error = IdentityMessages.For(systemRoles.Error);
         }
 
         _selectedRoleId = _membership.RoleIds.Count > 0

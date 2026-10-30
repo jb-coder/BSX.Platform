@@ -42,7 +42,7 @@ public sealed class AdministrationEndpointsTests : IClassFixture<IdentityApiFact
             {
                 name = $"role-{Guid.NewGuid():N}",
                 description = "integration",
-                permissions = new[] { "identity.users.read" },
+                permissions = new[] { "crm.customers.read" },
             });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
