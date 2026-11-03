@@ -84,6 +84,11 @@ public static class IdentityApplicationErrors
     /// <summary>The tenant is invalid or the user is not an active member.</summary>
     public static Error InvalidTenant => Error.Validation("Identity.Authentication.InvalidTenant", "The tenant is invalid or the user is not an active member.");
 
+    /// <summary>The pending workspace selection is missing, mismatched or expired.</summary>
+    public static Error PendingLoginExpired => Error.Unauthorized(
+        "Identity.Authentication.PendingLoginExpired",
+        "The pending sign-in is invalid or has expired.");
+
     /// <summary>A concurrent modification was detected; retry the operation.</summary>
     public static Error ConcurrentOperation => Error.Conflict("Identity.Concurrency.Conflict", "A concurrent modification was detected. Retry the operation.");
 

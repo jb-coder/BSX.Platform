@@ -37,6 +37,7 @@ public sealed class DiscoverTenantOptionsCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Select(option => option.TenantId).Should().BeEquivalentTo(new[] { first.Value, second.Value });
+        result.Value.Should().OnlyContain(option => option.UserId == user.Id.Value);
     }
 
     [Fact]

@@ -163,6 +163,7 @@ All browser session cookies are `HttpOnly`. The production-safe secure policy is
 | Authentication ticket | `BSX.Web.Auth` | Blazor web session | `Lax` |
 | Refresh token | `BSX.Web.Refresh` | Opaque refresh token | `Strict` |
 | Antiforgery | `BSX.Web.Antiforgery` | CSRF protection | `Strict` |
+| Pending selection | `BSX.Web.PendingLogin` | Workspace-selection secret | `Strict` |
 
 Configuration:
 
@@ -174,6 +175,7 @@ Configuration:
       "AuthSameSite": "Lax",
       "RefreshSameSite": "Strict",
       "AntiforgerySameSite": "Strict",
+      "PendingLoginSameSite": "Strict",
       "Domain": null
     }
   }
@@ -277,9 +279,11 @@ Enable schema checks where the deployment owns the schema:
 - **Data Protection key ring:** shared and persistent (required).
 - **JWT signing keys:** shared via the secret store (required); see
   [jwt-key-management.md](../operations/jwt-key-management.md).
-- **Pending workspace selection:** `PendingLoginStore` is in-process for five minutes. A
-  multi-instance deployment needs session affinity or a distributed replacement for the selection
-  window. Without it, a user may be asked to sign in again if the selection lands on another node.
+- **Pending workspace selection:** `PendingLoginStore` is in-process for five minutes. It contains
+  no password; the URL carries only a non-secret selection handle and the secret is held in the
+  `BSX.Web.PendingLogin` HttpOnly cookie. A multi-instance deployment still needs session affinity
+  or a distributed replacement for the selection window. Without it, a user may be asked to sign in
+  again if the selection lands on another node.
 - **Rate limiting:** the default limiter is per instance. See
   [rate-limiting.md](../operations/rate-limiting.md) for the distributed path.
 - **Database:** sessions and refresh tokens are database-backed, so no session affinity is required
@@ -295,7 +299,8 @@ Outside Development the host fails fast when:
 - `ConnectionStrings:Identity` is missing.
 - JWT issuer/audience/lifetime are invalid, or signing keys are missing.
 - `DataProtection:KeysPath` is missing or not a writable directory.
-- `AllowedHosts` is `*` or still the development default (`localhost;127.0.0.1`).
+- `AllowedHosts` contains a wildcard entry anywhere in the list, or is a loopback-only
+  development list (`localhost;127.0.0.1`).
 - A configured trusted proxy IP/CIDR cannot be parsed.
 
 These checks are intentional: a deployment that cannot preserve sessions or authenticate users must
@@ -305,7 +310,8 @@ not start behind a proxy and fail later.
 
 ## Operational checklist
 
-1. Set `AllowedHosts` to the public host name(s); never `*`.
+1. Set `AllowedHosts` to the public host name(s); never a wildcard entry (`*` or `*.example.com`)
+   anywhere in the semicolon-separated list.
 2. Configure `DataProtection:ApplicationName` and a persistent, shared `DataProtection:KeysPath`.
 3. Configure `ReverseProxy:KnownProxies`/`KnownNetworks` for the proxy hop(s); set `ForwardLimit`.
 4. Ensure the proxy sends `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-For` and preserves

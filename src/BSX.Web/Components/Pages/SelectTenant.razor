@@ -1,9 +1,10 @@
 @page "/select-tenant"
 @layout AuthLayout
 @attribute [AllowAnonymous]
+@using BSX.Modules.Identity.Application.Authentication
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject PendingLoginStore PendingLogins
+@inject IPendingLoginStore PendingLogins
 
 <PageTitle>Choose a workspace - BSX Platform</PageTitle>
 
@@ -34,7 +35,7 @@
         {
             <form method="post" action="/auth/select-tenant" class="tenant-form">
                 <AntiforgeryToken />
-                <input type="hidden" name="token" value="@Token" />
+                <input type="hidden" name="token" value="@_pending.SelectionId" />
                 <fieldset class="tenant-options">
                     <legend class="visually-hidden">Available workspaces</legend>
                     @foreach (PendingTenant tenant in _pending.Tenants)
@@ -82,7 +83,9 @@
             return;
         }
 
-        _pending = PendingLogins.Load(Token);
+        // The URL carries only a non-secret selection handle. The secret that can complete the
+        // sign-in is held in an HttpOnly cookie and is never rendered into the page.
+        _pending = PendingLogins.GetBySelectionId(Token);
         if (_pending is null)
         {
             Navigation.NavigateTo("/login?error=selection_expired", replace: true);

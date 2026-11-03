@@ -4,6 +4,11 @@
 
 Accepted
 
+**Amended by:** [ADR-021](ADR-021-Authorization-Revalidation.md). The "not per request" security
+stamp statement below is superseded for permission-gated operations by authoritative per-operation
+revalidation. Access tokens remain short-lived and stateless; revalidation is a separate fail-closed
+control.
+
 **Amends:** `docs/modules/identity/jwt-strategy.md` and
 `docs/modules/identity/refresh-token-strategy.md`.
 

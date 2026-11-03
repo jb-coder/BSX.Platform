@@ -1,69 +1,124 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using BSX.Modules.Identity.Application.Authentication;
 
 namespace BSX.Web.Authentication;
 
 /// <summary>
-/// Holds verified sign-ins that are waiting for explicit workspace selection. Entries are kept for
-/// a short window and are only referenced by an opaque token in the selection page URL.
+/// Server-side store for verified sign-ins that are waiting for explicit workspace selection.
+/// Entries are short-lived, keyed by a secret held only in an HttpOnly cookie, and never contain
+/// the user's password. The non-secret selection handle is only used to render the chooser.
 /// </summary>
-public sealed class PendingLoginStore
+public sealed class PendingLoginStore : IPendingLoginStore
 {
-    private readonly ConcurrentDictionary<string, PendingLogin> _pending = new(StringComparer.Ordinal);
+    private const int SelectionIdByteLength = 32;
+    private const int SecretTokenByteLength = 32;
 
-    /// <summary>Stores the pending sign-in and returns the opaque selection token.</summary>
-    /// <param name="pendingLogin">The pending sign-in.</param>
-    public string Save(PendingLogin pendingLogin)
+    private readonly ConcurrentDictionary<string, PendingLogin> _pending = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _selectionToSecret = new(StringComparer.Ordinal);
+    private readonly TimeProvider _timeProvider;
+
+    /// <summary>Initializes a new instance of the <see cref="PendingLoginStore"/> class.</summary>
+    /// <param name="timeProvider">The time provider used for expiry checks.</param>
+    public PendingLoginStore(TimeProvider timeProvider) => _timeProvider = timeProvider;
+
+    /// <summary>Initializes a store backed by the system clock.</summary>
+    public PendingLoginStore()
+        : this(TimeProvider.System)
+    {
+    }
+
+    /// <inheritdoc />
+    public PendingLoginHandle Save(PendingLogin pendingLogin)
     {
         ArgumentNullException.ThrowIfNull(pendingLogin);
         RemoveExpired();
 
-        string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        _pending[token] = pendingLogin;
-        return token;
+        string selectionId = NewToken(SelectionIdByteLength);
+        string secretToken = NewToken(SecretTokenByteLength);
+        PendingLogin stored = pendingLogin with { SelectionId = selectionId };
+
+        _pending[secretToken] = stored;
+        _selectionToSecret[selectionId] = secretToken;
+
+        return new PendingLoginHandle(selectionId, secretToken);
     }
 
-    /// <summary>Reads a pending sign-in by selection token.</summary>
-    /// <param name="token">The opaque selection token.</param>
-    public PendingLogin? Load(string? token)
+    /// <inheritdoc />
+    public PendingLogin? Get(string? secretToken)
     {
         RemoveExpired();
 
-        if (string.IsNullOrWhiteSpace(token)
-            || !_pending.TryGetValue(token, out PendingLogin? pending))
+        if (string.IsNullOrWhiteSpace(secretToken)
+            || !_pending.TryGetValue(secretToken, out PendingLogin? pending))
         {
             return null;
         }
 
-        if (pending.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+        if (pending.ExpiresAtUtc <= _timeProvider.GetUtcNow())
         {
-            _pending.TryRemove(token, out _);
+            Remove(secretToken);
             return null;
         }
 
         return pending;
     }
 
-    /// <summary>Removes a pending sign-in.</summary>
-    /// <param name="token">The opaque selection token.</param>
-    public void Remove(string? token)
+    /// <inheritdoc />
+    public PendingLogin? GetBySelectionId(string? selectionId)
     {
-        if (!string.IsNullOrWhiteSpace(token))
+        RemoveExpired();
+
+        if (string.IsNullOrWhiteSpace(selectionId)
+            || !_selectionToSecret.TryGetValue(selectionId, out string? secretToken))
         {
-            _pending.TryRemove(token, out _);
+            return null;
         }
+
+        return Get(secretToken);
+    }
+
+    /// <inheritdoc />
+    public PendingLogin? Consume(string? secretToken)
+    {
+        RemoveExpired();
+
+        if (string.IsNullOrWhiteSpace(secretToken)
+            || !_pending.TryRemove(secretToken, out PendingLogin? pending))
+        {
+            return null;
+        }
+
+        _selectionToSecret.TryRemove(pending.SelectionId, out _);
+
+        return pending.ExpiresAtUtc <= _timeProvider.GetUtcNow() ? null : pending;
+    }
+
+    /// <inheritdoc />
+    public void Remove(string? secretToken)
+    {
+        if (string.IsNullOrWhiteSpace(secretToken)
+            || !_pending.TryRemove(secretToken, out PendingLogin? pending))
+        {
+            return;
+        }
+
+        _selectionToSecret.TryRemove(pending.SelectionId, out _);
     }
 
     private void RemoveExpired()
     {
-        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = _timeProvider.GetUtcNow();
 
         foreach (KeyValuePair<string, PendingLogin> entry in _pending)
         {
             if (entry.Value.ExpiresAtUtc <= now)
             {
-                _pending.TryRemove(entry.Key, out _);
+                Remove(entry.Key);
             }
         }
     }
+
+    private static string NewToken(int byteLength)
+        => Convert.ToHexString(RandomNumberGenerator.GetBytes(byteLength));
 }

@@ -21,15 +21,16 @@ public sealed class LoginCommandHandlerTests
     private readonly MutableTimeProvider _timeProvider = new(TestData.Now);
 
     private LoginCommandHandler CreateHandler(IRateLimiter? rateLimiter = null) => new(
-        _sessions,
         _memberships,
-        new PermissionResolver(_roles, TestPermissionCatalog.Platform),
         new CredentialAuthenticator(_users, _passwordHasher, _securityStore, _postCommandActions, _timeProvider),
-        new FakeSecureTokenGenerator(),
-        new FakeRefreshTokenHasher(),
-        new FakeAccessTokenIssuer(),
-        _unitOfWork,
-        _timeProvider,
+        new AuthenticationSessionIssuer(
+            _sessions,
+            new PermissionResolver(_roles, TestPermissionCatalog.Platform),
+            new FakeSecureTokenGenerator(),
+            new FakeRefreshTokenHasher(),
+            new FakeAccessTokenIssuer(),
+            _unitOfWork,
+            _timeProvider),
         rateLimiter ?? new FakeRateLimiter(),
         new RateLimitOptions());
 

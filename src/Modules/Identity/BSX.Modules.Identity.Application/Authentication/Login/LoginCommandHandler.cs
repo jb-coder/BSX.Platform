@@ -1,11 +1,9 @@
 using BSX.BuildingBlocks.Cqrs;
-using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Application.Dtos;
 using BSX.Modules.Identity.Application.Errors;
 using BSX.Modules.Identity.Domain.Enums;
 using BSX.Modules.Identity.Domain.Memberships;
-using BSX.Modules.Identity.Domain.Sessions;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.SharedKernel.Results;
@@ -15,44 +13,28 @@ namespace BSX.Modules.Identity.Application.Authentication.Login;
 /// <summary>Handles <see cref="LoginCommand"/>.</summary>
 public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, AuthenticationTokensResponse>
 {
-    private const int MaxActiveSessions = 10;
-    private const string UserPrincipalType = "User";
-
-    private readonly IUserSessionRepository _sessions;
     private readonly ITenantMembershipRepository _memberships;
-    private readonly PermissionResolver _permissionResolver;
     private readonly CredentialAuthenticator _authenticator;
-    private readonly ISecureTokenGenerator _tokenGenerator;
-    private readonly IRefreshTokenHasher _refreshTokenHasher;
-    private readonly IAccessTokenIssuer _accessTokenIssuer;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly TimeProvider _timeProvider;
+    private readonly AuthenticationSessionIssuer _sessions;
     private readonly IRateLimiter _rateLimiter;
     private readonly RateLimitOptions _rateLimitOptions;
 
     /// <summary>Initializes a new instance of the <see cref="LoginCommandHandler"/> class.</summary>
+    /// <param name="memberships">The membership repository.</param>
+    /// <param name="authenticator">The credential authenticator.</param>
+    /// <param name="sessions">The authenticated-session issuer.</param>
+    /// <param name="rateLimiter">The authentication rate limiter.</param>
+    /// <param name="rateLimitOptions">The rate-limit policy.</param>
     public LoginCommandHandler(
-        IUserSessionRepository sessions,
         ITenantMembershipRepository memberships,
-        PermissionResolver permissionResolver,
         CredentialAuthenticator authenticator,
-        ISecureTokenGenerator tokenGenerator,
-        IRefreshTokenHasher refreshTokenHasher,
-        IAccessTokenIssuer accessTokenIssuer,
-        IUnitOfWork unitOfWork,
-        TimeProvider timeProvider,
+        AuthenticationSessionIssuer sessions,
         IRateLimiter rateLimiter,
         RateLimitOptions rateLimitOptions)
     {
-        _sessions = sessions;
         _memberships = memberships;
-        _permissionResolver = permissionResolver;
         _authenticator = authenticator;
-        _tokenGenerator = tokenGenerator;
-        _refreshTokenHasher = refreshTokenHasher;
-        _accessTokenIssuer = accessTokenIssuer;
-        _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider;
+        _sessions = sessions;
         _rateLimiter = rateLimiter;
         _rateLimitOptions = rateLimitOptions;
     }
@@ -78,7 +60,6 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         }
 
         User user = authenticated.Value;
-        DateTimeOffset nowUtc = _timeProvider.GetUtcNow();
 
         Result<TenantMembership?> membershipResult = await ResolveMembershipAsync(
             user,
@@ -90,47 +71,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
             return Result.Failure<AuthenticationTokensResponse>(membershipResult.Error);
         }
 
-        TenantMembership? membership = membershipResult.Value;
-
-        IReadOnlyCollection<string> permissions = await _permissionResolver
-            .ResolveAsync(user, membership, cancellationToken)
+        return await _sessions
+            .IssueAsync(user, membershipResult.Value, request.UserAgent, request.IpAddress, cancellationToken)
             .ConfigureAwait(false);
-
-        await EnforceSessionLimitAsync(user.Id, nowUtc, cancellationToken).ConfigureAwait(false);
-
-        string refreshToken = _tokenGenerator.GenerateToken();
-        var sessionResult = UserSession.Start(
-            SessionId.New(),
-            user.Id,
-            membership?.TenantId,
-            user.SecurityStamp.Value,
-            _refreshTokenHasher.Hash(refreshToken),
-            SessionMetadata.Create(request.UserAgent, request.IpAddress),
-            nowUtc,
-            SessionPolicy.Default);
-
-        if (sessionResult.IsFailure)
-        {
-            return Result.Failure<AuthenticationTokensResponse>(sessionResult.Error);
-        }
-
-        UserSession session = sessionResult.Value;
-
-        AccessToken accessToken = _accessTokenIssuer.Issue(new AccessTokenDescriptor(
-            user.Id.Value,
-            membership?.TenantId.Value,
-            user.Principal.Value,
-            UserPrincipalType,
-            user.Email.Value,
-            user.Name.Value,
-            permissions,
-            user.SecurityStamp.Value,
-            session.Id.Value));
-
-        await _sessions.AddAsync(session, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        return Result.Success(new AuthenticationTokensResponse(accessToken.Token, accessToken.ExpiresAtUtc, refreshToken));
     }
 
     private async Task<Result<TenantMembership?>> ResolveMembershipAsync(
@@ -176,29 +119,5 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, Authenti
         }
 
         return Result.Failure<TenantMembership?>(IdentityApplicationErrors.InvalidTenant);
-    }
-
-    private async Task EnforceSessionLimitAsync(
-        UserId userId,
-        DateTimeOffset nowUtc,
-        CancellationToken cancellationToken)
-    {
-        IReadOnlyCollection<UserSession> sessions = await _sessions
-            .ListActiveByUserAsync(userId, cancellationToken)
-            .ConfigureAwait(false);
-
-        List<UserSession> active = sessions.Where(session => session.IsActive(nowUtc)).ToList();
-
-        if (active.Count < MaxActiveSessions)
-        {
-            return;
-        }
-
-        foreach (UserSession oldest in active
-            .OrderBy(session => session.CreatedOnUtc)
-            .Take(active.Count - MaxActiveSessions + 1))
-        {
-            oldest.Revoke(nowUtc, "session_limit");
-        }
     }
 }

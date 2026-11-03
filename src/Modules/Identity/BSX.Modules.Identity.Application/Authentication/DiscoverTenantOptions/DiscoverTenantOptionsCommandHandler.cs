@@ -58,7 +58,10 @@ public sealed class DiscoverTenantOptionsCommandHandler
         IReadOnlyList<TenantOptionDto> options = memberships
             .Where(membership => membership.Status == MembershipStatus.Active)
             .OrderBy(membership => membership.TenantId.Value)
-            .Select(membership => new TenantOptionDto(membership.TenantId.Value, membership.JoinedOnUtc))
+            .Select(membership => new TenantOptionDto(
+                authenticated.Value.Id.Value,
+                membership.TenantId.Value,
+                membership.JoinedOnUtc))
             .ToArray();
 
         return Result.Success(options);

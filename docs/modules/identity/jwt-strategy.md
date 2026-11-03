@@ -78,9 +78,10 @@ Token validation configuration:
 Stateless tokens cannot be individually revoked without a server lookup. Identity mitigates this:
 
 - **Short lifetime** limits exposure.
-- **Security stamp** (`sstamp`) is validated **at refresh time**, not per request. A rotated stamp
-  fails the refresh and forces re-authentication (ADR-017). Access tokens remain stateless; there
-  is no per-request database or cache lookup.
+- **Security stamp** (`sstamp`) is validated at refresh and on every permission-gated operation by
+  the authorization revalidator (ADR-021). A rotated stamp fails refresh and revalidation and
+  forces re-authentication. Access tokens remain stateless; the revalidation lookup is an
+  intentional fail-closed cost.
 - **Sessions** are revoked for refresh tokens (see refresh strategy), forcing re-authentication.
 - A deny-list keyed by `jti` is reserved for emergency use only, to avoid per-request lookups.
 

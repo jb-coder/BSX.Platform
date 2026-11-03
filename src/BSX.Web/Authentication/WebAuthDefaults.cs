@@ -18,7 +18,7 @@ public static class WebAuthDefaults
     /// <summary>The antiforgery cookie name.</summary>
     public const string AntiforgeryCookieName = "BSX.Web.Antiforgery";
 
-    /// <summary>The protected pending-login cookie used during tenant selection.</summary>
+    /// <summary>The HttpOnly secret token used during workspace selection.</summary>
     public const string PendingLoginCookieName = "BSX.Web.PendingLogin";
 
     /// <summary>The request item used to signal that a session expired during cookie validation.</summary>

@@ -2,6 +2,7 @@ using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
 using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Application.Abstractions;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Application.Errors;
 using BSX.Modules.Identity.Domain.Enums;
@@ -24,6 +25,7 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly PermissionCatalog _catalog;
+    private readonly TenantGuard _tenantGuard;
 
     /// <summary>Initializes a new instance of the <see cref="CreateApiKeyCommandHandler"/> class.</summary>
     public CreateApiKeyCommandHandler(
@@ -33,7 +35,8 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
         IApiKeyHasher apiKeyHasher,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
-        PermissionCatalog catalog)
+        PermissionCatalog catalog,
+        TenantGuard tenantGuard)
     {
         _serviceAccounts = serviceAccounts;
         _apiKeys = apiKeys;
@@ -42,6 +45,7 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _catalog = catalog;
+        _tenantGuard = tenantGuard;
     }
 
     /// <inheritdoc />
@@ -59,6 +63,14 @@ public sealed class CreateApiKeyCommandHandler : ICommandHandler<CreateApiKeyCom
         if (account is null)
         {
             return Result.Failure<CreateApiKeyResponse>(IdentityApplicationErrors.ServiceAccountNotFound);
+        }
+
+        // An API key can only be minted by the workspace that owns the service account. This is the
+        // tenant guard for a write path that does not carry the tenant in the request contract.
+        Result tenantGuard = _tenantGuard.Ensure(account.TenantId.Value);
+        if (tenantGuard.IsFailure)
+        {
+            return Result.Failure<CreateApiKeyResponse>(tenantGuard.Error);
         }
 
         IReadOnlyCollection<Permission>? scopes = null;

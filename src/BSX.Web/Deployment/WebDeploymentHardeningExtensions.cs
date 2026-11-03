@@ -168,14 +168,36 @@ public static class WebDeploymentHardeningExtensions
 
         string? allowedHosts = configuration["AllowedHosts"];
 
-        if (string.IsNullOrWhiteSpace(allowedHosts)
-            || string.Equals(allowedHosts, "*", StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(allowedHosts))
         {
             throw new InvalidOperationException(
-                "AllowedHosts must be set to the public host name(s) outside Development; '*' is not permitted.");
+                "AllowedHosts must be set to the public host name(s) outside Development.");
         }
 
-        if (string.Equals(allowedHosts, "localhost;127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        string[] hosts = allowedHosts
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (hosts.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "AllowedHosts must be set to the public host name(s) outside Development.");
+        }
+
+        // A wildcard entry anywhere in the list disables Host-header filtering. Check every entry,
+        // not only the exact string '*', so a list such as "app.example.com;*" fails closed.
+        if (hosts.Any(host => host.Contains('*', StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                "AllowedHosts must not contain a wildcard entry outside Development; '*' is not permitted.");
+        }
+
+        bool onlyLoopback = hosts.All(host =>
+            string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(host, "::1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(host, "[::1]", StringComparison.OrdinalIgnoreCase));
+
+        if (onlyLoopback)
         {
             throw new InvalidOperationException(
                 "AllowedHosts is still the development default ('localhost;127.0.0.1'). "

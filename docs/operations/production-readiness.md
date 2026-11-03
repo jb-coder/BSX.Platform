@@ -52,6 +52,16 @@ not known to be broken, but it had not been proven against the production provid
 | --- | --- | --- | --- | --- |
 | I1 | Identity had no PostgreSQL integration coverage | Medium | **Resolved** | Testcontainers PostgreSQL parity suite (`PostgreSqlMigrationTests`, `PostgreSqlParityTests`, `PostgreSqlSecurityParityTests`) validates the full migration chain, schema, unique indexes, cascading foreign keys, concurrency tokens, transactions/outbox, user/role/membership/session persistence, refresh-token rotation and revocation, lockout hardening (ADR-022), permission scope boundaries (ADR-020) and authorization revalidation dependencies (ADR-021). See [postgresql-parity.md](../testing/postgresql-parity.md). |
 
+## Pilot readiness hardening
+
+| ID | Finding | Severity | Status | Resolution |
+| --- | --- | --- | --- | --- |
+| P1 | `AllowedHosts` validation accepted a wildcard entry inside a semicolon-separated list | High | **Resolved** | The startup check now rejects any wildcard entry and a loopback-only development list; regression tests cover `*`, `example.com;*`, `*;example.com`, whitespace and `*.example.com`. |
+| P2 | Pending workspace selection retained the password and placed the bearer token in the URL | Medium | **Resolved** | The pending record contains the verified user id and tenant options only. The URL carries a non-secret selection handle; the single-use secret is held in the `BSX.Web.PendingLogin` HttpOnly cookie. `CompletePendingLoginCommand` consumes the proof, validates the handle, tenant, user and membership, and issues the session. |
+| P3 | `InvitedByUserId` was caller-controlled | Medium | **Resolved** | Invitation provenance is derived from `ICurrentUser`; the legacy wire field is ignored. Regression tests prove a spoofed value is not persisted. |
+| P4 | Service account and API key commands had no permission declaration; API key creation had no tenant guard | Medium (latent) | **Resolved** | New tenant-scoped permissions `identity.service-accounts.create` and `identity.api-keys.create`; both commands require them; API key creation validates the service account tenant. |
+| P5 | Documentation described pre-ADR-021 security-stamp semantics and additive-only permission synchronization | Low | **Resolved** | Authentication, JWT, permissions, migration and deployment documents now describe per-operation revalidation and declarative reconciliation. |
+
 ## Deployment hardening
 
 The deployment audit identified reverse-proxy, cookie and Data Protection concerns. They are
@@ -61,9 +71,9 @@ resolved below.
 | --- | --- | --- | --- | --- |
 | DP1 | Reverse proxy topology not proven | High | **Resolved** | Forwarded-header processing (`X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-For`) runs before HTTPS redirection, HSTS and authentication; trust is limited to configured proxies/networks. Covered by `DeploymentHardeningTests`. |
 | DP2 | Forwarded headers missing/unverified | High | **Resolved** | `ReverseProxyOptions` with `KnownProxies`, `KnownNetworks`, `ForwardLimit` and a loopback-only default; untrusted-proxy spoofing is tested. |
-| DP3 | Cookies behind TLS termination | High | **Resolved** | `Web:Cookies:SecurePolicy` defaults to `Always` outside Development; auth/refresh/antiforgery cookies are `HttpOnly` with explicit `SameSite`; forwarded HTTPS issues `Secure` cookies. |
+| DP3 | Cookies behind TLS termination | High | **Resolved** | `Web:Cookies:SecurePolicy` defaults to `Always` outside Development; auth/refresh/antiforgery/pending-selection cookies are `HttpOnly` with explicit `SameSite`; forwarded HTTPS issues `Secure` cookies. |
 | DP4 | Data Protection persistence unvalidated | High | **Resolved** | Persistent, shared key ring via `DataProtection:KeysPath`; identical `ApplicationName`; startup fails fast when the path is missing/unwritable; a `data-protection` readiness check and a persistence test prove restart behavior. See [deployment-hardening.md](../deployment/deployment-hardening.md). |
-| DP5 | Production deployment assumptions unverified | Medium | **Resolved** | `AllowedHosts` rejects `*`/the development default outside Development; security headers and HSTS are emitted; the pre/post-deployment runbook covers health, authentication, cookies and rollback. |
+| DP5 | Production deployment assumptions unverified | Medium | **Resolved** | `AllowedHosts` rejects any wildcard entry in the semicolon-separated list and the loopback-only development default outside Development; security headers and HSTS are emitted; the pre/post-deployment runbook covers health, authentication, cookies and rollback. |
 
 ## Platform hardening (v0.4.0)
 
@@ -107,8 +117,10 @@ PostgreSQL parity (when Docker is available) and endpoint integration suites gre
   on `409`.
 - **Integration event publishing** is fully persisted but remains dormant until a broker-backed
   `IEventBus` is registered and `Outbox:IntegrationPublishingEnabled` is turned on.
-- **Service account / API key HTTP endpoints** are not part of this release. Web authentication,
-  workspace selection, the shell, CRM, Sales and Administration workflows are implemented
+- **Service account / API key HTTP endpoints** are not part of this release. The underlying
+  `CreateServiceAccountCommand` and `CreateApiKeyCommand` are permission-guarded and tenant-guarded,
+  so exposing them later does not create an unguarded write path. Web authentication, workspace
+  selection, the shell, CRM, Sales and Administration workflows are implemented
   ([foundation.md](../web/foundation.md), [crm.md](../web/crm.md), [sales.md](../web/sales.md),
   [administration.md](../web/administration.md)).
 
@@ -128,4 +140,4 @@ customer → lead → opportunity → invitation journey without external guidan
 
 ## Statement
 
-The Identity, CRM and Sales modules are production-ready for a controlled release. All Identity D1-D8, CRM C1-C4 and Sales S1-S6 findings are resolved or formally documented, security controls are fail-closed, tenant isolation is fail-closed, and the build/test pipeline enforces quality gates on the production provider.
+The Identity, CRM and Sales modules are production-ready for a controlled release. All Identity D1-D8, CRM C1-C4, Sales S1-S6 and pilot-readiness P1-P5 findings are resolved or formally documented, security controls are fail-closed, tenant isolation is fail-closed, and the build/test pipeline enforces quality gates on the production provider.

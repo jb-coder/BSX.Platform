@@ -1,4 +1,5 @@
 using System.Net;
+using BSX.Web.Authentication;
 
 namespace BSX.Web.IntegrationTests.WebFoundation;
 
@@ -73,13 +74,25 @@ public sealed class WebFoundationEndpointsTests : IClassFixture<IdentityApiFacto
         string? location = WebFoundationTestHelper.LocationPath(login);
         location.Should().StartWith("/select-tenant?token=");
 
+        string? pendingCookie = login.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? setCookies)
+            ? setCookies.FirstOrDefault(value =>
+                value.StartsWith(WebAuthDefaults.PendingLoginCookieName + "=", StringComparison.OrdinalIgnoreCase))
+            : null;
+        pendingCookie.Should().NotBeNull("the pending-selection secret must be stored in an HttpOnly cookie");
+        pendingCookie!.ToLowerInvariant().Should().Contain("httponly", "the selection secret must not be readable by scripts");
+        pendingCookie.ToLowerInvariant().Should().Contain("samesite=strict");
+
+        string selectionId = WebFoundationTestHelper.QueryValue(login, "token")!;
+        string cookieSecret = pendingCookie!.Split(';', 2)[0].Split('=', 2)[1];
+        cookieSecret.Should().NotBe(selectionId, "the URL handle must not be the bearer secret");
+
         HttpResponseMessage chooser = await client.GetAsync(location);
         chooser.StatusCode.Should().Be(HttpStatusCode.OK);
         string chooserHtml = await chooser.Content.ReadAsStringAsync();
         chooserHtml.Should().Contain("Choose a workspace");
         chooserHtml.Should().Contain("Workspace");
 
-        string selectToken = WebFoundationTestHelper.QueryValue(login, "token")!;
+        string selectToken = selectionId;
         string selectAntiforgery = await WebFoundationTestHelper.GetAntiforgeryTokenAsync(
             client,
             $"/select-tenant?token={selectToken}");

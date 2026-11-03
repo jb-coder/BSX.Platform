@@ -49,6 +49,7 @@ environment or a secret store, never from committed files.
 | `Web:Cookies:AuthSameSite` | No | `Lax` | Authentication cookie SameSite policy. |
 | `Web:Cookies:RefreshSameSite` | No | `Strict` | Refresh-token cookie SameSite policy. |
 | `Web:Cookies:AntiforgerySameSite` | No | `Strict` | Antiforgery cookie SameSite policy. |
+| `Web:Cookies:PendingLoginSameSite` | No | `Strict` | Pending workspace-selection cookie SameSite policy. |
 | `Web:Cookies:Domain` | No | `null` | Optional cookie domain; leave empty for host-only cookies. |
 | `Hsts:MaxAge` | No | `365.00:00:00` | HSTS max-age. |
 | `Hsts:IncludeSubDomains` | No | `true` | HSTS subdomain coverage. |
@@ -63,8 +64,9 @@ guidance.
 ## Security-sensitive defaults
 
 - **`AllowedHosts`** is restricted by default. Set it to the public host name(s) so Host-header
-  filtering rejects unexpected hosts. Outside Development the host fails fast when it is `*` or
-  still the development default (`localhost;127.0.0.1`).
+  filtering rejects unexpected hosts. Outside Development the host fails fast when any entry in the
+  semicolon-separated list contains a wildcard (`*`, `*.example.com`) or when the list is the
+  loopback-only development default (`localhost;127.0.0.1`).
 - **Data Protection.** Outside Development the host fails fast when `DataProtection:KeysPath` is
   missing or not writable. The key ring must be persistent and shared by every instance so
   authentication cookies and antiforgery tokens survive restarts.
@@ -72,8 +74,9 @@ guidance.
   list keeps the framework's loopback-only defaults. Restrict direct access to the application so a
   client cannot spoof `X-Forwarded-Proto`.
 - **Cookies.** The production default is `Web:Cookies:SecurePolicy=Always`. Development uses
-  `SameAsRequest` only when the section is absent. Keep the authentication, refresh and antiforgery
-  cookies `HttpOnly`; see [deployment-hardening.md](../deployment/deployment-hardening.md).
+  `SameAsRequest` only when the section is absent. Keep the authentication, refresh, antiforgery
+  and pending-selection cookies `HttpOnly`; see
+  [deployment-hardening.md](../deployment/deployment-hardening.md).
 - **Connection strings.** There is no implicit production default. Outside Development the host
   fails fast when `ConnectionStrings:Identity` is missing; `ConnectionStrings:Crm` and
   `ConnectionStrings:Sales` are optional and fall back to the Identity database. The Development

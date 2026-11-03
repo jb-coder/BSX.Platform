@@ -65,14 +65,15 @@ Amends [application.md](application.md), [refresh-token-strategy.md](refresh-tok
 
 Amends [jwt-strategy.md](jwt-strategy.md), [refresh-token-strategy.md](refresh-token-strategy.md).
 
-- Access tokens are stateless and short-lived; **no per-request security-stamp lookup**.
-- `SecurityStamp` is validated **at refresh time**; it rotates on password/credential/status changes
-  and on tenant removal.
+- Access tokens are stateless and short-lived. ADR-021 later adds an authoritative per-operation
+  revalidation lookup; see the ADR-021 amendment below.
+- `SecurityStamp` is validated at refresh and, after ADR-021, on every permission-gated operation;
+  it rotates on password/credential/status changes and on tenant removal.
 - Revocation unit is the **session**; emergency `jti` deny-list only for incidents.
 - Sessions: absolute max 30 days, idle timeout 7 days, cap 10 per principal, tenant binding.
 - Refresh rotation gains a **30-second grace window** for the immediately previous token.
-- **Ordinary** role/permission changes do **not** revoke sessions; they propagate within the token
-  TTL.
+- **Ordinary** role/permission changes do **not** revoke sessions; after ADR-021 they are observed
+  by the next revalidated operation, not at the next token issuance.
 
 ---
 

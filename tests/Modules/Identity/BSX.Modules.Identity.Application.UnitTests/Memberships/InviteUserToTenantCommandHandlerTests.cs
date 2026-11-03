@@ -14,8 +14,14 @@ public sealed class InviteUserToTenantCommandHandlerTests
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly TestTimeProvider _timeProvider = new(TestData.Now);
 
-    private InviteUserToTenantCommandHandler CreateHandler(Guid activeTenantId)
-        => new(_users, _memberships, _unitOfWork, _timeProvider, new TenantGuard(new FakeTenantContext(activeTenantId)));
+    private InviteUserToTenantCommandHandler CreateHandler(Guid activeTenantId, Guid? currentUserId = null)
+        => new(
+            _users,
+            _memberships,
+            _unitOfWork,
+            _timeProvider,
+            new TenantGuard(new FakeTenantContext(activeTenantId)),
+            new FakeCurrentUser(currentUserId ?? Guid.NewGuid()));
 
     [Fact]
     public async Task Should_Fail_WhenTenantMismatch()
@@ -59,11 +65,31 @@ public sealed class InviteUserToTenantCommandHandlerTests
         User user = TestData.CreateActiveUser();
         _users.Seed(user);
         var tenantId = Guid.NewGuid();
+        var inviterId = Guid.NewGuid();
 
-        var result = await CreateHandler(tenantId).HandleAsync(new InviteUserToTenantCommand(tenantId, user.Id.Value, null));
+        var result = await CreateHandler(tenantId, inviterId)
+            .HandleAsync(new InviteUserToTenantCommand(tenantId, user.Id.Value, null));
 
         result.IsSuccess.Should().BeTrue();
         _memberships.Memberships.Should().ContainSingle();
         _memberships.Memberships.Single().Status.Should().Be(MembershipStatus.Invited);
+        _memberships.Memberships.Single().InvitedByUserId!.Value.Should().Be(inviterId);
+    }
+
+    [Fact]
+    public async Task Should_IgnoreAClientSuppliedInviter()
+    {
+        User user = TestData.CreateActiveUser();
+        _users.Seed(user);
+        var tenantId = Guid.NewGuid();
+        var authenticatedUserId = Guid.NewGuid();
+        var spoofedInviterId = Guid.NewGuid();
+
+        var result = await CreateHandler(tenantId, authenticatedUserId)
+            .HandleAsync(new InviteUserToTenantCommand(tenantId, user.Id.Value, spoofedInviterId));
+
+        result.IsSuccess.Should().BeTrue();
+        _memberships.Memberships.Single().InvitedByUserId!.Value.Should().Be(authenticatedUserId);
+        _memberships.Memberships.Single().InvitedByUserId!.Value.Should().NotBe(spoofedInviterId);
     }
 }

@@ -1,5 +1,7 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.Modules.Identity.Application.Abstractions;
+using BSX.Modules.Identity.Application.Authentication;
+using BSX.Modules.Identity.Application.Authentication.CompletePendingLogin;
 using BSX.Modules.Identity.Application.Authentication.DiscoverTenantOptions;
 using BSX.Modules.Identity.Application.Authentication.Login;
 using BSX.Modules.Identity.Application.Authentication.Logout;
@@ -51,7 +53,7 @@ public static class WebAuthEndpoints
         }
 
         ISender sender = httpContext.RequestServices.GetRequiredService<ISender>();
-        PendingLoginStore pendingLogins = httpContext.RequestServices.GetRequiredService<PendingLoginStore>();
+        IPendingLoginStore pendingLogins = httpContext.RequestServices.GetRequiredService<IPendingLoginStore>();
 
         var options = await sender
             .SendAsync(new DiscoverTenantOptionsCommand(email, password), httpContext.RequestAborted)
@@ -64,17 +66,26 @@ public static class WebAuthEndpoints
 
         if (options.Value.Count > 1)
         {
-            string token = pendingLogins.Save(new PendingLogin(
+            TimeProvider timeProvider = httpContext.RequestServices.GetRequiredService<TimeProvider>();
+            DateTimeOffset expiresAtUtc = timeProvider.GetUtcNow().Add(WebAuthDefaults.PendingLoginLifetime);
+            var pendingLogin = new PendingLogin(
+                options.Value[0].UserId,
                 email,
-                password,
                 SafeReturnUrl(returnUrl),
                 options.Value
                     .Select(option => new PendingTenant(option.TenantId, option.JoinedOnUtc))
                     .ToArray(),
-                DateTimeOffset.UtcNow.Add(WebAuthDefaults.PendingLoginLifetime)));
+                expiresAtUtc);
 
-            return Results.Redirect(QueryHelpers.AddQueryString("/select-tenant", "token", token));
+            PendingLoginHandle handle = pendingLogins.Save(pendingLogin);
+            WebAuthCookieWriter.AppendPendingLogin(httpContext, handle.SecretToken, expiresAtUtc);
+
+            return Results.Redirect(QueryHelpers.AddQueryString("/select-tenant", "token", handle.SelectionId));
         }
+
+        // A single-tenant (or membership-less) sign-in does not use the chooser. Clear any stale
+        // pending-selection cookie from an earlier attempt.
+        WebAuthCookieWriter.DeletePendingLogin(httpContext);
 
         Guid? tenantId = options.Value.Count == 1 ? options.Value[0].TenantId : null;
         Result<AuthenticationTokensResponse> login = await sender
@@ -104,41 +115,49 @@ public static class WebAuthEndpoints
             return Results.Redirect("/login?error=invalid_request");
         }
 
-        PendingLoginStore pendingLogins = httpContext.RequestServices.GetRequiredService<PendingLoginStore>();
+        IPendingLoginStore pendingLogins = httpContext.RequestServices.GetRequiredService<IPendingLoginStore>();
         IFormCollection form = await httpContext.Request.ReadFormAsync(httpContext.RequestAborted).ConfigureAwait(false);
-        string? token = form["token"].ToString();
-        PendingLogin? pending = pendingLogins.Load(token);
+        string selectionId = form["token"].ToString();
+        string? pendingLoginToken = httpContext.Request.Cookies[WebAuthDefaults.PendingLoginCookieName];
+
+        if (string.IsNullOrWhiteSpace(pendingLoginToken))
+        {
+            return Results.Redirect("/login?error=selection_expired");
+        }
+
+        PendingLogin? pending = pendingLogins.GetBySelectionId(selectionId);
 
         if (pending is null)
         {
+            WebAuthCookieWriter.DeletePendingLogin(httpContext);
             return Results.Redirect("/login?error=selection_expired");
         }
 
         if (!Guid.TryParse(form["tenantId"].ToString(), out Guid tenantId)
             || !pending.Tenants.Any(option => option.TenantId == tenantId))
         {
-            return Results.Redirect(QueryHelpers.AddQueryString("/select-tenant", "token", token));
+            return Results.Redirect(QueryHelpers.AddQueryString("/select-tenant", "token", selectionId));
         }
 
         ISender sender = httpContext.RequestServices.GetRequiredService<ISender>();
         Result<AuthenticationTokensResponse> login = await sender
             .SendAsync(
-                new LoginCommand(
-                    pending.Email,
-                    pending.Password,
+                new CompletePendingLoginCommand(
+                    pendingLoginToken,
+                    selectionId,
                     tenantId,
                     httpContext.Request.Headers.UserAgent.ToString(),
                     httpContext.Connection.RemoteIpAddress?.ToString()),
                 httpContext.RequestAborted)
             .ConfigureAwait(false);
 
+        WebAuthCookieWriter.DeletePendingLogin(httpContext);
+
         if (login.IsFailure)
         {
-            pendingLogins.Remove(token);
             return RedirectToLoginError(MapError(login.Error));
         }
 
-        pendingLogins.Remove(token);
         return await SignInAndRedirectAsync(httpContext, login.Value, SafeReturnUrl(pending.ReturnUrl))
             .ConfigureAwait(false);
     }
@@ -157,6 +176,7 @@ public static class WebAuthEndpoints
 
         await httpContext.SignOutAsync(WebAuthDefaults.CookieScheme).ConfigureAwait(false);
         WebAuthCookieWriter.DeleteRefreshToken(httpContext);
+        WebAuthCookieWriter.DeletePendingLogin(httpContext);
         return Results.Redirect("/login?loggedOut=true");
     }
 
@@ -178,6 +198,7 @@ public static class WebAuthEndpoints
 
         await httpContext.SignOutAsync(WebAuthDefaults.CookieScheme).ConfigureAwait(false);
         WebAuthCookieWriter.DeleteRefreshToken(httpContext);
+        WebAuthCookieWriter.DeletePendingLogin(httpContext);
         return Results.Redirect("/login?loggedOut=true");
     }
 
@@ -248,6 +269,7 @@ public static class WebAuthEndpoints
         "Identity.Authentication.TooManyRequests" => "too_many_requests",
         "Identity.Authentication.InvalidCredentials" => "invalid_credentials",
         "Identity.Authentication.InvalidTenant" => "invalid_tenant",
+        "Identity.Authentication.PendingLoginExpired" => "selection_expired",
         _ => "login_failed",
     };
 }

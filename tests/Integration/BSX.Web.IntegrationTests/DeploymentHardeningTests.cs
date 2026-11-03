@@ -209,17 +209,54 @@ public sealed class DeploymentHardeningTests :
         }
     }
 
-    [Fact]
-    public void Startup_ShouldRejectWildcardAllowedHostsOutsideDevelopment()
+    [Theory]
+    [InlineData("*")]
+    [InlineData("example.com;*")]
+    [InlineData("*;example.com")]
+    [InlineData("example.com; * ")]
+    [InlineData("*.example.com")]
+    public void Startup_ShouldRejectWildcardAllowedHostsOutsideDevelopment(string allowedHosts)
     {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["AllowedHosts"] = "*" })
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["AllowedHosts"] = allowedHosts })
             .Build();
         var environment = new TestHostEnvironment { EnvironmentName = Environments.Production };
 
         Action act = () => WebDeploymentHardeningExtensions.ValidateAllowedHosts(configuration, environment);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*AllowedHosts*");
+    }
+
+    [Fact]
+    public void Startup_ShouldRejectTheDevelopmentDefaultOutsideDevelopment()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AllowedHosts"] = "localhost;127.0.0.1",
+            })
+            .Build();
+        var environment = new TestHostEnvironment { EnvironmentName = Environments.Production };
+
+        Action act = () => WebDeploymentHardeningExtensions.ValidateAllowedHosts(configuration, environment);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*development default*");
+    }
+
+    [Fact]
+    public void Startup_ShouldAcceptPublicAllowedHostsOutsideDevelopment()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AllowedHosts"] = "app.example.com;api.example.com",
+            })
+            .Build();
+        var environment = new TestHostEnvironment { EnvironmentName = Environments.Production };
+
+        Action act = () => WebDeploymentHardeningExtensions.ValidateAllowedHosts(configuration, environment);
+
+        act.Should().NotThrow();
     }
 
     private WebApplicationFactory<Program> CreateHttpsRedirectFactory()

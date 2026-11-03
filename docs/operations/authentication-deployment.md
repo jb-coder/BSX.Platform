@@ -3,9 +3,11 @@
 ## Scheme
 
 - **JWT bearer**, RS256, validated locally per request (issuer, audience, lifetime, signing key,
-  30-second clock skew). No per-request security-stamp lookup (ADR-017).
+  30-second clock skew).
 - Access tokens are short-lived (default 15 minutes); refresh tokens are database-backed and
   rotated on use with a 30-second grace window and reuse detection.
+- Permission-gated operations additionally revalidate the session, account, membership and security
+  stamp against the Identity store before executing (ADR-021). The token is never the authority.
 
 ## Deployment checklist
 
@@ -18,21 +20,23 @@
    `X-Forwarded-For`, and `ReverseProxy:KnownProxies`/`KnownNetworks` must trust the proxy hop.
 6. Configure `DataProtection:ApplicationName` and a persistent, shared `DataProtection:KeysPath`.
    Outside Development the host fails fast if the path is missing or not writable.
-7. Set `AllowedHosts` to the public host name(s); `*` and the development default are rejected
-   outside Development.
+7. Set `AllowedHosts` to the public host name(s). Outside Development a wildcard entry anywhere in
+   the semicolon-separated list, and a loopback-only development list, are rejected.
 8. Publish `https://<host>/.well-known/jwks.json` equivalents? Not required - validation keys are
    loaded from configuration. External consumers can obtain validation keys from the same secret
    store distribution mechanism.
 
 ## Security-stamp and revocation semantics
 
-- The security stamp is validated **at refresh**, not per request. Password changes, credential
-  changes, deactivation and tenant removal rotate the stamp, so existing **refresh** attempts fail
-  and the sessions are revoked.
-- Because access tokens are short-lived and stateless, a deactivated principal may remain able to
-  call APIs for at most one access-token lifetime. Keep the lifetime short.
-- Ordinary role/permission changes do not revoke sessions; they take effect on the next token
-  issuance (within the access-token TTL) per ADR-018.
+- The security stamp is validated **on every permission-gated operation** by the authorization
+  revalidator, and again at refresh. Password changes, credential changes, deactivation, lockout
+  and tenant removal rotate the stamp, so existing sessions and refresh tokens are rejected.
+- A deactivated principal cannot execute a permission-gated operation, even with an unexpired
+  access token or an open Blazor circuit. Revocation is immediate for operations; stale UI may
+  remain visible for at most the circuit interval.
+- Role and permission changes do not necessarily revoke the session. They are observed on the next
+  revalidated operation because permissions are re-resolved from the store, not read from the token
+  (ADR-021).
 
 ## Tenant binding
 
@@ -59,11 +63,13 @@ tenant (`TenantGuard`).
   is missing or unwritable. The `data-protection` readiness check protects and unprotects a payload,
   so a broken key ring fails `/health/ready`. See
   [deployment-hardening.md](../deployment/deployment-hardening.md).
-- **Cookies.** The authentication, refresh and antiforgery cookies are `HttpOnly`. Outside
-  Development `Web:Cookies:SecurePolicy` defaults to `Always`, so a proxy that forgets
-  `X-Forwarded-Proto` cannot downgrade the cookies. `SameSite` defaults are `Lax` for the
-  authentication cookie and `Strict` for the refresh and antiforgery cookies.
-- Workspace selection is held in an in-process pending store for five minutes. A multi-instance
-  deployment must replace it with a distributed store or the selection may fail between nodes.
+- **Cookies.** The authentication, refresh, antiforgery and pending-selection cookies are
+  `HttpOnly`. Outside Development `Web:Cookies:SecurePolicy` defaults to `Always`, so a proxy that
+  forgets `X-Forwarded-Proto` cannot downgrade the cookies. `SameSite` defaults are `Lax` for the
+  authentication cookie and `Strict` for the refresh, antiforgery and pending-selection cookies.
+- Workspace selection is held in an in-process pending store for five minutes. The store contains
+  no password; the URL carries only a non-secret selection handle and the secret is held in the
+  `BSX.Web.PendingLogin` HttpOnly cookie. A multi-instance deployment still needs a distributed
+  store or session affinity for the selection window.
 - Keep TLS enabled and make sure the proxy forwards the original scheme; the application redirects
   HTTP to HTTPS by default and must not create a redirect loop.

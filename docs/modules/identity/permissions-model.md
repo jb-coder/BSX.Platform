@@ -64,6 +64,7 @@ Classification follows the code, not intuition:
 | `identity.roles.*` | `Tenant` | Role writes are confined to the active tenant by `TenantGuard`; system roles are immutable. Reading a system role exposes only its read-only definition, never tenant data. |
 | `identity.permissions.read` | `Tenant` | The catalog is a static, code-declared public contract used to build tenant roles. |
 | `identity.memberships.*` | `Tenant` | Membership administration is tenant-confined. |
+| `identity.service-accounts.*`, `identity.api-keys.*` | `Tenant` | Service accounts and their API keys are owned by a tenant; creation is tenant-guarded. |
 | `crm.*`, `sales.*`, `inventory.*` | `Tenant` | All module data is tenant-partitioned. |
 
 ---
@@ -74,8 +75,8 @@ Classification follows the code, not intuition:
 - Identity reconciles the catalog into the `Administrator` and `Auditor` system roles at startup
   through `SystemRolePermissionSynchronizer` (idempotent).
 - Roles may only reference permissions that exist in the catalog; this is enforced on write.
-- Adding a permission is additive. Removing a permission requires deprecation and a migration
-  that strips it from roles.
+- Adding a permission is additive to the catalog. Removing a permission requires deprecation and a
+  migration that strips it from roles; startup reconciliation also removes stale system-role grants.
 
 ### Identity permissions
 
@@ -93,6 +94,8 @@ Classification follows the code, not intuition:
 | `identity.permissions.read` | Tenant | `ListPermissionsQuery` |
 | `identity.memberships.read` | Tenant | `ListTenantMembershipsQuery` |
 | `identity.memberships.manage` | Tenant | invite, accept, change-role and remove membership |
+| `identity.service-accounts.create` | Tenant | `CreateServiceAccountCommand` |
+| `identity.api-keys.create` | Tenant | `CreateApiKeyCommand` |
 
 ### CRM permissions
 
@@ -125,8 +128,9 @@ Modules publish their codes through `IPermissionCatalogSource` (`BSX.Contracts.P
 `SalesPermissionCatalog` is the Sales implementation. `AddSalesApplication` registers it.
 `SystemRolePermissionSynchronizer` (Identity Infrastructure) reconciles the `Administrator` and
 `Auditor` system roles from every registered catalog on startup
-(`Identity:Permissions:SynchronizeOnStartup`, default `true`). Synchronization is additive and
-idempotent; a missing Identity schema is logged and skipped. Additional modules can publish a
+(`Identity:Permissions:SynchronizeOnStartup`, default `true`). Synchronization is declarative and
+idempotent: it grants missing catalog permissions and removes stale system-role grants. A missing
+Identity schema is logged and skipped. Additional modules can publish a
 catalog without Identity referencing their implementation.
 
 ---

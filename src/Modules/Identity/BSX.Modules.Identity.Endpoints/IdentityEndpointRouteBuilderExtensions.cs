@@ -124,7 +124,9 @@ public static class IdentityEndpointRouteBuilderExtensions
 
         group.MapPost("/memberships", async (InviteMemberRequest request, ISender sender, ITenantContext tenant, CancellationToken cancellationToken) =>
             IdentityResults.FromCreated(await sender.SendAsync(
-                new InviteUserToTenantCommand(tenant.TenantId ?? Guid.Empty, request.UserId, request.InvitedByUserId),
+                // The inviter is derived from the authenticated principal in the handler; the
+                // legacy request field is not trusted.
+                new InviteUserToTenantCommand(tenant.TenantId ?? Guid.Empty, request.UserId, null),
                 cancellationToken)))
             .RequireAuthorization();
     }
@@ -154,5 +156,7 @@ public static class IdentityEndpointRouteBuilderExtensions
     public sealed record CreateRoleRequest(string Name, string? Description, IReadOnlyCollection<string> Permissions);
 
     /// <summary>Invite member request.</summary>
-    public sealed record InviteMemberRequest(Guid UserId, Guid? InvitedByUserId);
+    /// <param name="UserId">The user to invite.</param>
+    /// <param name="InvitedByUserId">Legacy field; ignored. Provenance comes from the authenticated principal.</param>
+    public sealed record InviteMemberRequest(Guid UserId, Guid? InvitedByUserId = null);
 }

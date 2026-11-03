@@ -24,7 +24,8 @@ Data Protection details.
       CRM then uses the `crm` schema in that database).
 - [ ] `ConnectionStrings:Sales` configured (or intentionally omitted to share the Identity database;
       Sales then uses the `sales` schema in that database).
-- [ ] `AllowedHosts` set to the production host name(s), **not** `*` and not the development default.
+- [ ] `AllowedHosts` set to the production host name(s), with **no wildcard entry anywhere in the
+      list** (`*`, `*.example.com`) and not the loopback-only development default.
 - [ ] `DataProtection:ApplicationName` is identical on every instance.
 - [ ] `DataProtection:KeysPath` points to a persistent, writable, shared directory. Outside
       Development the host refuses to start without it.
@@ -83,6 +84,9 @@ Data Protection details.
 - [ ] Sign in through the reverse proxy with a real account.
 - [ ] The browser receives `BSX.Web.Auth`, `BSX.Web.Refresh` and `BSX.Web.Antiforgery` cookies with
       `Secure`, `HttpOnly` and the expected `SameSite` values.
+- [ ] A multi-workspace sign-in issues a `BSX.Web.PendingLogin` HttpOnly cookie and redirects to the
+      chooser; the URL contains only a non-secret selection handle. Selecting a workspace succeeds
+      and clears the pending cookie.
 - [ ] The response includes HSTS and the configured security headers.
 - [ ] The browser WebSocket circuit connects and the Blazor UI becomes interactive (no
       `blazor.server.js` or WebSocket errors in the console).

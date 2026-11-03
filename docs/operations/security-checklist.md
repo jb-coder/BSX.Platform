@@ -9,7 +9,8 @@ Review before every production release. Each item should have an owner and evide
 - [ ] `ConnectionStrings:Identity` is provided from a secret store; no default credentials.
 - [ ] `ConnectionStrings:Crm` and `ConnectionStrings:Sales` (when used) are provided from a secret
       store; they may be omitted to share the Identity database.
-- [ ] `AllowedHosts` is set to the production host name(s); not `*`.
+- [ ] `AllowedHosts` is set to the production host name(s); no wildcard entry anywhere in the list
+      (`*`, `*.example.com`) and not the loopback-only development default.
 - [ ] No secrets are committed to source control; no secrets appear in logs.
 
 ## Authentication & tokens
@@ -26,7 +27,9 @@ Review before every production release. Each item should have an owner and evide
 - [ ] CRM and Sales tenant filters are fail-closed; a request without a tenant sees no module data.
 - [ ] `CrmTenantScope.UseSystemScope()` / `SalesTenantScope.UseSystemScope()` are restricted to
       trusted background/operations code.
-- [ ] Privileged endpoints require explicit permissions (no implicit admin).
+- [ ] Privileged endpoints require explicit permissions (no implicit admin). Service account and
+      API key creation declare `identity.service-accounts.create` and `identity.api-keys.create`;
+      API key creation validates the service account's tenant.
 - [ ] Sales validates CRM references through `CRM.Contracts` and fails closed when CRM is absent.
 - [ ] System-role permission synchronization is enabled or the roles are seeded by the deployment
       process.
@@ -45,8 +48,8 @@ Review before every production release. Each item should have an owner and evide
       the original `Host` header.
 - [ ] `ReverseProxy:KnownProxies`/`KnownNetworks` trust only the proxy hop(s); direct access to the
       application is restricted.
-- [ ] Host-header filtering is effective (`AllowedHosts`); `*` and the development default are
-      rejected outside Development.
+- [ ] Host-header filtering is effective (`AllowedHosts`); any wildcard entry and the loopback-only
+      development default are rejected outside Development.
 - [ ] Antiforgery is configured appropriately for browser vs API clients.
 
 ## Cookies & Data Protection
@@ -56,8 +59,8 @@ Review before every production release. Each item should have an owner and evide
       and rolling deployments.
 - [ ] The key directory is not world-readable and is included in backups where required.
 - [ ] `Web:Cookies:SecurePolicy=Always` outside Development.
-- [ ] Authentication, refresh and antiforgery cookies are `HttpOnly` with the intended `SameSite`
-      policy.
+- [ ] Authentication, refresh, antiforgery and pending-selection cookies are `HttpOnly` with the
+      intended `SameSite` policy.
 - [ ] The `data-protection` readiness check is green before routing traffic.
 
 ## Data

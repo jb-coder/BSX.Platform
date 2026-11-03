@@ -74,6 +74,8 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         "identity.permissions.read",
         "identity.memberships.read",
         "identity.memberships.manage",
+        "identity.service-accounts.create",
+        "identity.api-keys.create",
         "identity.users.assign-role",
         "crm.customers.read",
         "crm.customers.create",

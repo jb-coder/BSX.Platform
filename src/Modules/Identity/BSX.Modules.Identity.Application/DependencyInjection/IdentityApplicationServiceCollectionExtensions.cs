@@ -24,6 +24,7 @@ public static class IdentityApplicationServiceCollectionExtensions
         services.TryAddScoped<PermissionResolver>();
         services.TryAddScoped<TenantGuard>();
         services.TryAddScoped<CredentialAuthenticator>();
+        services.TryAddScoped<AuthenticationSessionIssuer>();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IPermissionCatalogSource, IdentityPermissionCatalog>());
         return services;

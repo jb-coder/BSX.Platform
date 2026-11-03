@@ -1,4 +1,5 @@
 using BSX.Modules.Identity.Application.ApiKeys.CreateApiKey;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.UnitTests.Fakes;
 using BSX.Modules.Identity.Domain.ServiceAccounts;
 using BSX.Modules.Identity.Domain.ValueObjects;
@@ -12,22 +13,23 @@ public sealed class CreateApiKeyCommandHandlerTests
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly TestTimeProvider _timeProvider = new(TestData.Now);
 
-    private CreateApiKeyCommandHandler CreateHandler() => new(
+    private CreateApiKeyCommandHandler CreateHandler(TenantId activeTenant) => new(
         _accounts,
         _apiKeys,
         new FakeSecureTokenGenerator(),
         new FakeApiKeyHasher(),
         _unitOfWork,
         _timeProvider,
-        TestPermissionCatalog.Platform);
+        TestPermissionCatalog.Platform,
+        new TenantGuard(new FakeTenantContext(activeTenant.Value)));
 
     [Fact]
     public async Task Should_CreateApiKey_AndReturnSecretOnce()
     {
-        ServiceAccount account = TestData.CreateServiceAccount(TenantId.From(Guid.NewGuid()), "billing-bot");
+        ServiceAccount account = TestData.CreateServiceAccount(TenantId.New(), "billing-bot");
         _accounts.Seed(account);
 
-        var result = await CreateHandler().HandleAsync(new CreateApiKeyCommand(account.Id.Value, "deploy", null, ["crm.customers.read"]));
+        var result = await CreateHandler(account.TenantId).HandleAsync(new CreateApiKeyCommand(account.Id.Value, "deploy", null, ["crm.customers.read"]));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Secret.Should().NotBeNullOrWhiteSpace();
@@ -40,10 +42,10 @@ public sealed class CreateApiKeyCommandHandlerTests
     [Fact]
     public async Task Should_RejectPlatformScope_OnATenantScopedApiKey()
     {
-        ServiceAccount account = TestData.CreateServiceAccount(TenantId.From(Guid.NewGuid()), "billing-bot");
+        ServiceAccount account = TestData.CreateServiceAccount(TenantId.New(), "billing-bot");
         _accounts.Seed(account);
 
-        var result = await CreateHandler().HandleAsync(
+        var result = await CreateHandler(account.TenantId).HandleAsync(
             new CreateApiKeyCommand(account.Id.Value, "deploy", null, ["identity.users.read"]));
 
         result.IsFailure.Should().BeTrue();
@@ -54,10 +56,10 @@ public sealed class CreateApiKeyCommandHandlerTests
     [Fact]
     public async Task Should_RejectUnknownScope_OnAnApiKey()
     {
-        ServiceAccount account = TestData.CreateServiceAccount(TenantId.From(Guid.NewGuid()), "billing-bot");
+        ServiceAccount account = TestData.CreateServiceAccount(TenantId.New(), "billing-bot");
         _accounts.Seed(account);
 
-        var result = await CreateHandler().HandleAsync(
+        var result = await CreateHandler(account.TenantId).HandleAsync(
             new CreateApiKeyCommand(account.Id.Value, "deploy", null, ["crm.orders.read"]));
 
         result.IsFailure.Should().BeTrue();
@@ -68,9 +70,24 @@ public sealed class CreateApiKeyCommandHandlerTests
     [Fact]
     public async Task Should_Fail_WhenServiceAccountNotFound()
     {
-        var result = await CreateHandler().HandleAsync(new CreateApiKeyCommand(Guid.NewGuid(), "deploy", null, null));
+        var result = await CreateHandler(TenantId.New()).HandleAsync(
+            new CreateApiKeyCommand(Guid.NewGuid(), "deploy", null, null));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Identity.ServiceAccount.NotFound");
+    }
+
+    [Fact]
+    public async Task Should_Fail_WhenServiceAccountBelongsToAnotherTenant()
+    {
+        ServiceAccount account = TestData.CreateServiceAccount(TenantId.New(), "billing-bot");
+        _accounts.Seed(account);
+
+        var result = await CreateHandler(TenantId.New()).HandleAsync(
+            new CreateApiKeyCommand(account.Id.Value, "deploy", null, null));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Authorization.TenantForbidden");
+        _apiKeys.Keys.Should().BeEmpty();
     }
 }

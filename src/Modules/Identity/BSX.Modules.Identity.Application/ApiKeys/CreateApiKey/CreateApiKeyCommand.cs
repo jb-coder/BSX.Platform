@@ -1,4 +1,6 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
+using BSX.Modules.Identity.Application.Common;
 
 namespace BSX.Modules.Identity.Application.ApiKeys.CreateApiKey;
 
@@ -7,6 +9,7 @@ namespace BSX.Modules.Identity.Application.ApiKeys.CreateApiKey;
 /// <param name="Name">The operator label.</param>
 /// <param name="ExpiresOnUtc">The optional expiry.</param>
 /// <param name="Scopes">The optional permission codes granted to the key.</param>
+[RequirePermission(IdentityPermissionCodes.ApiKeysCreate)]
 public sealed record CreateApiKeyCommand(
     Guid ServiceAccountId,
     string Name,

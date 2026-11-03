@@ -74,6 +74,9 @@ public sealed class WebCookieOptions
     /// <summary>Gets or sets the antiforgery cookie SameSite policy.</summary>
     public SameSiteMode AntiforgerySameSite { get; set; } = SameSiteMode.Strict;
 
+    /// <summary>Gets or sets the pending workspace-selection cookie SameSite policy.</summary>
+    public SameSiteMode PendingLoginSameSite { get; set; } = SameSiteMode.Strict;
+
     /// <summary>Gets or sets an optional cookie domain. Leave empty for host-only cookies.</summary>
     public string? Domain { get; set; }
 }

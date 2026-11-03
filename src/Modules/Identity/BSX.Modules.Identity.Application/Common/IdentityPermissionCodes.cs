@@ -40,6 +40,12 @@ public static class IdentityPermissionCodes
 
     /// <summary>Manage workspace memberships.</summary>
     public const string MembershipsManage = "identity.memberships.manage";
+
+    /// <summary>Create tenant-scoped service accounts.</summary>
+    public const string ServiceAccountsCreate = "identity.service-accounts.create";
+
+    /// <summary>Create API keys for tenant-scoped service accounts.</summary>
+    public const string ApiKeysCreate = "identity.api-keys.create";
 }
 
 /// <summary>
@@ -72,5 +78,7 @@ public sealed class IdentityPermissionCatalog : IPermissionCatalogSource
         new(IdentityPermissionCodes.PermissionsRead, "Read the platform permission catalog.", PermissionScope.Tenant),
         new(IdentityPermissionCodes.MembershipsRead, "Read workspace memberships.", PermissionScope.Tenant),
         new(IdentityPermissionCodes.MembershipsManage, "Manage workspace memberships.", PermissionScope.Tenant),
+        new(IdentityPermissionCodes.ServiceAccountsCreate, "Create service accounts.", PermissionScope.Tenant),
+        new(IdentityPermissionCodes.ApiKeysCreate, "Create API keys for service accounts.", PermissionScope.Tenant),
     ];
 }

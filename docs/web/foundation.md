@@ -96,10 +96,11 @@ No authentication rule is reimplemented in the web layer.
 5. Multiple active memberships: the user is redirected to `/select-tenant`.
 6. The selected workspace signs the user in with that active tenant.
 
-The workspace-selection payload is held server-side for five minutes behind an opaque token in the
-selection URL. It is not placed in the browser history as credentials, and the application sends
-`Referrer-Policy: no-referrer` to avoid leaking the token through outbound links. The pending store
-is in-process; a multi-instance deployment needs a distributed store for workspace selection.
+The workspace-selection payload is held server-side for five minutes. It never contains the
+password. The selection URL carries only a non-secret selection handle; the secret that can complete
+the sign-in is held in the `BSX.Web.PendingLogin` HttpOnly cookie. The application sends
+`Referrer-Policy: no-referrer` as defence in depth. The pending store is in-process; a multi-instance
+deployment needs a distributed store or session affinity for workspace selection.
 
 ### Session lifecycle
 

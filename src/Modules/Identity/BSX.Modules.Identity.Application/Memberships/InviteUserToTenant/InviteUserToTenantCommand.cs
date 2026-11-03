@@ -6,6 +6,9 @@ namespace BSX.Modules.Identity.Application.Memberships.InviteUserToTenant;
 /// <summary>Invites a user to a tenant.</summary>
 /// <param name="TenantId">The tenant identifier.</param>
 /// <param name="UserId">The user identifier.</param>
-/// <param name="InvitedByUserId">The inviter, if any.</param>
+/// <param name="InvitedByUserId">
+/// Legacy wire field retained for compatibility. It is ignored; provenance is derived from the
+/// authenticated principal.
+/// </param>
 [RequirePermission("identity.memberships.manage")]
 public sealed record InviteUserToTenantCommand(Guid TenantId, Guid UserId, Guid? InvitedByUserId) : ICommand<InviteUserToTenantResponse>;

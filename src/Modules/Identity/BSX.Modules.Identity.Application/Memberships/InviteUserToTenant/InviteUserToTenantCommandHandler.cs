@@ -1,3 +1,4 @@
+using BSX.BuildingBlocks.Authorization;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Identity.Application.Authentication;
@@ -17,6 +18,7 @@ public sealed class InviteUserToTenantCommandHandler : ICommandHandler<InviteUse
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly TenantGuard _tenantGuard;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>Initializes a new instance of the <see cref="InviteUserToTenantCommandHandler"/> class.</summary>
     public InviteUserToTenantCommandHandler(
@@ -24,13 +26,15 @@ public sealed class InviteUserToTenantCommandHandler : ICommandHandler<InviteUse
         ITenantMembershipRepository memberships,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
-        TenantGuard tenantGuard)
+        TenantGuard tenantGuard,
+        ICurrentUser currentUser)
     {
         _users = users;
         _memberships = memberships;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _tenantGuard = tenantGuard;
+        _currentUser = currentUser;
     }
 
     /// <inheritdoc />
@@ -61,7 +65,10 @@ public sealed class InviteUserToTenantCommandHandler : ICommandHandler<InviteUse
             return Result.Failure<InviteUserToTenantResponse>(IdentityApplicationErrors.MembershipAlreadyExists);
         }
 
-        UserId? invitedByUserId = request.InvitedByUserId is { } inviter && inviter != Guid.Empty
+        // Provenance is derived from the authenticated principal. The request field is retained
+        // only for wire compatibility and is deliberately ignored so a tenant administrator cannot
+        // attribute an invitation to another user.
+        UserId? invitedByUserId = _currentUser.UserId is { } inviter && inviter != Guid.Empty
             ? UserId.From(inviter)
             : null;
 

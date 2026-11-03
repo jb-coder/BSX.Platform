@@ -30,8 +30,10 @@ Clients ──TLS──▶ LB │ BSX.Web xN │──▶ PostgreSQL (primary)
    version. See [database-migrations.md](database-migrations.md).
 5. **Sticky independence.** Access tokens are stateless and validated locally; refresh tokens and
    sessions are in PostgreSQL, so no session affinity is required. Any instance can serve any
-   request. Workspace selection is the exception: `PendingLoginStore` is in-process for five
-   minutes, so use session affinity or a distributed replacement for that window.
+request. Workspace selection is the exception: `PendingLoginStore` is in-process for five
+minutes, so use session affinity or a distributed replacement for that window. The pending record
+contains no password; the URL carries a non-secret selection handle and the secret is held in the
+`BSX.Web.PendingLogin` HttpOnly cookie.
 6. **Health-gated rollout.** Wire `/health/live` (liveness) and `/health/ready` (readiness) so the
    orchestrator only routes to instances whose databases, schemas, JWT keys and Data Protection key
    ring are ready.

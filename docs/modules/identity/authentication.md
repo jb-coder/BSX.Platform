@@ -34,6 +34,18 @@ sequenceDiagram
     end
 ```
 
+## Multi-Workspace Selection
+
+- `DiscoverTenantOptionsCommand` verifies the password once and returns the active tenant options.
+- When more than one membership exists, the web host stores a short-lived pending sign-in
+  server-side. The record contains the verified user id, email, return URL, tenant options and
+  expiry; it never contains the password.
+- The chooser URL carries a non-secret selection handle. The secret that can complete the sign-in
+  is held in the `BSX.Web.PendingLogin` HttpOnly cookie.
+- `CompletePendingLoginCommand` consumes the pending sign-in once, validates the selection handle,
+  tenant option, active user and active membership, then issues the session through
+  `AuthenticationSessionIssuer`.
+
 ## Refresh, Rotation and Reuse Detection
 
 - Refresh tokens are opaque; only the **hash** is stored.
@@ -41,8 +53,9 @@ sequenceDiagram
 - A token presented after use within the **30-second grace window** rotates again (tolerates
   legitimate concurrent requests). Beyond the grace window it is treated as **theft**: the entire
   session is revoked and `RefreshTokenReuseDetected` is raised.
-- The **security stamp is validated at refresh** (not per request): a changed stamp revokes the
-  session and forces re-authentication.
+- The **security stamp is validated at refresh and on every permission-gated operation** through
+  authorization revalidation (ADR-021): a changed stamp revokes the session and forces
+  re-authentication.
 
 ## JWT
 
@@ -56,7 +69,7 @@ sequenceDiagram
 | `principal_id` | Principal identifier (user or service account). |
 | `principal_type` | `User` / `ServiceAccount`. |
 | `permissions` | Effective permissions (one claim per permission). |
-| `security_stamp` | Security stamp (validated at refresh). |
+| `security_stamp` | Security stamp (validated at refresh and by authorization revalidation). |
 | `session_id` | Session identifier. |
 
 `JwtAccessTokenValidator` validates issuer, audience, lifetime, algorithm (RS256) and signature.

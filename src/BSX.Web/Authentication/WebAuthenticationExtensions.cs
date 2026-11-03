@@ -1,4 +1,5 @@
 using BSX.BuildingBlocks.Authorization;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Web.Authorization;
 using BSX.Web.Deployment;
 using BSX.Web.Notifications;
@@ -74,6 +75,7 @@ public static class WebAuthenticationExtensions
         services.Replace(ServiceDescriptor.Scoped<ICurrentUser>(
             provider => provider.GetRequiredService<WebCurrentUser>()));
         services.TryAddSingleton<PendingLoginStore>();
+        services.TryAddSingleton<IPendingLoginStore>(provider => provider.GetRequiredService<PendingLoginStore>());
         services.TryAddScoped<IToastService, ToastService>();
         services.AddCascadingAuthenticationState();
 

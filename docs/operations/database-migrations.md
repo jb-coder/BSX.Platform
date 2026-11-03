@@ -118,9 +118,9 @@ outdated schema. See [health-checks.md](health-checks.md).
 
 Identity seeds/synchronizes system roles from the registered module permission catalogs
 (`IPermissionCatalogSource`, ADR-018) after startup migrations. It is controlled by
-`Identity:Permissions:SynchronizeOnStartup` (default `true`) and is additive. A missing schema is
-logged and skipped. Ensure the Identity migrations have been applied before enabling it in a
-production rollout.
+`Identity:Permissions:SynchronizeOnStartup` (default `true`) and is declarative: it grants missing
+catalog permissions and removes stale system-role grants. A missing schema is logged and skipped.
+Ensure the Identity migrations have been applied before enabling it in a production rollout.
 
 ## Migration verification in tests
 
