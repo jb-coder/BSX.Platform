@@ -3,6 +3,7 @@ using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Errors;
+using BSX.Modules.Identity.Domain.Enums;
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Domain.ValueObjects;
@@ -60,7 +61,11 @@ public sealed class InviteUserToTenantCommandHandler : ICommandHandler<InviteUse
             return Result.Failure<InviteUserToTenantResponse>(IdentityApplicationErrors.UserNotFound);
         }
 
-        if (await _memberships.ExistsAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false))
+        TenantMembership? existing = await _memberships
+            .FindAsync(tenantId, user.Id, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (existing is not null && existing.Status != MembershipStatus.Removed)
         {
             return Result.Failure<InviteUserToTenantResponse>(IdentityApplicationErrors.MembershipAlreadyExists);
         }
@@ -72,21 +77,41 @@ public sealed class InviteUserToTenantCommandHandler : ICommandHandler<InviteUse
             ? UserId.From(inviter)
             : null;
 
-        var membershipResult = TenantMembership.Invite(
-            MembershipId.New(),
-            tenantId,
-            user.Id,
-            invitedByUserId,
-            _timeProvider.GetUtcNow());
+        DateTimeOffset nowUtc = _timeProvider.GetUtcNow();
+        TenantMembership membership;
 
-        if (membershipResult.IsFailure)
+        if (existing is not null)
         {
-            return Result.Failure<InviteUserToTenantResponse>(membershipResult.Error);
+            // A removed membership is re-invited in place. The existing unique (tenant, user) row is
+            // reused, roles are cleared and a fresh acceptance is required.
+            Result reinvite = existing.Reinvite(invitedByUserId, nowUtc);
+            if (reinvite.IsFailure)
+            {
+                return Result.Failure<InviteUserToTenantResponse>(reinvite.Error);
+            }
+
+            membership = existing;
+        }
+        else
+        {
+            var membershipResult = TenantMembership.Invite(
+                MembershipId.New(),
+                tenantId,
+                user.Id,
+                invitedByUserId,
+                nowUtc);
+
+            if (membershipResult.IsFailure)
+            {
+                return Result.Failure<InviteUserToTenantResponse>(membershipResult.Error);
+            }
+
+            membership = membershipResult.Value;
+            await _memberships.AddAsync(membership, cancellationToken).ConfigureAwait(false);
         }
 
-        await _memberships.AddAsync(membershipResult.Value, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result.Success(new InviteUserToTenantResponse(membershipResult.Value.Id.Value));
+        return Result.Success(new InviteUserToTenantResponse(membership.Id.Value));
     }
 }

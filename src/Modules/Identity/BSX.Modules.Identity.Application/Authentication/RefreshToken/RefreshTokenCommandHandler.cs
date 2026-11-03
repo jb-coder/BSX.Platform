@@ -100,6 +100,20 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
             return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidRefreshToken);
         }
 
+        // A tenant-bound session is only valid while the corresponding membership is active. This is
+        // checked before rotation so a removed or suspended membership can never mint a token with
+        // the old tenant claim.
+        TenantMembership? membership = session.TenantId is { } tenantId
+            ? await _memberships.FindAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        if (session.TenantId is not null
+            && (membership is null || membership.Status != MembershipStatus.Active))
+        {
+            RevokeSessionAfterFailure(session, "membership_not_active");
+            return Result.Failure<AuthenticationTokensResponse>(IdentityApplicationErrors.InvalidRefreshToken);
+        }
+
         string newRefreshToken = _tokenGenerator.GenerateToken();
         Result rotation = session.Rotate(providedHash, _refreshTokenHasher.Hash(newRefreshToken), nowUtc, SessionPolicy.Default);
 
@@ -111,15 +125,6 @@ public sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCom
             }
 
             return Result.Failure<AuthenticationTokensResponse>(rotation.Error);
-        }
-
-        TenantMembership? membership = session.TenantId is { } tenantId
-            ? await _memberships.FindAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false)
-            : null;
-
-        if (membership is not null && membership.Status != MembershipStatus.Active)
-        {
-            membership = null;
         }
 
         IReadOnlyCollection<string> permissions = await _permissionResolver

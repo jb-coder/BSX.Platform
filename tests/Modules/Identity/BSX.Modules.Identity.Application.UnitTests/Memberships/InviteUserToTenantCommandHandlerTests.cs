@@ -2,6 +2,7 @@ using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Memberships.InviteUserToTenant;
 using BSX.Modules.Identity.Application.UnitTests.Fakes;
 using BSX.Modules.Identity.Domain.Enums;
+using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Domain.ValueObjects;
 
@@ -74,6 +75,29 @@ public sealed class InviteUserToTenantCommandHandlerTests
         _memberships.Memberships.Should().ContainSingle();
         _memberships.Memberships.Single().Status.Should().Be(MembershipStatus.Invited);
         _memberships.Memberships.Single().InvitedByUserId!.Value.Should().Be(inviterId);
+    }
+
+    [Fact]
+    public async Task Should_Reinvite_WhenExistingMembershipWasRemoved()
+    {
+        User user = TestData.CreateActiveUser();
+        _users.Seed(user);
+        var tenantId = TenantId.From(Guid.NewGuid());
+        TenantMembership removed = TestData.CreateActiveMembership(tenantId, user.Id);
+        removed.Remove().IsSuccess.Should().BeTrue();
+        _memberships.Seed(removed);
+        var inviterId = Guid.NewGuid();
+
+        var result = await CreateHandler(tenantId.Value, inviterId)
+            .HandleAsync(new InviteUserToTenantCommand(tenantId.Value, user.Id.Value, null));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.MembershipId.Should().Be(removed.Id.Value);
+        _memberships.Memberships.Should().ContainSingle();
+        removed.Status.Should().Be(MembershipStatus.Invited);
+        removed.InvitedByUserId!.Value.Should().Be(inviterId);
+        removed.JoinedOnUtc.Should().BeNull();
+        removed.RoleIds.Should().BeEmpty();
     }
 
     [Fact]

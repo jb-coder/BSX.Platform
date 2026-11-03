@@ -76,6 +76,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         "identity.memberships.manage",
         "identity.service-accounts.create",
         "identity.api-keys.create",
+        "identity.api-keys.revoke",
         "identity.users.assign-role",
         "crm.customers.read",
         "crm.customers.create",

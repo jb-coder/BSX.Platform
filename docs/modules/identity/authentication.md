@@ -42,6 +42,8 @@ sequenceDiagram
   expiry; it never contains the password.
 - The chooser URL carries a non-secret selection handle. The secret that can complete the sign-in
   is held in the `BSX.Web.PendingLogin` HttpOnly cookie.
+- The chooser page requires that cookie before rendering the email or tenant options. A URL handle
+  alone therefore cannot disclose pending-login PII.
 - `CompletePendingLoginCommand` consumes the pending sign-in once, validates the selection handle,
   tenant option, active user and active membership, then issues the session through
   `AuthenticationSessionIssuer`.
@@ -56,6 +58,9 @@ sequenceDiagram
 - The **security stamp is validated at refresh and on every permission-gated operation** through
   authorization revalidation (ADR-021): a changed stamp revokes the session and forces
   re-authentication.
+- A tenant-bound session also requires its membership to remain `Active`. Removing or suspending the
+  membership causes refresh to fail closed and removes the tenant session; the user's other tenant
+  sessions are unaffected.
 
 ## JWT
 
@@ -111,8 +116,9 @@ the **active tenant membership** role permissions.
 - `TenantGuard` is **fail-closed**: an operation may only target the principal's active tenant. A
   missing/empty target returns `Identity.Authentication.InvalidTenant`; a mismatched tenant
   returns `Authorization.TenantForbidden`.
-- Applied to tenant-scoped commands (invite user, create service account, set role permissions,
-  assign role to membership). System roles are exempt from the tenant check (platform-level).
+- Applied to tenant-scoped commands and reads (invite/accept/remove membership, role list and
+  detail, create service account, create/revoke API key, set role permissions, assign role to
+  membership). System roles are exempt from the tenant check (platform-level readonly metadata).
 
 ## Account Lockout
 

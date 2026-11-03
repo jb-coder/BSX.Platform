@@ -63,6 +63,9 @@ embedded in `User`, so aggregates stay small and membership evolves independentl
 - A user with **no membership** can authenticate but has no tenant permissions (for example, to
   accept an invitation or manage their own profile).
 - Invitations create `Invited` memberships that become `Active` on acceptance.
+- Removing a membership ends that tenant's sessions and requires a new invitation/acceptance. The
+  existing `(TenantId, UserId)` row is reused for re-invitation, its prior roles are cleared, and
+  the membership returns to `Invited`.
 
 ### 5. Role assignment strategy
 
@@ -196,7 +199,8 @@ in [ADR-014](ADR-014-Credential-Model-Strategy.md). See
 
 - Token issuance needs tenant context; a user with many tenants must select one.
 - Every tenant-scoped query and unique index must include `TenantId`.
-- Removing a user from a tenant must revoke that tenant's tokens.
+- Removing a user from a tenant must revoke that tenant's sessions and refresh tokens; the user's
+  other tenant memberships remain valid.
 
 ---
 

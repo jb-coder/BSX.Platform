@@ -91,6 +91,7 @@ public sealed class WebFoundationEndpointsTests : IClassFixture<IdentityApiFacto
         string chooserHtml = await chooser.Content.ReadAsStringAsync();
         chooserHtml.Should().Contain("Choose a workspace");
         chooserHtml.Should().Contain("Workspace");
+        chooserHtml.Should().Contain(IdentityApiFactory.TenantAdminEmail);
 
         string selectToken = selectionId;
         string selectAntiforgery = await WebFoundationTestHelper.GetAntiforgeryTokenAsync(
@@ -109,6 +110,35 @@ public sealed class WebFoundationEndpointsTests : IClassFixture<IdentityApiFacto
 
         selected.StatusCode.Should().Be(HttpStatusCode.Redirect);
         WebFoundationTestHelper.LocationPath(selected).Should().Be("/app/sales/leads");
+    }
+
+    [Fact]
+    public async Task PendingChooser_ShouldNotRenderPii_WithoutThePendingCookie()
+    {
+        HttpClient loginClient = WebFoundationTestHelper.CreateClient(_factory);
+        string antiforgery = await WebFoundationTestHelper.GetAntiforgeryTokenAsync(loginClient, "/login");
+
+        HttpResponseMessage login = await WebFoundationTestHelper.PostFormAsync(
+            loginClient,
+            "/auth/login",
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = antiforgery,
+                ["email"] = IdentityApiFactory.TenantAdminEmail,
+                ["password"] = IdentityApiFactory.AdminPassword,
+                ["returnUrl"] = "/app/sales/leads",
+            });
+
+        login.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        string selectionId = WebFoundationTestHelper.QueryValue(login, "token")!;
+
+        HttpClient withoutCookies = WebFoundationTestHelper.CreateClient(_factory);
+        HttpResponseMessage chooser = await withoutCookies.GetAsync(
+            $"/select-tenant?token={selectionId}");
+
+        chooser.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        WebFoundationTestHelper.LocationPath(chooser).Should().Be("/login?error=selection_expired");
+        (await chooser.Content.ReadAsStringAsync()).Should().NotContain(IdentityApiFactory.TenantAdminEmail);
     }
 
     [Fact]

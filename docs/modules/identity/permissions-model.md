@@ -96,6 +96,7 @@ Classification follows the code, not intuition:
 | `identity.memberships.manage` | Tenant | invite, accept, change-role and remove membership |
 | `identity.service-accounts.create` | Tenant | `CreateServiceAccountCommand` |
 | `identity.api-keys.create` | Tenant | `CreateApiKeyCommand` |
+| `identity.api-keys.revoke` | Tenant | `RevokeApiKeyCommand` |
 
 ### CRM permissions
 

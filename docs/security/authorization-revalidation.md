@@ -49,7 +49,7 @@ Revocation is expressed through authoritative state in the Identity store:
 
 | Event | Authoritative change | Revalidation result |
 | --- | --- | --- |
-| Membership removed | `TenantMembership.Status = Removed` | Denied |
+| Membership removed | `TenantMembership.Status = Removed`; tenant sessions revoked | Denied |
 | Membership role changed | Membership role ids changed | Valid, permissions re-resolved |
 | Role permissions changed | Role permission set changed | Valid, permissions re-resolved |
 | User deactivated | `User.Status = Disabled`, security stamp rotated | Denied |

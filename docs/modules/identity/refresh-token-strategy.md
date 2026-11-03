@@ -69,7 +69,7 @@ Session.Start ──► RefreshToken #1 (active)
 | Password change or reset | All sessions of the user. |
 | User deactivated or locked | All sessions of the user. |
 | Credential change (MFA, passkey, provider) | All sessions of the user (ADR-014). |
-| Removed from a tenant | The removed tenant's sessions. |
+| Removed from a tenant | The removed tenant's sessions are revoked by the removal command; refresh also rejects any remaining inactive-membership session. |
 | Role/permission change | **No revocation** (ADR-017/ADR-018); propagates within token TTL. |
 | Reuse detected | The affected session only. |
 | Administrative action | Targeted session or all. |

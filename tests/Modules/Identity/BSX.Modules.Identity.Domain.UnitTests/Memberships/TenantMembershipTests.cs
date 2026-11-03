@@ -58,6 +58,36 @@ public sealed class TenantMembershipTests
     }
 
     [Fact]
+    public void Should_Reinvite_RemovedMembership_AndRequireFreshAcceptance()
+    {
+        var membership = CreateInvited();
+        membership.Accept(TestData.Now);
+        membership.AssignRole(RoleId.New());
+        membership.Remove().IsSuccess.Should().BeTrue();
+        var inviter = UserId.New();
+
+        Result result = membership.Reinvite(inviter, TestData.Now.AddDays(1));
+
+        result.IsSuccess.Should().BeTrue();
+        membership.Status.Should().Be(MembershipStatus.Invited);
+        membership.InvitedByUserId.Should().Be(inviter);
+        membership.JoinedOnUtc.Should().BeNull();
+        membership.RoleIds.Should().BeEmpty();
+        membership.DomainEvents.OfType<MembershipInvited>().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Should_FailReinvite_WhenMembershipIsNotRemoved()
+    {
+        var membership = CreateInvited();
+
+        Result result = membership.Reinvite(null, TestData.Now.AddDays(1));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Membership.InvalidTransition");
+    }
+
+    [Fact]
     public void Should_Fail_WhenRoleAlreadyAssigned()
     {
         var membership = CreateInvited();

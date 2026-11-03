@@ -27,9 +27,10 @@ Review before every production release. Each item should have an owner and evide
 - [ ] CRM and Sales tenant filters are fail-closed; a request without a tenant sees no module data.
 - [ ] `CrmTenantScope.UseSystemScope()` / `SalesTenantScope.UseSystemScope()` are restricted to
       trusted background/operations code.
-- [ ] Privileged endpoints require explicit permissions (no implicit admin). Service account and
-      API key creation declare `identity.service-accounts.create` and `identity.api-keys.create`;
-      API key creation validates the service account's tenant.
+- [ ] Privileged endpoints require explicit permissions (no implicit admin). Service account
+      creation declares `identity.service-accounts.create`; API key creation and revocation declare
+      `identity.api-keys.create` and `identity.api-keys.revoke`; both validate the service account's
+      tenant.
 - [ ] Sales validates CRM references through `CRM.Contracts` and fails closed when CRM is absent.
 - [ ] System-role permission synchronization is enabled or the roles are seeded by the deployment
       process.

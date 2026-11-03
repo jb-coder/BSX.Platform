@@ -98,9 +98,11 @@ No authentication rule is reimplemented in the web layer.
 
 The workspace-selection payload is held server-side for five minutes. It never contains the
 password. The selection URL carries only a non-secret selection handle; the secret that can complete
-the sign-in is held in the `BSX.Web.PendingLogin` HttpOnly cookie. The application sends
-`Referrer-Policy: no-referrer` as defence in depth. The pending store is in-process; a multi-instance
-deployment needs a distributed store or session affinity for workspace selection.
+the sign-in is held in the `BSX.Web.PendingLogin` HttpOnly cookie. The chooser is rendered as static
+SSR and requires that cookie before it displays the pending email or tenant options; the URL handle
+alone cannot disclose pending-login PII. The application sends `Referrer-Policy: no-referrer` as
+defence in depth. The pending store is in-process; a multi-instance deployment needs a distributed
+store or session affinity for workspace selection.
 
 ### Session lifecycle
 

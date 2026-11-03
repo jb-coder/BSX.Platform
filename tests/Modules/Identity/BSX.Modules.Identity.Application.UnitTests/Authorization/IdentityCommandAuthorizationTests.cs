@@ -2,6 +2,7 @@ using System.Reflection;
 using BSX.BuildingBlocks.Authorization;
 using BSX.Contracts.Permissions;
 using BSX.Modules.Identity.Application.ApiKeys.CreateApiKey;
+using BSX.Modules.Identity.Application.ApiKeys.RevokeApiKey;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Application.ServiceAccounts.CreateServiceAccount;
 
@@ -16,6 +17,7 @@ public sealed class IdentityCommandAuthorizationTests
     [Theory]
     [InlineData(typeof(CreateServiceAccountCommand), IdentityPermissionCodes.ServiceAccountsCreate)]
     [InlineData(typeof(CreateApiKeyCommand), IdentityPermissionCodes.ApiKeysCreate)]
+    [InlineData(typeof(RevokeApiKeyCommand), IdentityPermissionCodes.ApiKeysRevoke)]
     public void CredentialCommand_ShouldDeclareATenantPermission(Type commandType, string expectedPermission)
     {
         RequirePermissionAttribute[] attributes = commandType

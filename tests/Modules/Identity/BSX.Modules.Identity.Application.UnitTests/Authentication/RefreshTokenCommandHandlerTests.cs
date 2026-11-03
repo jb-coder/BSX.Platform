@@ -3,6 +3,7 @@ using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Authentication.Login;
 using BSX.Modules.Identity.Application.Authentication.RefreshToken;
 using BSX.Modules.Identity.Application.UnitTests.Fakes;
+using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Domain.ValueObjects;
 
@@ -60,6 +61,24 @@ public sealed class RefreshTokenCommandHandlerTests
         return login.Value.RefreshToken;
     }
 
+    private async Task<(string RefreshToken, TenantMembership Membership)> LoginWithMembershipAsync()
+    {
+        User user = User.Register(UserId.New(), TestData.CreateEmail(), TestData.CreateName(), TestData.Now).Value;
+        user.SetPassword(_passwordHasher.Hash("Passw0rd!"), TestData.Now);
+        user.Activate(TestData.Now);
+        _users.Seed(user);
+
+        TenantId tenantId = TenantId.New();
+        TenantMembership membership = TestData.CreateActiveMembership(tenantId, user.Id);
+        _memberships.Seed(membership);
+
+        var login = await CreateLoginHandler().HandleAsync(
+            new LoginCommand("user@example.com", "Passw0rd!", tenantId.Value, null, null));
+
+        login.IsSuccess.Should().BeTrue();
+        return (login.Value.RefreshToken, membership);
+    }
+
     [Fact]
     public async Task Should_Rotate_RefreshToken()
     {
@@ -92,6 +111,22 @@ public sealed class RefreshTokenCommandHandlerTests
         _securityStore.Revocations.Should().ContainSingle(revocation =>
             revocation.SessionId.Value == sessionId
             && revocation.Reason == "refresh_token_reuse");
+    }
+
+    [Fact]
+    public async Task Should_Reject_Refresh_WhenMembershipRemoved_AndPersistRevocation()
+    {
+        (string refreshToken, TenantMembership membership) = await LoginWithMembershipAsync();
+        membership.Remove().IsSuccess.Should().BeTrue();
+
+        var result = await CreateRefreshHandler().HandleAsync(new RefreshTokenCommand(refreshToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.Authentication.InvalidRefreshToken");
+
+        await _postCommandActions.FlushAsync();
+        _securityStore.Revocations.Should().ContainSingle(revocation =>
+            revocation.Reason == "membership_not_active");
     }
 
     [Fact]

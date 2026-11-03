@@ -1,8 +1,12 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.Modules.Crm.Application.Customers.ListCustomers;
 using BSX.Modules.Identity.Application.Abstractions;
+using BSX.Modules.Identity.Application.ApiKeys.CreateApiKey;
+using BSX.Modules.Identity.Application.ApiKeys.RevokeApiKey;
 using BSX.Modules.Identity.Application.Authentication.LogoutAll;
 using BSX.Modules.Identity.Application.Memberships.AcceptMembership;
 using BSX.Modules.Identity.Application.Memberships.ChangeMembershipRole;
@@ -11,10 +15,13 @@ using BSX.Modules.Identity.Application.Memberships.ListTenantMemberships;
 using BSX.Modules.Identity.Application.Memberships.RemoveMembership;
 using BSX.Modules.Identity.Application.Roles.CreateRole;
 using BSX.Modules.Identity.Application.Roles.SetRolePermissions;
+using BSX.Modules.Identity.Application.ServiceAccounts.CreateServiceAccount;
 using BSX.Modules.Identity.Application.Sessions.RevokeSession;
 using BSX.Modules.Identity.Application.Users.ActivateUser;
 using BSX.Modules.Identity.Application.Users.DeactivateUser;
 using BSX.Modules.Identity.Application.Users.RegisterUser;
+using BSX.Modules.Identity.Domain.Sessions;
+using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.Modules.Sales.Application.Leads.ListLeads;
 using BSX.SharedKernel.Results;
 using BSX.Web.Authentication;
@@ -56,6 +63,85 @@ public sealed class AuthorizationRevocationTests : IClassFixture<IdentityApiFact
             .Should().Be("Authorization.SessionExpired");
         (await SendAsync(principal, new ListTenantMembershipsQuery())).Error.Code
             .Should().Be("Authorization.SessionExpired");
+    }
+
+    [Fact]
+    public async Task MembershipRemoval_ShouldRejectRefreshToken()
+    {
+        RevocationUser user = await CreateUserAsync("crm.customers.read");
+        HttpClient client = _factory.CreateClient();
+        IdentityApiFactory.LoginTokens tokens = await _factory.LoginAsync(
+            client,
+            user.Email,
+            IdentityApiFactory.AdminPassword,
+            _factory.TenantId);
+
+        (await SendAsAdminAsync(new RemoveMembershipCommand(user.MembershipId))).IsSuccess.Should().BeTrue();
+
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            var sessions = scope.ServiceProvider.GetRequiredService<IUserSessionRepository>();
+            IReadOnlyCollection<UserSession> active = await sessions.ListActiveByUserAsync(
+                UserId.From(user.UserId));
+
+            active.Should().NotContain(session =>
+                session.TenantId != null && session.TenantId.Value == _factory.TenantId);
+        }
+
+        HttpResponseMessage refresh = await client.PostAsJsonAsync(
+            "/identity/refresh",
+            new { refreshToken = tokens.RefreshToken });
+
+        refresh.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task CrossTenantMembershipAcceptance_ShouldBeRejected()
+    {
+        HttpClient tenantAdmin = await _factory.CreateAuthenticatedClientAsync(
+            IdentityApiFactory.TenantAdminEmail,
+            IdentityApiFactory.AdminPassword,
+            _factory.OtherTenantId);
+
+        HttpResponseMessage invited = await tenantAdmin.PostAsJsonAsync(
+            "/identity/memberships",
+            new { userId = _factory.InviteeUserId, invitedByUserId = (Guid?)null });
+        invited.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using JsonDocument json = JsonDocument.Parse(await invited.Content.ReadAsStringAsync());
+        Guid membershipId = json.RootElement.GetProperty("membershipId").GetGuid();
+
+        ClaimsPrincipal workspaceAdmin = await SignInAsync(IdentityApiFactory.WorkspaceAdminEmail);
+        Result result = await SendAsync(workspaceAdmin, new AcceptMembershipCommand(membershipId));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Authorization.TenantForbidden");
+    }
+
+    [Fact]
+    public async Task CrossTenantApiKeyRevocation_ShouldBeRejected()
+    {
+        ClaimsPrincipal tenantAdmin = await SignInAsync(
+            IdentityApiFactory.TenantAdminEmail,
+            _factory.OtherTenantId);
+
+        Result<CreateServiceAccountResponse> account = await SendAsync(
+            tenantAdmin,
+            new CreateServiceAccountCommand(_factory.OtherTenantId, "other-tenant-bot"));
+        account.IsSuccess.Should().BeTrue();
+
+        Result<CreateApiKeyResponse> apiKey = await SendAsync(
+            tenantAdmin,
+            new CreateApiKeyCommand(account.Value.ServiceAccountId, "deploy", null, null));
+        apiKey.IsSuccess.Should().BeTrue();
+
+        RevocationUser primaryUser = await CreateUserAsync("identity.api-keys.revoke");
+        ClaimsPrincipal primaryPrincipal = await SignInAsync(primaryUser.Email);
+
+        Result revoke = await SendAsync(primaryPrincipal, new RevokeApiKeyCommand(apiKey.Value.ApiKeyId));
+
+        revoke.IsFailure.Should().BeTrue();
+        revoke.Error.Code.Should().Be("Authorization.TenantForbidden");
     }
 
     [Fact]
@@ -250,14 +336,17 @@ public sealed class AuthorizationRevocationTests : IClassFixture<IdentityApiFact
         return new RevocationUser(userId, invited.Value.MembershipId, role.Value.RoleId, email);
     }
 
-    private async Task<ClaimsPrincipal> SignInAsync(string email)
+    private Task<ClaimsPrincipal> SignInAsync(string email)
+        => SignInAsync(email, _factory.TenantId);
+
+    private async Task<ClaimsPrincipal> SignInAsync(string email, Guid tenantId)
     {
         HttpClient client = _factory.CreateClient();
         IdentityApiFactory.LoginTokens tokens = await _factory.LoginAsync(
             client,
             email,
             IdentityApiFactory.AdminPassword,
-            _factory.TenantId);
+            tenantId);
 
         using IServiceScope scope = _factory.Services.CreateScope();
         var validator = scope.ServiceProvider.GetRequiredService<IAccessTokenValidator>();

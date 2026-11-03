@@ -157,6 +157,17 @@ public sealed class AdministrationWebWorkflowTests : IClassFixture<IdentityApiFa
             .Single(candidate => candidate.Id == membership.Id);
         removed.Status.Should().Be("Removed");
         removed.RoleIds.Should().BeEmpty();
+
+        Result<InviteUserToTenantResponse> reinvited = await SendAsync(
+            new InviteUserToTenantCommand(_factory.TenantId, user.Value.UserId, _factory.AdminUserId));
+
+        reinvited.IsSuccess.Should().BeTrue();
+        reinvited.Value.MembershipId.Should().Be(membership.Id);
+
+        MembershipDto reinvitation = (await SendAsync(new ListTenantMembershipsQuery())).Value
+            .Single(candidate => candidate.Id == membership.Id);
+        reinvitation.Status.Should().Be("Invited");
+        reinvitation.RoleIds.Should().BeEmpty();
     }
 
     [Fact]

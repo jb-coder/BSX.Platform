@@ -18,7 +18,7 @@ Amends [domain-model.md](domain-model.md), [permissions-model.md](permissions-mo
   token without re-authenticating.
 - `User.Email` is **globally unique**.
 - New commands/queries: switch tenant, list my tenants; membership management (invite, accept,
-  suspend).
+  suspend, remove, re-invite). Removed memberships are re-invited in place and require acceptance.
 
 ---
 
@@ -68,7 +68,9 @@ Amends [jwt-strategy.md](jwt-strategy.md), [refresh-token-strategy.md](refresh-t
 - Access tokens are stateless and short-lived. ADR-021 later adds an authoritative per-operation
   revalidation lookup; see the ADR-021 amendment below.
 - `SecurityStamp` is validated at refresh and, after ADR-021, on every permission-gated operation;
-  it rotates on password/credential/status changes and on tenant removal.
+  it rotates on password/credential/status changes. Tenant membership removal does not rotate the
+  global stamp; it revokes the sessions bound to that tenant and refresh rejects an inactive
+  membership, preserving the user's other tenant sessions.
 - Revocation unit is the **session**; emergency `jti` deny-list only for incidents.
 - Sessions: absolute max 30 days, idle timeout 7 days, cap 10 per principal, tenant binding.
 - Refresh rotation gains a **30-second grace window** for the immediately previous token.

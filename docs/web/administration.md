@@ -170,6 +170,8 @@ boundary.
 - Select an existing user using a searchable user picker.
 - Sends `InviteUserToTenantCommand` for the active workspace.
 - Membership starts as `Invited`; it does not grant workspace access until accepted.
+- A previously `Removed` membership can be invited again. Re-invitation reuses the existing
+  membership record, clears old roles and requires a fresh acceptance.
 - Requires `identity.memberships.manage` and user read access for the picker.
 
 ### Accept invitation
@@ -187,7 +189,8 @@ boundary.
 ### Remove
 
 - Requires confirmation.
-- Marks the membership `Removed` and clears its role assignments.
+- Marks the membership `Removed`, clears its role assignments and revokes the user's sessions for
+  that tenant.
 - Self-removal is hidden in the UI.
 - Requires `identity.memberships.manage`.
 

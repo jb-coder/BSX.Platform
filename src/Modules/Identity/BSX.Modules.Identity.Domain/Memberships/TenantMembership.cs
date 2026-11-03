@@ -133,6 +133,29 @@ public sealed class TenantMembership : AggregateRoot<MembershipId>
         return Result.Success();
     }
 
+    /// <summary>
+    /// Returns a removed membership to the invitation state. Re-invitation reuses the existing
+    /// membership record, clears any prior role assignment and requires a fresh acceptance.
+    /// </summary>
+    /// <param name="invitedByUserId">The inviter, if any.</param>
+    /// <param name="invitedOnUtc">The new invitation timestamp.</param>
+    public Result Reinvite(UserId? invitedByUserId, DateTimeOffset invitedOnUtc)
+    {
+        if (Status != MembershipStatus.Removed)
+        {
+            return Result.Failure(IdentityErrors.MembershipInvalidTransition);
+        }
+
+        Status = MembershipStatus.Invited;
+        InvitedByUserId = invitedByUserId;
+        InvitedOnUtc = invitedOnUtc;
+        JoinedOnUtc = null;
+        SuspendedOnUtc = null;
+        _roleIds.Clear();
+        RaiseDomainEvent(new MembershipInvited(Id, TenantId, UserId));
+        return Result.Success();
+    }
+
     /// <summary>Assigns a tenant role to the membership.</summary>
     /// <param name="roleId">The role identifier.</param>
     public Result AssignRole(RoleId roleId)

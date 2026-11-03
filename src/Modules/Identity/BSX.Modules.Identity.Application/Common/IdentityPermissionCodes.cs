@@ -46,6 +46,9 @@ public static class IdentityPermissionCodes
 
     /// <summary>Create API keys for tenant-scoped service accounts.</summary>
     public const string ApiKeysCreate = "identity.api-keys.create";
+
+    /// <summary>Revoke API keys for tenant-scoped service accounts.</summary>
+    public const string ApiKeysRevoke = "identity.api-keys.revoke";
 }
 
 /// <summary>
@@ -80,5 +83,6 @@ public sealed class IdentityPermissionCatalog : IPermissionCatalogSource
         new(IdentityPermissionCodes.MembershipsManage, "Manage workspace memberships.", PermissionScope.Tenant),
         new(IdentityPermissionCodes.ServiceAccountsCreate, "Create service accounts.", PermissionScope.Tenant),
         new(IdentityPermissionCodes.ApiKeysCreate, "Create API keys for service accounts.", PermissionScope.Tenant),
+        new(IdentityPermissionCodes.ApiKeysRevoke, "Revoke API keys for service accounts.", PermissionScope.Tenant),
     ];
 }

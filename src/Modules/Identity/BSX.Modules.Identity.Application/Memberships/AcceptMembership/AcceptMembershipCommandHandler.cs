@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Errors;
 using BSX.Modules.Identity.Domain.Memberships;
 using BSX.Modules.Identity.Domain.ValueObjects;
@@ -12,16 +13,19 @@ public sealed class AcceptMembershipCommandHandler : ICommandHandler<AcceptMembe
 {
     private readonly ITenantMembershipRepository _memberships;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TenantGuard _tenantGuard;
     private readonly TimeProvider _timeProvider;
 
     /// <summary>Initializes a new instance of the <see cref="AcceptMembershipCommandHandler"/> class.</summary>
     public AcceptMembershipCommandHandler(
         ITenantMembershipRepository memberships,
         IUnitOfWork unitOfWork,
+        TenantGuard tenantGuard,
         TimeProvider timeProvider)
     {
         _memberships = memberships;
         _unitOfWork = unitOfWork;
+        _tenantGuard = tenantGuard;
         _timeProvider = timeProvider;
     }
 
@@ -40,6 +44,12 @@ public sealed class AcceptMembershipCommandHandler : ICommandHandler<AcceptMembe
         if (membership is null)
         {
             return Result.Failure(IdentityApplicationErrors.MembershipNotFound);
+        }
+
+        Result tenantGuard = _tenantGuard.Ensure(membership.TenantId.Value);
+        if (tenantGuard.IsFailure)
+        {
+            return tenantGuard;
         }
 
         Result result = membership.Accept(_timeProvider.GetUtcNow());

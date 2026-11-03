@@ -1,13 +1,13 @@
 # Operations Guide (D8)
 
-Day-2 runbook for the BSX Platform (Identity and CRM modules).
+Day-2 runbook for the BSX Platform (Identity, CRM and Sales modules).
 
 ## Health & monitoring
 
 | Signal | Where | Expected |
 | --- | --- | --- |
 | Liveness | `GET /health/live` | `200` while the process is up |
-| Readiness | `GET /health/ready` | `200` when both databases, authentication and (opt-in) schemas are healthy; `503` otherwise |
+| Readiness | `GET /health/ready` | `200` when all module databases, authentication, Data Protection and (opt-in) schemas are healthy; `503` otherwise |
 | Aggregate | `GET /health` | `200` / `503` |
 | Logs | Serilog console (structured JSON-ready) | `Information+`; `Warning+` for `Microsoft.*` |
 | Traces/metrics | OTLP when `OpenTelemetry:OtlpEndpoint` is set | exported to the collector |
@@ -63,12 +63,14 @@ Platform instrumentation is documented in [observability.md](observability.md).
   - `identity-database-schema` → pending Identity migrations; apply them.
   - `crm-database` → CRM database (or shared database) unreachable.
   - `crm-database-schema` → pending CRM migrations; apply them.
+  - `sales-database` → Sales database (or shared database) unreachable.
+  - `sales-database-schema` → pending Sales migrations; apply them.
 
 ## Routine operations
 
 - **Key rotation:** rolling add → propagate → wait > token TTL → remove
   ([jwt-key-management.md](jwt-key-management.md)).
-- **Schema change:** apply Identity and CRM migrations as gated steps before rollout
+- **Schema change:** apply Identity, CRM and Sales migrations as gated steps before rollout
   ([database-migrations.md](database-migrations.md)).
 - **Scaling:** ensure shared keys and a distributed rate limiter in HA
   ([deployment-ha.md](deployment-ha.md), [rate-limiting.md](rate-limiting.md)).

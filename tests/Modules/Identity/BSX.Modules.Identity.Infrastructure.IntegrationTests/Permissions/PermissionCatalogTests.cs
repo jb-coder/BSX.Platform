@@ -93,6 +93,7 @@ public sealed class PermissionCatalogTests
         catalog.ScopeOf("identity.memberships.manage").Should().Be(PermissionScope.Tenant);
         catalog.ScopeOf(IdentityPermissionCodes.ServiceAccountsCreate).Should().Be(PermissionScope.Tenant);
         catalog.ScopeOf(IdentityPermissionCodes.ApiKeysCreate).Should().Be(PermissionScope.Tenant);
+        catalog.ScopeOf(IdentityPermissionCodes.ApiKeysRevoke).Should().Be(PermissionScope.Tenant);
     }
 
     [Fact]

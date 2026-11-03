@@ -100,6 +100,46 @@ public sealed class AdministrationWebTests : IClassFixture<IdentityApiFactory>
     }
 
     [Fact]
+    public async Task WorkspaceAdmin_ShouldNotReadRoleScreensFromAnotherTenant()
+    {
+        HttpClient tenantAdmin = await _factory.CreateAuthenticatedClientAsync(
+            IdentityApiFactory.TenantAdminEmail,
+            IdentityApiFactory.AdminPassword,
+            _factory.OtherTenantId);
+
+        string roleName = $"Other Tenant Role {Guid.NewGuid():N}";
+        HttpResponseMessage created = await tenantAdmin.PostAsJsonAsync(
+            "/identity/roles",
+            new
+            {
+                name = roleName,
+                description = "Must not be visible to the primary tenant",
+                permissions = new[] { "crm.customers.read" },
+            });
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using JsonDocument json = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        Guid roleId = json.RootElement.GetProperty("roleId").GetGuid();
+
+        HttpClient workspaceAdmin = await SignInAsync(IdentityApiFactory.WorkspaceAdminEmail);
+        string[] paths =
+        [
+            $"/app/admin/roles/{roleId}",
+            $"/app/admin/roles/{roleId}/edit",
+            $"/app/admin/roles/{roleId}/permissions",
+        ];
+
+        foreach (string path in paths)
+        {
+            HttpResponseMessage response = await workspaceAdmin.GetAsync(path);
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            string html = await response.Content.ReadAsStringAsync();
+            html.Should().NotContain(roleName);
+            html.Should().Contain("Role not found");
+        }
+    }
+
+    [Fact]
     public async Task AdministrationReader_ShouldSeeReadOnlyScreensWithoutMutationActions()
     {
         HttpClient api = await _factory.CreateAuthenticatedClientAsync(

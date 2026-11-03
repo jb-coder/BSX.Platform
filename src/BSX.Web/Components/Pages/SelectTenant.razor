@@ -1,10 +1,15 @@
 @page "/select-tenant"
 @layout AuthLayout
 @attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
 @using BSX.Modules.Identity.Application.Authentication
+@using BSX.Web.Authentication
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Http
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IPendingLoginStore PendingLogins
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Choose a workspace - BSX Platform</PageTitle>
 
@@ -79,20 +84,39 @@
         AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (state.User.Identity?.IsAuthenticated == true)
         {
-            Navigation.NavigateTo("/", replace: true);
+            Redirect("/");
             return;
         }
 
-        // The URL carries only a non-secret selection handle. The secret that can complete the
-        // sign-in is held in an HttpOnly cookie and is never rendered into the page.
-        _pending = PendingLogins.GetBySelectionId(Token);
-        if (_pending is null)
+        // The URL carries only a non-secret selection handle. The HttpOnly pending cookie is the
+        // proof that this browser owns the pending sign-in; without it the chooser must not disclose
+        // the email or workspace list. This page deliberately runs as static SSR so the cookie is
+        // available from the initial request.
+        string? pendingLoginToken = HttpContextAccessor.HttpContext?
+            .Request
+            .Cookies[WebAuthDefaults.PendingLoginCookieName];
+
+        PendingLogin? pending = PendingLogins.Get(pendingLoginToken);
+        if (pending is null
+            || !string.Equals(pending.SelectionId, Token, StringComparison.Ordinal))
         {
-            Navigation.NavigateTo("/login?error=selection_expired", replace: true);
+            Redirect("/login?error=selection_expired");
             return;
         }
 
+        _pending = pending;
         _selectedTenantId = _pending.Tenants.FirstOrDefault()?.TenantId ?? Guid.Empty;
+    }
+
+    private void Redirect(string location)
+    {
+        if (HttpContextAccessor.HttpContext is { } httpContext)
+        {
+            httpContext.Response.Redirect(location);
+            return;
+        }
+
+        Navigation.NavigateTo(location, forceLoad: true);
     }
 
     private static string ShortId(Guid id) => id.ToString("N")[..8].ToUpperInvariant();

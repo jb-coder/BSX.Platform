@@ -104,8 +104,9 @@ src
     └── Observability
 ```
 
-`Modules` and `Platform` are currently solution folders only. The kernel (`BSX.SharedKernel`
-and `BSX.BuildingBlocks`) and the `BSX.Web` composition root are implemented. See
+The foundation, Identity, CRM and Sales modules and the `BSX.Web` composition root are
+implemented. Inventory has Domain/Application only. Platform folders such as Notifications,
+Storage, BackgroundJobs and Observability are planned or provided as building blocks. See
 [docs/architecture/foundation.md](docs/architecture/foundation.md).
 
 ---
@@ -220,15 +221,15 @@ v2.0.0
 
 - [x] Shared Kernel
 - [x] Building Blocks
-- [ ] Identity Module
-- [ ] Authorization
-- [ ] Auditing
+- [x] Identity Module
+- [x] Authorization
+- [x] Auditing
 
 ### Business Modules
 
-- [ ] CRM
-- [ ] Sales
-- [ ] Inventory
+- [x] CRM
+- [x] Sales (leads and opportunities)
+- [ ] Inventory (Domain/Application implemented; Infrastructure/API/UI pending)
 - [ ] Purchasing
 - [ ] Accounting
 
@@ -241,7 +242,7 @@ v2.0.0
 
 ### Future
 
-- [ ] Multi-tenancy
+- [x] Multi-tenant identity (tenant lifecycle/provisioning pending)
 - [ ] Mobile Application
 - [ ] Public API
 - [ ] SaaS Edition

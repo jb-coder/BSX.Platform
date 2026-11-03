@@ -29,8 +29,11 @@
 ## Security-stamp and revocation semantics
 
 - The security stamp is validated **on every permission-gated operation** by the authorization
-  revalidator, and again at refresh. Password changes, credential changes, deactivation, lockout
-  and tenant removal rotate the stamp, so existing sessions and refresh tokens are rejected.
+  revalidator, and again at refresh. Password changes, credential changes, deactivation and lockout
+  rotate the stamp, so existing sessions and refresh tokens are rejected.
+- Tenant membership removal revokes the sessions bound to that tenant in the same unit of work and
+  refresh fails closed when the membership is missing or inactive. The global user security stamp
+  is intentionally not rotated, because the user's other tenant memberships remain valid.
 - A deactivated principal cannot execute a permission-gated operation, even with an unexpired
   access token or an open Blazor circuit. Revocation is immediate for operations; stale UI may
   remain visible for at most the circuit interval.

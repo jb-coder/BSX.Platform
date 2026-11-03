@@ -14,8 +14,8 @@ Client ──TLS──▶ BSX.Web (1 replica) ──▶ PostgreSQL
 ## Requirements
 
 - **Connection strings** via secrets: `ConnectionStrings__Identity` and (optionally)
-  `ConnectionStrings__Crm`. Without `ConnectionStrings__Crm`, CRM shares the Identity database and
-  uses its own `crm` schema.
+  `ConnectionStrings__Crm` and `ConnectionStrings__Sales`. Without those optional values, CRM and
+  Sales share the Identity database and use their own `crm`/`sales` schemas.
 - **JWT signing keys** via secret: `Identity__Jwt__SigningKeys__0__PrivateKeyPem` (and `...__Kid`).
   The host fails fast at startup if they are missing outside Development.
 - **Data Protection** via `DataProtection__ApplicationName` and `DataProtection__KeysPath`. The path
@@ -33,8 +33,8 @@ Client ──TLS──▶ BSX.Web (1 replica) ──▶ PostgreSQL
 - **Rate limiting** is per-instance and fully effective (only one instance). See
   [rate-limiting.md](rate-limiting.md).
 - **Health checks**: expose `/health/live` and `/health/ready` to the platform probe. Readiness
-  includes both `identity-database` and `crm-database` (plus the optional schema checks). See
-  [health-checks.md](health-checks.md).
+  includes `identity-database`, `crm-database`, `sales-database`, authentication, Data Protection
+  and the optional schema checks. See [health-checks.md](health-checks.md).
 - **CRM concurrency**: concurrent updates are rejected with `409 Conflict` (optimistic
   concurrency); clients re-read and retry. See [crm-operations.md](crm-operations.md).
 - **Sessions/refresh tokens** are database-backed; no shared cache is required.

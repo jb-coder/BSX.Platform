@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.Modules.Identity.Application.Abstractions;
+using BSX.Modules.Identity.Application.Authentication;
 using BSX.Modules.Identity.Application.Dtos;
 using BSX.Modules.Identity.Application.Errors;
 using BSX.Modules.Identity.Domain.ValueObjects;
@@ -11,9 +12,14 @@ namespace BSX.Modules.Identity.Application.Roles.ListRoles;
 public sealed class ListRolesQueryHandler : IQueryHandler<ListRolesQuery, IReadOnlyList<RoleDto>>
 {
     private readonly IRoleReadRepository _roles;
+    private readonly TenantGuard _tenantGuard;
 
     /// <summary>Initializes a new instance of the <see cref="ListRolesQueryHandler"/> class.</summary>
-    public ListRolesQueryHandler(IRoleReadRepository roles) => _roles = roles;
+    public ListRolesQueryHandler(IRoleReadRepository roles, TenantGuard tenantGuard)
+    {
+        _roles = roles;
+        _tenantGuard = tenantGuard;
+    }
 
     /// <inheritdoc />
     public async Task<Result<IReadOnlyList<RoleDto>>> HandleAsync(ListRolesQuery request, CancellationToken cancellationToken = default)
@@ -25,6 +31,12 @@ public sealed class ListRolesQueryHandler : IQueryHandler<ListRolesQuery, IReadO
             if (request.TenantId.Value == Guid.Empty)
             {
                 return Result.Failure<IReadOnlyList<RoleDto>>(IdentityApplicationErrors.InvalidTenantId);
+            }
+
+            Result tenantGuard = _tenantGuard.Ensure(request.TenantId.Value);
+            if (tenantGuard.IsFailure)
+            {
+                return Result.Failure<IReadOnlyList<RoleDto>>(tenantGuard.Error);
             }
 
             tenantId = TenantId.From(request.TenantId.Value);

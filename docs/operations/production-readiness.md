@@ -59,8 +59,19 @@ not known to be broken, but it had not been proven against the production provid
 | P1 | `AllowedHosts` validation accepted a wildcard entry inside a semicolon-separated list | High | **Resolved** | The startup check now rejects any wildcard entry and a loopback-only development list; regression tests cover `*`, `example.com;*`, `*;example.com`, whitespace and `*.example.com`. |
 | P2 | Pending workspace selection retained the password and placed the bearer token in the URL | Medium | **Resolved** | The pending record contains the verified user id and tenant options only. The URL carries a non-secret selection handle; the single-use secret is held in the `BSX.Web.PendingLogin` HttpOnly cookie. `CompletePendingLoginCommand` consumes the proof, validates the handle, tenant, user and membership, and issues the session. |
 | P3 | `InvitedByUserId` was caller-controlled | Medium | **Resolved** | Invitation provenance is derived from `ICurrentUser`; the legacy wire field is ignored. Regression tests prove a spoofed value is not persisted. |
-| P4 | Service account and API key commands had no permission declaration; API key creation had no tenant guard | Medium (latent) | **Resolved** | New tenant-scoped permissions `identity.service-accounts.create` and `identity.api-keys.create`; both commands require them; API key creation validates the service account tenant. |
+| P4 | Service account and API key commands had no permission declaration; API key creation had no tenant guard | Medium (latent) | **Resolved** | New tenant-scoped permissions `identity.service-accounts.create`, `identity.api-keys.create` and `identity.api-keys.revoke`; all related commands require them; API key creation and revocation validate the service account tenant. |
 | P5 | Documentation described pre-ADR-021 security-stamp semantics and additive-only permission synchronization | Low | **Resolved** | Authentication, JWT, permissions, migration and deployment documents now describe per-operation revalidation and declarative reconciliation. |
+
+## Post-hardening Identity closures
+
+| ID | Finding | Status | Resolution |
+| --- | --- | --- | --- |
+| H1 | Membership removal left tenant refresh sessions usable | **Resolved** | Membership removal revokes active sessions bound to that tenant in the same unit of work; refresh rejects missing/inactive memberships before rotation and revokes the session on failure. |
+| H2 | Cross-tenant role metadata read by role id | **Resolved** | `GetRoleByIdQuery` applies the tenant guard to tenant roles; platform/system roles remain shared read-only metadata. Role detail/edit/permissions web screens now reject another tenant's role. |
+| M1 | Membership acceptance had no tenant binding | **Resolved** | `AcceptMembershipCommandHandler` applies `TenantGuard` before accepting; cross-tenant acceptance is rejected. |
+| M2 | API key revocation had no authorization or tenant binding | **Resolved** | `RevokeApiKeyCommand` requires `identity.api-keys.revoke` and validates the owning service account's tenant. |
+| M3 | Pending workspace chooser exposed PII without proof of possession | **Resolved** | The chooser is static SSR and requires the `BSX.Web.PendingLogin` cookie before rendering the email or tenant options; the non-secret URL handle alone is insufficient. |
+| M4 | Removed memberships could not be re-invited | **Resolved** | Re-invitation reuses the existing membership row, returns it to `Invited`, clears prior roles and requires fresh acceptance. |
 
 ## Deployment hardening
 
@@ -140,4 +151,4 @@ customer → lead → opportunity → invitation journey without external guidan
 
 ## Statement
 
-The Identity, CRM and Sales modules are production-ready for a controlled release. All Identity D1-D8, CRM C1-C4, Sales S1-S6 and pilot-readiness P1-P5 findings are resolved or formally documented, security controls are fail-closed, tenant isolation is fail-closed, and the build/test pipeline enforces quality gates on the production provider.
+The Identity, CRM and Sales modules are production-ready for a controlled release. All Identity D1-D8, CRM C1-C4, Sales S1-S6 and pilot-readiness P1-P5 findings are resolved or formally documented. The post-hardening audit findings H1, H2, M1, M2, M3 and M4 were closed with regression coverage; security controls are fail-closed, tenant isolation is fail-closed, and the build/test pipeline enforces quality gates on the production provider.
