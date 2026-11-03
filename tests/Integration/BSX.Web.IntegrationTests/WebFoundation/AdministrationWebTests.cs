@@ -35,8 +35,18 @@ public sealed class AdministrationWebTests : IClassFixture<IdentityApiFactory>
         userHtml.Should().Contain("Managed UI User");
         userHtml.Should().Contain("Pending");
         userHtml.Should().Contain("Edit user");
+        userHtml.Should().Contain("Manage platform roles");
         userHtml.Should().Contain("Activate user");
         userHtml.Should().Contain("Invite to workspace");
+
+        HttpResponseMessage platformRoles = await client.GetAsync($"/app/admin/users/{userId}/roles");
+        platformRoles.StatusCode.Should().Be(HttpStatusCode.OK);
+        string platformRolesHtml = await platformRoles.Content.ReadAsStringAsync();
+        platformRolesHtml.Should().Contain("Save platform roles");
+        platformRolesHtml.Should().Contain("Administrator");
+
+        HttpResponseMessage selfRoles = await client.GetAsync($"/app/admin/users/{_factory.AdminUserId}/roles");
+        (await selfRoles.Content.ReadAsStringAsync()).Should().Contain("You cannot change your own platform roles");
 
         HttpResponseMessage userCreate = await client.GetAsync("/app/admin/users/new");
         userCreate.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -159,7 +169,12 @@ public sealed class AdministrationWebTests : IClassFixture<IdentityApiFactory>
         userDetail.StatusCode.Should().Be(HttpStatusCode.OK);
         string userHtml = await userDetail.Content.ReadAsStringAsync();
         userHtml.Should().NotContain("Edit user");
+        userHtml.Should().NotContain("Manage platform roles");
         userHtml.Should().NotContain("Deactivate user");
+
+        HttpResponseMessage platformRoles = await client.GetAsync($"/app/admin/users/{_factory.AdminUserId}/roles");
+        platformRoles.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        WebFoundationTestHelper.LocationPath(platformRoles).Should().StartWith("/access-denied");
 
         HttpResponseMessage roles = await client.GetAsync("/app/admin/roles");
         roles.StatusCode.Should().Be(HttpStatusCode.OK);

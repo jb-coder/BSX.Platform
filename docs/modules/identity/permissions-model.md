@@ -86,7 +86,7 @@ Classification follows the code, not intuition:
 | `identity.users.create` | Platform | `RegisterUserCommand` |
 | `identity.users.update` | Platform | `UpdateUserCommand` |
 | `identity.users.manage-status` | Platform | `ActivateUserCommand`, `DeactivateUserCommand` |
-| `identity.users.assign-role` | Platform | Platform role assignment |
+| `identity.users.assign-role` | Platform | `SetUserPlatformRolesCommand` (multi-role platform role assignment; self-edit and last-administrator guards) |
 | `identity.roles.read` | Tenant | `ListRolesQuery`, `GetRoleByIdQuery` |
 | `identity.roles.create` | Tenant | `CreateRoleCommand` |
 | `identity.roles.update` | Tenant | `UpdateRoleCommand` |

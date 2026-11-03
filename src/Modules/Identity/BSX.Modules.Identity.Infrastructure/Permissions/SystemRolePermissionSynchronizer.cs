@@ -1,5 +1,6 @@
 using BSX.BuildingBlocks.Diagnostics;
 using BSX.Contracts.Permissions;
+using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Identity.Domain.Roles;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.Modules.Identity.Infrastructure.Persistence;
@@ -17,10 +18,10 @@ namespace BSX.Modules.Identity.Infrastructure.Permissions;
 public sealed class SystemRolePermissionSynchronizer
 {
     /// <summary>The system role that receives every catalog permission.</summary>
-    public const string AdministratorRoleName = "Administrator";
+    public const string AdministratorRoleName = SystemRoleNames.Administrator;
 
     /// <summary>The system role that receives every catalog read permission.</summary>
-    public const string AuditorRoleName = "Auditor";
+    public const string AuditorRoleName = SystemRoleNames.Auditor;
 
     private readonly IdentityDbContext _context;
     private readonly PermissionCatalog _catalog;

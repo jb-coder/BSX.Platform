@@ -66,6 +66,7 @@ internal static class DemoIdentitySeeder
             }
 
             User? user = await context.Users
+                .Include(candidate => candidate.PlatformRoleIds)
                 .FirstOrDefaultAsync(candidate =>
                     EF.Property<string>(candidate, "SearchEmail") == Email)
                 .ConfigureAwait(false);

@@ -44,6 +44,10 @@ else
             {
                 <a class="button button-secondary" href="@($"/app/admin/users/{_user.Id}/edit")">Edit user</a>
             }
+            @if (_canAssignRole && !_isCurrentUser)
+            {
+                <a class="button button-secondary" href="@($"/app/admin/users/{_user.Id}/roles")">Manage platform roles</a>
+            }
             @if (_canManageMemberships && !_isCurrentUser)
             {
                 <a class="button button-primary" href="@($"/app/admin/memberships/invite?userId={_user.Id}")">
@@ -155,6 +159,7 @@ else
     private bool _confirmDeactivate;
     private bool _canUpdate;
     private bool _canManageStatus;
+    private bool _canAssignRole;
     private bool _canManageMemberships;
     private bool _isCurrentUser;
 
@@ -169,6 +174,7 @@ else
         IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
         _canUpdate = permissions.Contains(IdentityPermissionCodes.UsersUpdate, StringComparer.Ordinal);
         _canManageStatus = permissions.Contains(IdentityPermissionCodes.UsersManageStatus, StringComparer.Ordinal);
+        _canAssignRole = permissions.Contains(IdentityPermissionCodes.UsersAssignRole, StringComparer.Ordinal);
         _canManageMemberships = permissions.Contains(
             IdentityPermissionCodes.MembershipsManage,
             StringComparer.Ordinal);

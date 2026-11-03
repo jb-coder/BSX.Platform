@@ -12,7 +12,8 @@ Amends [domain-model.md](domain-model.md), [permissions-model.md](permissions-mo
 
 - Users are **global**; `TenantMembership` is a new aggregate linking user ↔ tenant.
 - Roles are **tenant-scoped**: `Role.TenantId` is nullable (`null` = platform/system role).
-- Role assignment lives on `TenantMembership` (user roles) and `ServiceAccount` (machine roles).
+- Workspace role assignment lives on `TenantMembership`; platform/system roles are assigned directly
+  to the global `User`; machine roles live on `ServiceAccount`.
 - Effective permissions are resolved **per tenant** (membership roles ∪ platform roles).
 - Access tokens are **tenant-bound** (`tenant`, `membership` claims); tenant switching re-issues a
   token without re-authenticating.

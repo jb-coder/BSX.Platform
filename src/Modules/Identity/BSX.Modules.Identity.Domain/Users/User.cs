@@ -424,7 +424,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
     {
         if (!_platformRoleIds.Add(roleId))
         {
-            return Result.Failure(IdentityErrors.MembershipRoleAlreadyAssigned);
+            return Result.Failure(IdentityErrors.UserPlatformRoleAlreadyAssigned);
         }
 
         RaiseDomainEvent(new UserPlatformRoleAssigned(Id, roleId));
@@ -437,7 +437,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
     {
         if (!_platformRoleIds.Remove(roleId))
         {
-            return Result.Failure(IdentityErrors.MembershipRoleNotAssigned);
+            return Result.Failure(IdentityErrors.UserPlatformRoleNotAssigned);
         }
 
         RaiseDomainEvent(new UserPlatformRoleRemoved(Id, roleId));

@@ -12,6 +12,7 @@ for local evaluation.
 Implemented:
 
 - User list, search, paging, detail, create, edit, activate and deactivate.
+- Platform-role assignment directly to users, with multi-role support and self-edit protection.
 - Role list, detail, create, edit, permission assignment and system-role protection.
 - Workspace membership list, invitation, role change, invitation acceptance and removal.
 - Current-user session list, current-session marker, individual revocation and revoke-all.
@@ -23,7 +24,6 @@ Not implemented:
 
 - Service accounts and API keys.
 - User lock/unlock and administrative password reset UI.
-- Platform-role assignment directly to users.
 - Role deletion UI.
 - Tenant creation, branding or tenant switching without re-authentication.
 - Inventory.
@@ -38,6 +38,7 @@ Not implemented:
 | `/app/admin/users/new` | Create user. |
 | `/app/admin/users/{id}` | User detail and lifecycle actions. |
 | `/app/admin/users/{id}/edit` | Edit user name and email. |
+| `/app/admin/users/{id}/roles` | Assign or remove the user's platform roles. |
 | `/app/admin/roles` | Role list, including system and workspace roles. |
 | `/app/admin/roles/new` | Create workspace role and assign permissions. |
 | `/app/admin/roles/{id}` | Role detail and grouped permissions. |
@@ -121,6 +122,19 @@ boundary.
 - Administrators cannot deactivate their own account from the UI.
 - Conflicts and credential problems are reported without losing the page context.
 
+### Platform roles
+
+- The user detail shows direct platform roles assigned to the global identity.
+- **Manage platform roles** opens `/app/admin/users/{id}/roles`.
+- Supports multiple platform roles, including `Administrator` and `Auditor`.
+- Only roles with no tenant (`TenantId == null`) can be assigned; workspace roles are rejected.
+- Administrators cannot change their own platform roles. Another administrator must do it.
+- Removing the last active `Administrator` is rejected with
+  `Identity.User.LastAdministratorRequired`.
+- The change is revalidated by Identity on the next permission-gated operation; ordinary role
+  changes do not revoke sessions (ADR-017/ADR-021).
+- Requires `identity.users.assign-role`.
+
 ---
 
 ## Roles
@@ -182,7 +196,8 @@ boundary.
 
 ### Change role
 
-- Replaces the member's current role assignment with one selected workspace or platform role.
+- Replaces the member's current role assignment with one selected workspace role.
+- Platform roles are assigned directly to the user from the user detail, not through memberships.
 - Supports removing all roles by selecting **No role**.
 - Requires `identity.memberships.manage`.
 
@@ -274,6 +289,10 @@ Password: Passw0rd!
 - [ ] Edit changes name/email with validation.
 - [ ] Current admin cannot deactivate itself.
 - [ ] Duplicate email shows a readable conflict.
+- [ ] Platform roles can be assigned and removed as a multi-role set.
+- [ ] Workspace roles cannot be assigned as platform roles.
+- [ ] The current administrator cannot change its own platform roles.
+- [ ] Removing the last active administrator is rejected.
 
 #### Roles
 
@@ -318,6 +337,7 @@ Web integration tests cover:
 
 - Permission selector grouping, descriptions and read-only system-role rendering.
 - User create/edit/activate/deactivate workflow.
+- Platform-role assignment, replacement and removal workflow.
 - Role create/update/permission workflow and system-role immutability.
 - Membership invite/change-role/accept/remove workflow.
 - Session list/revoke/revoke-all workflow.
@@ -335,8 +355,7 @@ dotnet test tests\Integration\BSX.Web.IntegrationTests\BSX.Web.IntegrationTests.
 
 ## Limitations
 
-- User platform-role assignment, lock/unlock and administrative password reset are not exposed in
-  the UI.
+- User lock/unlock and administrative password reset are not exposed in the UI.
 - Role deletion is not exposed.
 - Session revocation is self-service; an administrator cannot revoke another user's sessions from
   this screen.

@@ -42,6 +42,21 @@ public static class IdentityApplicationErrors
         "Identity.Role.NotAssignableToMembership",
         "Platform roles cannot be assigned as workspace membership roles.");
 
+    /// <summary>A workspace role cannot be assigned as a platform role.</summary>
+    public static Error RoleNotAssignableToPlatform => Error.Forbidden(
+        "Identity.Role.NotAssignableToPlatform",
+        "Workspace roles cannot be assigned as platform roles.");
+
+    /// <summary>A platform administrator cannot change their own platform roles.</summary>
+    public static Error SelfPlatformRoleChangeForbidden => Error.Forbidden(
+        "Identity.User.SelfPlatformRoleChangeForbidden",
+        "Administrators cannot change their own platform roles.");
+
+    /// <summary>At least one active user must retain the Administrator platform role.</summary>
+    public static Error LastAdministratorRequired => Error.Conflict(
+        "Identity.User.LastAdministratorRequired",
+        "At least one active user must retain the Administrator platform role.");
+
     /// <summary>The permission is not declared by the platform permission catalog.</summary>
     /// <param name="code">The unknown permission code.</param>
     public static Error PermissionUnknown(string code) => Error.Validation(

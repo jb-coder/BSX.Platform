@@ -63,6 +63,7 @@ internal sealed class AuthorizationSnapshotReader : IAuthorizationSnapshotReader
 
         User? user = await _context.Users
             .AsNoTracking()
+            .Include(candidate => candidate.PlatformRoleIds)
             .FirstOrDefaultAsync(candidate => candidate.Id == UserId.From(userId), cancellationToken)
             .ConfigureAwait(false);
 

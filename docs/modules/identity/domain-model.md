@@ -163,8 +163,8 @@ Domain events are intra-module and dispatched after commit (ADR-009).
 - `UserPasswordChanged`
 - `UserPasswordResetRequested`
 - `UserPasswordResetCompleted`
-- `RoleAssignedToUser`
-- `RoleRemovedFromUser`
+- `UserPlatformRoleAssigned`
+- `UserPlatformRoleRemoved`
 - `UserSignedIn`
 - `UserSignedOut`
 

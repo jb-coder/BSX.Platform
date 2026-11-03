@@ -28,15 +28,17 @@ means the operation declares no `[RequirePermission]` and is reachable without a
 
 | Command | Intent | Permission | Domain events |
 | --- | --- | --- | --- |
-| `RegisterUserCommand` | Create a user with credentials and optional roles. | `identity.users.create` | `UserRegistered` |
+| `RegisterUserCommand` | Create a user with an optional initial password. | `identity.users.create` | `UserRegistered` |
 | `UpdateUserCommand` | Change name and/or email. | `identity.users.update` | `UserNameChanged`, `UserEmailChanged` |
 | `ActivateUserCommand` | Activate a pending/disabled user. | `identity.users.manage-status` | `UserActivated` |
 | `DeactivateUserCommand` | Disable a user and revoke sessions. | `identity.users.manage-status` | `UserDeactivated`, `SessionRevoked` |
 | `LockUserCommand` | Lock a user until a given time. | `identity.users.lock` | `UserLocked` |
 | `UnlockUserCommand` | Remove a lockout. | `identity.users.lock` | `UserUnlocked` |
-| `AssignRoleToUserCommand` | Assign a role. | `identity.users.assign-role` | `RoleAssignedToUser` |
-| `RemoveRoleFromUserCommand` | Remove a role. | `identity.users.assign-role` | `RoleRemovedFromUser` |
+| `SetUserPlatformRolesCommand` | Replace the user's platform (system) roles. | `identity.users.assign-role` | `UserPlatformRoleAssigned`, `UserPlatformRoleRemoved` |
 | `ResetUserPasswordCommand` | Administrative password reset. | `identity.users.reset-password` | `UserPasswordChanged`, `SessionRevoked` |
+
+`SetUserPlatformRolesCommand` rejects workspace roles, rejects changes to the caller's own platform
+roles and protects the last active `Administrator`.
 
 ### Self-service
 

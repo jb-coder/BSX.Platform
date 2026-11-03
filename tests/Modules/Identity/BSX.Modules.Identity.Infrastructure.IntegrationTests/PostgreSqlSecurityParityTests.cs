@@ -247,6 +247,79 @@ public sealed class PostgreSqlSecurityParityTests
     }
 
     [DockerAvailableFact]
+    public async Task PlatformRoles_Should_PersistAndDetectAnotherActiveAdministrator_OnPostgreSql()
+    {
+        PostgreSqlIdentityEnvironment environment = await PostgreSqlIdentityEnvironment.GetAsync();
+        Guid firstUserId;
+        Guid secondUserId;
+        Guid platformRoleId;
+
+        await using (AsyncServiceScope scope = environment.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+            var roles = scope.ServiceProvider.GetRequiredService<IRoleRepository>();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            Role platformRole = Role.Create(
+                RoleId.New(),
+                tenantId: null,
+                RoleName.Create($"Platform {Guid.NewGuid():N}").Value,
+                [Permission.Create("crm.customers.read").Value],
+                isSystem: true).Value;
+
+            User first = PostgreSqlIdentityTestSupport.CreateActiveUser();
+            User second = PostgreSqlIdentityTestSupport.CreateActiveUser();
+            // EF tracks owned value objects by reference; each owner needs its own RoleId instance.
+            first.AssignPlatformRole(RoleId.From(platformRole.Id.Value));
+            second.AssignPlatformRole(RoleId.From(platformRole.Id.Value));
+
+            await users.AddAsync(first);
+            await users.AddAsync(second);
+            await roles.AddAsync(platformRole);
+            await unitOfWork.SaveChangesAsync();
+
+            firstUserId = first.Id.Value;
+            secondUserId = second.Id.Value;
+            platformRoleId = platformRole.Id.Value;
+        }
+
+        await using (AsyncServiceScope scope = environment.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+            User first = (await users.GetByIdAsync(UserId.From(firstUserId)))!;
+            first.PlatformRoleIds.Should().Contain(RoleId.From(platformRoleId));
+            (await users.ExistsOtherActiveUserWithPlatformRoleAsync(
+                RoleId.From(platformRoleId),
+                UserId.From(firstUserId))).Should().BeTrue();
+            (await users.ExistsOtherActiveUserWithPlatformRoleAsync(
+                RoleId.From(platformRoleId),
+                UserId.From(secondUserId))).Should().BeTrue();
+        }
+
+        await using (AsyncServiceScope scope = environment.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            User first = (await users.GetByIdAsync(UserId.From(firstUserId)))!;
+            first.RemovePlatformRole(RoleId.From(platformRoleId)).IsSuccess.Should().BeTrue();
+            await unitOfWork.SaveChangesAsync();
+        }
+
+        await using (AsyncServiceScope scope = environment.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+            User first = (await users.GetByIdAsync(UserId.From(firstUserId)))!;
+            first.PlatformRoleIds.Should().BeEmpty();
+            (await users.ExistsOtherActiveUserWithPlatformRoleAsync(
+                RoleId.From(platformRoleId),
+                UserId.From(firstUserId))).Should().BeTrue();
+        }
+    }
+
+    [DockerAvailableFact]
     public async Task AuthorizationSnapshot_Should_DependOnStatusSessionAndStamp_OnPostgreSql()
     {
         PostgreSqlIdentityEnvironment environment = await PostgreSqlIdentityEnvironment.GetAsync();

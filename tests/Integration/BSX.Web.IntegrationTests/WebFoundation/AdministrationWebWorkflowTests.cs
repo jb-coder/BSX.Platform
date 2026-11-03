@@ -21,6 +21,7 @@ using BSX.Modules.Identity.Application.Users.ActivateUser;
 using BSX.Modules.Identity.Application.Users.DeactivateUser;
 using BSX.Modules.Identity.Application.Users.GetUserById;
 using BSX.Modules.Identity.Application.Users.RegisterUser;
+using BSX.Modules.Identity.Application.Users.SetUserPlatformRoles;
 using BSX.Modules.Identity.Application.Users.UpdateUser;
 using BSX.SharedKernel.Results;
 using BSX.Web.Administration;
@@ -168,6 +169,44 @@ public sealed class AdministrationWebWorkflowTests : IClassFixture<IdentityApiFa
             .Single(candidate => candidate.Id == membership.Id);
         reinvitation.Status.Should().Be("Invited");
         reinvitation.RoleIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PlatformRoleLifecycle_ShouldAssignReplaceAndRemoveMultipleRoles()
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        ISender sender = CreateSender(scope);
+        string email = $"platform-role-{Guid.NewGuid():N}@example.com";
+
+        Result<RegisterUserResponse> created = await sender.SendAsync(
+            new RegisterUserCommand(email, "Platform Role User", "Passw0rd!"));
+
+        created.IsSuccess.Should().BeTrue();
+
+        IReadOnlyList<RoleDto> platformRoles = (await sender.SendAsync(new ListRolesQuery(null))).Value;
+        RoleDto administrator = platformRoles.Single(role => role.Name == "Administrator");
+        RoleDto crmReader = platformRoles.Single(role => role.Name == "CRM Reader");
+
+        (await sender.SendAsync(new SetUserPlatformRolesCommand(
+            created.Value.UserId,
+            [administrator.Id, crmReader.Id]))).IsSuccess.Should().BeTrue();
+
+        UserDto assigned = (await SendAsync(new GetUserByIdQuery(created.Value.UserId))).Value;
+        assigned.PlatformRoleIds.Should().BeEquivalentTo([administrator.Id, crmReader.Id]);
+
+        Result selfChange = await sender.SendAsync(new SetUserPlatformRolesCommand(
+            _factory.AdminUserId,
+            [administrator.Id]));
+
+        selfChange.IsFailure.Should().BeTrue();
+        selfChange.Error.Code.Should().Be("Identity.User.SelfPlatformRoleChangeForbidden");
+
+        (await sender.SendAsync(new SetUserPlatformRolesCommand(
+            created.Value.UserId,
+            [crmReader.Id]))).IsSuccess.Should().BeTrue();
+
+        UserDto replaced = (await SendAsync(new GetUserByIdQuery(created.Value.UserId))).Value;
+        replaced.PlatformRoleIds.Should().BeEquivalentTo([crmReader.Id]);
     }
 
     [Fact]

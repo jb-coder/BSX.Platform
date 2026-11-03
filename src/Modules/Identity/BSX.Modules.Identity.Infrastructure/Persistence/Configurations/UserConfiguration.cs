@@ -32,7 +32,11 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             roles.WithOwner().HasForeignKey("UserId");
             roles.Property(roleId => roleId.Value).HasColumnName("role_id");
             roles.HasKey("UserId", "Value");
+            roles.UsePropertyAccessMode(PropertyAccessMode.Field);
         });
+
+        builder.Navigation(user => user.PlatformRoleIds)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasMany(user => user.Credentials)
             .WithOne()

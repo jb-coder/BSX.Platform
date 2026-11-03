@@ -1,0 +1,227 @@
+@page "/app/admin/users/{Id:guid}/roles"
+@attribute [Authorize(Policy = PermissionPolicies.IdentityUsersAssignRole)]
+@using BSX.BuildingBlocks.Cqrs
+@using BSX.Modules.Identity.Application.Dtos
+@using BSX.Modules.Identity.Application.Roles.ListRoles
+@using BSX.Modules.Identity.Application.Users.GetUserById
+@using BSX.Modules.Identity.Application.Users.SetUserPlatformRoles
+@using BSX.SharedKernel.Results
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
+@using BSX.Web.Administration
+@inject AdministrationDispatcher Dispatcher
+@inject WebCurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IToastService Toasts
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Platform roles - BSX Platform</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState Label="Loading platform roles..." />
+}
+else if (_user is null)
+{
+    <PageHeader Title="User not found" Subtitle="The user may have been removed." />
+    <Card>
+        <EmptyState Title="User not found" Description="Return to the user list to choose another account.">
+            <Action><a class="button button-primary" href="/app/admin/users">Back to users</a></Action>
+        </EmptyState>
+    </Card>
+}
+else if (_forbiddenSelf)
+{
+    <PageHeader Title="Platform roles unavailable" Subtitle="You cannot change your own platform roles." />
+    <Card>
+        <EmptyState Title="You cannot change your own platform roles"
+                    Description="Another platform administrator must manage your role assignments.">
+            <Action><a class="button button-primary" href="@($"/app/admin/users/{_user.Id}")">Back to user</a></Action>
+        </EmptyState>
+    </Card>
+}
+else
+{
+    <PageHeader Title="@($"Platform roles · {_user.Name}")"
+                Subtitle="Assign platform (system) roles to this user. Platform roles apply across every workspace.">
+        <Actions><a class="button button-secondary" href="@($"/app/admin/users/{_user.Id}")">Cancel</a></Actions>
+    </PageHeader>
+
+    <div class="content-medium">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">
+                <strong>The platform roles could not be saved.</strong>
+                <span>@_error</span>
+                @if (_conflict)
+                {
+                    <a href="@($"/app/admin/users/{_user.Id}/roles")">Reload roles</a>
+                }
+            </div>
+        }
+
+        <Card>
+            <fieldset class="permission-selector">
+                <legend>Platform roles</legend>
+                <p class="form-section-description">
+                    Select the platform roles assigned to this user.
+                    <strong>@_selectedRoleIds.Count selected.</strong>
+                </p>
+
+                @if (_administratorRoleId is { } administratorRoleId && _selectedRoleIds.Contains(administratorRoleId))
+                {
+                    <div class="alert alert-warning" role="note">
+                        <strong>Administrator grants full platform access.</strong>
+                        <span>
+                            The user will be able to manage users, roles, workspaces and every module.
+                        </span>
+                    </div>
+                }
+
+                @if (_roles.Count == 0)
+                {
+                    <EmptyState Title="No platform roles"
+                                Description="The platform role catalog is empty. Run permission synchronization and try again." />
+                }
+                else
+                {
+                    <div class="permission-list">
+                        @foreach (RoleDto role in _roles)
+                        {
+                            <label class="permission-option">
+                                <input type="checkbox"
+                                       checked="@_selectedRoleIds.Contains(role.Id)"
+                                       @onchange="args => ToggleRole(role.Id, args.Value is true)" />
+                                <span>
+                                    <strong>@role.Name</strong>
+                                    @if (!string.IsNullOrWhiteSpace(role.Description))
+                                    {
+                                        <span class="field-hint">@role.Description</span>
+                                    }
+                                    <code>@role.Permissions.Count permission(s)</code>
+                                </span>
+                            </label>
+                        }
+                    </div>
+                }
+            </fieldset>
+
+            <div class="form-actions">
+                <button type="button"
+                        class="button button-primary"
+                        disabled="@(_saving || _roles.Count == 0)"
+                        @onclick="SaveAsync">
+                    @(_saving ? "Saving..." : "Save platform roles")
+                </button>
+                <a class="button button-secondary" href="@($"/app/admin/users/{_user.Id}")">Cancel</a>
+            </div>
+        </Card>
+    </div>
+}
+
+@code {
+    private UserDto? _user;
+    private IReadOnlyList<RoleDto> _roles = [];
+    private HashSet<Guid> _selectedRoleIds = [];
+    private Guid? _administratorRoleId;
+    private string? _error;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _conflict;
+    private bool _forbiddenSelf;
+
+    /// <summary>The user identifier.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser.SetPrincipal(state.User);
+
+        Result<UserDto> user = await Dispatcher.SendAsync(new GetUserByIdQuery(Id));
+        _loading = false;
+
+        if (user.IsFailure)
+        {
+            if (user.Error.Code == "Identity.User.NotFound" && HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            _error = IdentityMessages.For(user.Error);
+            return;
+        }
+
+        _user = user.Value;
+        _forbiddenSelf = CurrentUser.UserId == _user.Id;
+
+        if (_forbiddenSelf)
+        {
+            if (HttpContextAccessor.HttpContext is { } context)
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            }
+
+            return;
+        }
+
+        Result<IReadOnlyList<RoleDto>> roles = await Dispatcher.SendAsync(new ListRolesQuery(null));
+
+        if (roles.IsFailure)
+        {
+            _error = IdentityMessages.For(roles.Error);
+            return;
+        }
+
+        _roles = roles.Value
+            .Where(role => role.TenantId is null)
+            .OrderBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        _selectedRoleIds = new HashSet<Guid>(_user.PlatformRoleIds);
+        _administratorRoleId = _roles
+            .FirstOrDefault(role => string.Equals(role.Name, SystemRoleNames.Administrator, StringComparison.Ordinal))
+            ?.Id;
+    }
+
+    private void ToggleRole(Guid roleId, bool selected)
+    {
+        if (selected)
+        {
+            _selectedRoleIds.Add(roleId);
+        }
+        else
+        {
+            _selectedRoleIds.Remove(roleId);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_saving || _user is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        _conflict = false;
+
+        Result result = await IdentityWebResults.ExecuteAsync(() => Dispatcher.SendAsync(
+            new SetUserPlatformRolesCommand(_user.Id, _selectedRoleIds.ToArray())));
+
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _conflict = result.Error.Code == "Identity.Concurrency.Conflict";
+            _error = IdentityMessages.For(result.Error);
+            return;
+        }
+
+        Toasts.Success("Platform roles updated", "The user's platform role assignments were saved.");
+        Navigation.NavigateTo($"/app/admin/users/{_user.Id}");
+    }
+}

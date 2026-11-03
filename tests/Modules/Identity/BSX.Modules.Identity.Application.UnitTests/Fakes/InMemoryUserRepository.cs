@@ -1,3 +1,4 @@
+using BSX.Modules.Identity.Domain.Enums;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Domain.ValueObjects;
 
@@ -22,6 +23,18 @@ internal sealed class InMemoryUserRepository : IUserRepository
 
     public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken = default)
         => Task.FromResult(_users.Exists(user => user.Email == email));
+
+    public Task<bool> ExistsOtherActiveUserWithPlatformRoleAsync(
+        RoleId roleId,
+        UserId excludedUserId,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(_users.Exists(user =>
+            user.Id != excludedUserId
+            && user.Status == UserStatus.Active
+            && user.PlatformRoleIds.Any(platformRoleId => platformRoleId.Value == roleId.Value)));
+
+    public Task TrackPlatformRoleChangesAsync(User user, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 
     public Task AddAsync(User user, CancellationToken cancellationToken = default)
     {

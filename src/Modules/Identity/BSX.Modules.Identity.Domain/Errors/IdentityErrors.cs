@@ -82,6 +82,12 @@ public static class IdentityErrors
     /// <summary>The role is not assigned to the membership.</summary>
     public static Error MembershipRoleNotAssigned => Error.NotFound("Identity.Membership.RoleNotAssigned", "The role is not assigned.");
 
+    /// <summary>The platform role is already assigned to the user.</summary>
+    public static Error UserPlatformRoleAlreadyAssigned => Error.Conflict("Identity.User.PlatformRoleAlreadyAssigned", "The platform role is already assigned to the user.");
+
+    /// <summary>The platform role is not assigned to the user.</summary>
+    public static Error UserPlatformRoleNotAssigned => Error.NotFound("Identity.User.PlatformRoleNotAssigned", "The platform role is not assigned to the user.");
+
     /// <summary>A system role cannot be modified.</summary>
     public static Error RoleSystemImmutable => Error.Conflict("Identity.Role.SystemImmutable", "A system role cannot be modified.");
 
