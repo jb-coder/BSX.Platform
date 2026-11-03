@@ -30,7 +30,8 @@ HTTP adapters are not listed here.
 
 Login and refresh are anonymous because the credential is in the body. Invalid refresh tokens and
 revoked tenant memberships return `401`; invalid reset tokens return `422`; a disabled delivery
-channel returns `503`.
+channel returns `503`. When configured, the web host's SMTP notifier sends the reset link; see
+[password recovery](../../identity/password-recovery.md).
 
 ---
 

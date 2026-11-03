@@ -22,7 +22,10 @@
    Outside Development the host fails fast if the path is missing or not writable.
 7. Set `AllowedHosts` to the public host name(s). Outside Development a wildcard entry anywhere in
    the semicolon-separated list, and a loopback-only development list, are rejected.
-8. Publish `https://<host>/.well-known/jwks.json` equivalents? Not required - validation keys are
+8. Configure `Identity:PasswordReset:Delivery` with a verified SMTP relay and the externally
+   reachable `PublicBaseUrl`. Without a complete configuration, reset requests return `503` rather
+   than silently succeeding. See [password recovery](../identity/password-recovery.md).
+9. Publish `https://<host>/.well-known/jwks.json` equivalents? Not required - validation keys are
    loaded from configuration. External consumers can obtain validation keys from the same secret
    store distribution mechanism.
 

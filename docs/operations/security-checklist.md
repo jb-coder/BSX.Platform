@@ -37,10 +37,11 @@ Review before every production release. Each item should have an owner and evide
 
 ## Password reset
 
-- [ ] Delivery is either configured (Notifications module) or the endpoint returns `503`
-      (never a silent success).
+- [ ] SMTP delivery is configured with a verified sender and public base URL, or the endpoint
+      returns `503` (never a silent success).
 - [ ] Reset tokens are single-use, hashed at rest, and short-lived (30 minutes).
-- [ ] Reset completion revokes all sessions.
+- [ ] Reset completion rotates the security stamp and revokes all sessions.
+- [ ] No reset token or recipient appears in application logs.
 
 ## Transport & host
 

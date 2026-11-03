@@ -21,6 +21,7 @@ using BSX.Web.Authentication;
 using BSX.Web.Components;
 using BSX.Web.Demo;
 using BSX.Web.Deployment;
+using BSX.Web.Notifications;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -71,6 +72,7 @@ builder.Services.AddIdentityJwt(options =>
 builder.Services.AddWebDeploymentHardening();
 builder.Services.AddIdentityAuthentication();
 builder.Services.AddWebAuthentication(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddWebPasswordResetDelivery(builder.Configuration);
 builder.Services.AddIdentityHealthChecks();
 
 if (builder.Configuration.GetValue("Identity:Database:VerifySchema", false))
@@ -182,6 +184,7 @@ app.MapIdentityEndpoints();
 app.MapCrmEndpoints();
 app.MapSalesEndpoints();
 app.MapWebAuthEndpoints();
+app.MapWebPasswordResetEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

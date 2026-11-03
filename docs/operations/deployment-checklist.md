@@ -48,6 +48,8 @@ Data Protection details.
 - [ ] `Sales:Database:VerifySchema=true` where the deployment owns the `sales` schema (recommended).
 - [ ] `Identity:Permissions:SynchronizeOnStartup` set for the topology (`true` seeds the system
       roles from module catalogs; requires the Identity schema to be present).
+- [ ] `Identity:PasswordReset:Delivery` is configured for customer recovery (SMTP relay, verified
+      sender, public HTTPS base URL), or the deployment explicitly accepts `503` reset requests.
 - [ ] Liveness/readiness probe paths configured in the orchestrator.
 - [ ] The previous artifact is retained for rollback.
 
@@ -109,8 +111,10 @@ Data Protection details.
       one unauthorized call.
 - [ ] Smoke test Sales: create a lead, contact and qualify it, create an opportunity, and exercise
       one unauthorized call. Verify that a lead referencing an unknown CRM customer returns `409`.
-- [ ] Verify password-reset behaviour matches the deployment (delivery configured → `200`; not
-      configured → `503`).
+- [ ] Verify password-reset behaviour matches the deployment. With
+      `Identity:PasswordReset:Delivery` configured, request a reset and confirm the email arrives,
+      the link opens, the password can be changed and the old session is signed out. Without delivery
+      configuration, confirm the request returns `503`.
 - [ ] Confirm no unexpected configuration warnings/errors in logs.
 
 ---

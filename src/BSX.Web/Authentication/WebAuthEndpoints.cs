@@ -229,7 +229,7 @@ public static class WebAuthEndpoints
         return Results.Redirect(SafeReturnUrl(returnUrl));
     }
 
-    private static async Task<bool> ValidateAntiforgeryAsync(HttpContext httpContext)
+    internal static async Task<bool> ValidateAntiforgeryAsync(HttpContext httpContext)
     {
         if (!httpContext.Request.HasFormContentType)
         {

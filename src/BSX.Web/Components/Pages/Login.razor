@@ -58,6 +58,10 @@
                        required />
             </div>
 
+            <p class="auth-help">
+                <a href="/forgot-password">Forgot your password?</a>
+            </p>
+
             <button type="submit" class="button button-primary button-full">Sign in</button>
         </form>
 
@@ -84,6 +88,12 @@
     [SupplyParameterFromQuery(Name = "loggedOut")]
     public bool LoggedOut { get; set; }
 
+    /// <summary>Whether the user just completed a password reset.</summary>
+    [SupplyParameterFromQuery(Name = "reset")]
+    public string? Reset { get; set; }
+
+    private bool PasswordResetSucceeded => string.Equals(Reset, "success", StringComparison.Ordinal);
+
     private string? StatusMessage => Error switch
     {
         "invalid_credentials" => "The email address or password is incorrect.",
@@ -91,12 +101,13 @@
         "invalid_tenant" => "That workspace is no longer available. Sign in again.",
         "selection_expired" => "Your workspace selection expired. Sign in again.",
         "invalid_request" => "The sign-in request was invalid. Please try again.",
+        _ when PasswordResetSucceeded => "Your password has been reset. Sign in with your new password.",
         _ when Expired => "Your session expired. Sign in again to continue.",
         _ when LoggedOut => "You have been signed out.",
         _ => null,
     };
 
-    private string StatusTone => LoggedOut && string.IsNullOrWhiteSpace(Error) && !Expired
+    private string StatusTone => (PasswordResetSucceeded || LoggedOut) && string.IsNullOrWhiteSpace(Error) && !Expired
         ? "alert-success"
         : "alert-error";
 

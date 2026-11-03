@@ -15,7 +15,7 @@ system. CRM is documented in [crm.md](crm.md), Sales in [sales.md](sales.md), Ad
 
 Implemented:
 
-- Sign-in, sign-out, session expiry and workspace selection.
+- Sign-in, sign-out, password recovery, session expiry and workspace selection.
 - Protected routes, authenticated API separation, 401 and 403 experiences.
 - Responsive application shell with sidebar, header, breadcrumbs, tenant badge and user menu.
 - Permission-aware CRM, Sales and Administration navigation.
@@ -104,6 +104,18 @@ alone cannot disclose pending-login PII. The application sends `Referrer-Policy:
 defence in depth. The pending store is in-process; a multi-instance deployment needs a distributed
 store or session affinity for workspace selection.
 
+### Password recovery
+
+- `/forgot-password` requests a reset link through `RequestPasswordResetCommand`.
+- `/reset-password?token=...` completes the reset through `CompletePasswordResetCommand`.
+- The request page is enumeration-safe and uses the same accepted response for known and unknown
+  accounts.
+- The reset page is static SSR, requires antiforgery, explains invalid/expired/used links and
+  redirects to `/login?reset=success` on success.
+- Password reset revokes all Identity sessions and rotates the security stamp.
+
+See [password recovery](../identity/password-recovery.md).
+
 ### Session lifecycle
 
 - The web cookie has a seven-day sliding session.
@@ -116,9 +128,13 @@ store or session affinity for workspace selection.
 
 | Route | Purpose |
 | --- | --- |
-| `/login` | Credential entry, error and session-expiry experience. |
+| `/login` | Credential entry, error, reset-success and session-expiry experience. |
+| `/forgot-password` | Password-recovery email request. |
+| `/reset-password` | Password-reset token completion page. |
 | `/select-tenant` | Workspace chooser when multiple memberships exist. |
 | `/auth/login` | Server-side sign-in adapter. |
+| `/auth/password-reset/request` | Server-side reset-request adapter. |
+| `/auth/password-reset/complete` | Server-side reset-completion adapter. |
 | `/auth/select-tenant` | Server-side workspace selection adapter. |
 | `/auth/logout` | Server-side sign-out adapter. |
 | `/access-denied` | Friendly authenticated 403 page. |

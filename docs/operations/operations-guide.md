@@ -52,8 +52,9 @@ Platform instrumentation is documented in [observability.md](observability.md).
 
 ### Password reset returns 503
 
-- Expected when no delivery mechanism is configured (D3). Integrate the Notifications module or
-  accept the documented behaviour ([password-reset-delivery.md](password-reset-delivery.md)).
+- Expected when `Identity:PasswordReset:Delivery` is incomplete or disabled. Configure the SMTP
+  relay, verified sender and public base URL to enable customer recovery. See
+  [password-reset-delivery.md](password-reset-delivery.md).
 
 ### Readiness is red (`503`)
 

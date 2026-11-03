@@ -38,7 +38,8 @@ Client ──TLS──▶ BSX.Web (1 replica) ──▶ PostgreSQL
 - **CRM concurrency**: concurrent updates are rejected with `409 Conflict` (optimistic
   concurrency); clients re-read and retry. See [crm-operations.md](crm-operations.md).
 - **Sessions/refresh tokens** are database-backed; no shared cache is required.
-- **Password reset** requires the Notifications module (see
+- **Password reset** is delivered by the host SMTP adapter when
+  `Identity:PasswordReset:Delivery` is complete (see
   [password-reset-delivery.md](password-reset-delivery.md)); otherwise the endpoint returns `503`.
 
 ## Recommended configuration

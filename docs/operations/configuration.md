@@ -21,6 +21,16 @@ environment or a secret store, never from committed files.
 | `ConnectionStrings:Sales` | No | Identity connection | PostgreSQL for the Sales module. When omitted, Sales uses `ConnectionStrings:Identity` and the `sales` schema. |
 | `Sales:Database:VerifySchema` | No | `false` | Enables the Sales schema readiness check. |
 | `Identity:Permissions:SynchronizeOnStartup` | No | `true` | Seeds/synchronizes system roles from the registered module permission catalogs. Missing schema is logged and skipped. |
+| `Identity:PasswordReset:Delivery:Enabled` | No | `false` | Enables SMTP password-reset delivery. When false or incomplete, reset requests return `503`. |
+| `Identity:PasswordReset:Delivery:PublicBaseUrl` | Yes when enabled | - | Externally reachable origin used to build reset links, for example `https://app.example.com`. |
+| `Identity:PasswordReset:Delivery:ResetPath` | No | `/reset-password` | Reset page path appended to the public base URL. |
+| `Identity:PasswordReset:Delivery:Host` | Yes when enabled | - | SMTP relay host. |
+| `Identity:PasswordReset:Delivery:Port` | No | `587` | SMTP port. |
+| `Identity:PasswordReset:Delivery:UseStartTls` | No | `true` | Enables SMTP transport security. |
+| `Identity:PasswordReset:Delivery:UserName` | No | - | Optional SMTP username. |
+| `Identity:PasswordReset:Delivery:Password` | No | - | Optional SMTP password; supply from a secret store. |
+| `Identity:PasswordReset:Delivery:FromAddress` | Yes when enabled | - | Envelope sender address. |
+| `Identity:PasswordReset:Delivery:FromName` | No | `BSX Platform` | Sender display name. |
 | `AllowedHosts` | Yes | `localhost;127.0.0.1` | Set to your public host name(s) in production. |
 | `OpenTelemetry:OtlpEndpoint` | No | `""` | Enables OTLP export when set. |
 | `Outbox:Enabled` | No | `true` | Writes domain events to each module outbox. |
@@ -101,6 +111,10 @@ Identity__Jwt__SigningKeys__0__Kid=2026-01
 Identity__Jwt__SigningKeys__0__PrivateKeyPem=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 Identity__Database__VerifySchema=true
 Identity__Permissions__SynchronizeOnStartup=true
+Identity__PasswordReset__Delivery__Enabled=true
+Identity__PasswordReset__Delivery__PublicBaseUrl=https://app.example.com
+Identity__PasswordReset__Delivery__Host=smtp.example.com
+Identity__PasswordReset__Delivery__FromAddress=no-reply@example.com
 Crm__Database__VerifySchema=true
 Sales__Database__VerifySchema=true
 AllowedHosts=identity.example.com
