@@ -72,7 +72,7 @@ builder.Services.AddIdentityJwt(options =>
 builder.Services.AddWebDeploymentHardening();
 builder.Services.AddIdentityAuthentication();
 builder.Services.AddWebAuthentication(builder.Configuration, builder.Environment.IsDevelopment());
-builder.Services.AddWebPasswordResetDelivery(builder.Configuration);
+builder.Services.AddWebPasswordResetDelivery(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddIdentityHealthChecks();
 
 if (builder.Configuration.GetValue("Identity:Database:VerifySchema", false))

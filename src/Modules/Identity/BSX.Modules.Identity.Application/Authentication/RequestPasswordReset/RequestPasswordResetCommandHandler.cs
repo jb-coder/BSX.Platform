@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Identity.Application.Abstractions;
@@ -12,6 +13,7 @@ namespace BSX.Modules.Identity.Application.Authentication.RequestPasswordReset;
 public sealed class RequestPasswordResetCommandHandler : ICommandHandler<RequestPasswordResetCommand, RequestPasswordResetResponse>
 {
     private static readonly TimeSpan ResetTokenLifetime = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan MinimumResponseTime = TimeSpan.FromMilliseconds(250);
 
     private readonly IUserRepository _users;
     private readonly IPasswordResetTokenHasher _tokenHasher;
@@ -46,6 +48,7 @@ public sealed class RequestPasswordResetCommandHandler : ICommandHandler<Request
     /// <inheritdoc />
     public async Task<Result<RequestPasswordResetResponse>> HandleAsync(RequestPasswordResetCommand request, CancellationToken cancellationToken = default)
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
         string partitionKey = $"password-reset:{request.Email?.Trim().ToLowerInvariant()}";
         if (!_rateLimiter.Acquire(partitionKey, _rateLimitOptions.PasswordReset).IsAllowed)
         {
@@ -69,6 +72,7 @@ public sealed class RequestPasswordResetCommandHandler : ICommandHandler<Request
         User? user = await _users.GetByEmailAsync(emailResult.Value, cancellationToken).ConfigureAwait(false);
         if (user is null)
         {
+            await NormalizeResponseTimeAsync(stopwatch, cancellationToken).ConfigureAwait(false);
             return Result.Success(new RequestPasswordResetResponse());
         }
 
@@ -87,6 +91,16 @@ public sealed class RequestPasswordResetCommandHandler : ICommandHandler<Request
         // Deliver out of band with the plaintext token; nothing secret is persisted.
         await _notifier.NotifyAsync(user.Email.Value, token, nowUtc.Add(ResetTokenLifetime), cancellationToken).ConfigureAwait(false);
 
+        await NormalizeResponseTimeAsync(stopwatch, cancellationToken).ConfigureAwait(false);
         return Result.Success(new RequestPasswordResetResponse());
+    }
+
+    private static async Task NormalizeResponseTimeAsync(Stopwatch stopwatch, CancellationToken cancellationToken)
+    {
+        TimeSpan remaining = MinimumResponseTime - stopwatch.Elapsed;
+        if (remaining > TimeSpan.Zero)
+        {
+            await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+        }
     }
 }

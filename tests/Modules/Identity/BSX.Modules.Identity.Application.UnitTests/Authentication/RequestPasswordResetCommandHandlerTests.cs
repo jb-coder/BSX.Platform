@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using BSX.Modules.Identity.Application.Abstractions;
 using BSX.Modules.Identity.Application.Authentication.RequestPasswordReset;
 using BSX.Modules.Identity.Application.UnitTests.Fakes;
@@ -48,6 +49,28 @@ public sealed class RequestPasswordResetCommandHandlerTests
         user.PasswordResetToken!.Hash.Value.Should().Be(_tokenHasher.Hash(plaintext).Value);
         user.PasswordResetToken.ExpiresOnUtc.Should().Be(TestData.Now.AddMinutes(30));
         _unitOfWork.SaveCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Should_NormalizeResponseTime_ForKnownAndUnknownAccounts()
+    {
+        SeedUser();
+
+        var knownWatch = Stopwatch.StartNew();
+        var known = await CreateHandler().HandleAsync(new RequestPasswordResetCommand("user@example.com"));
+        knownWatch.Stop();
+
+        var unknownWatch = Stopwatch.StartNew();
+        var unknown = await CreateHandler().HandleAsync(new RequestPasswordResetCommand("missing@example.com"));
+        unknownWatch.Stop();
+
+        known.IsSuccess.Should().BeTrue();
+        unknown.IsSuccess.Should().BeTrue();
+
+        // Both paths must be delayed by the same response floor. The lower bound is deliberately
+        // conservative so the assertion is stable on busy CI agents.
+        knownWatch.Elapsed.Should().BeGreaterThan(TimeSpan.FromMilliseconds(150));
+        unknownWatch.Elapsed.Should().BeGreaterThan(TimeSpan.FromMilliseconds(150));
     }
 
     [Fact]

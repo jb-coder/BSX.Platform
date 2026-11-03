@@ -116,6 +116,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         Status = UserStatus.Active;
         LockoutEndUtc = null;
         AccessFailedCount = 0;
+        InvalidatePasswordResetToken();
         RotateSecurityStamp();
         RaiseDomainEvent(new UserActivated(Id));
         return Result.Success();
@@ -130,6 +131,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         }
 
         Status = UserStatus.Disabled;
+        InvalidatePasswordResetToken();
         RotateSecurityStamp();
         RaiseDomainEvent(new UserDeactivated(Id));
         return Result.Success();
@@ -147,6 +149,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
 
         Status = UserStatus.Locked;
         LockoutEndUtc = untilUtc;
+        InvalidatePasswordResetToken();
         RotateSecurityStamp();
         RaiseDomainEvent(new UserLocked(Id, untilUtc));
         return Result.Success();
@@ -170,6 +173,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         Status = HasAnyCredential ? UserStatus.Active : UserStatus.Pending;
         LockoutEndUtc = null;
         AccessFailedCount = 0;
+        InvalidatePasswordResetToken();
         RotateSecurityStamp();
         RaiseDomainEvent(new UserUnlocked(Id));
         return Result.Success();
@@ -190,6 +194,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
             LockoutEndUtc = nowUtc.Add(duration);
             // A lockout invalidates every authentication artifact minted before it. Refresh tokens
             // and access tokens are rejected by the security-stamp and status checks.
+            InvalidatePasswordResetToken();
             RotateSecurityStamp();
             RaiseDomainEvent(new UserLocked(Id, LockoutEndUtc.Value));
         }
@@ -210,6 +215,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         }
 
         Email = newEmail;
+        InvalidatePasswordResetToken();
         RotateSecurityStamp();
         RaiseDomainEvent(new UserEmailChanged(Id, newEmail.Value));
         return Result.Success();
@@ -233,6 +239,9 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
     /// <param name="hash">The new password hash.</param>
     /// <param name="nowUtc">The current UTC time.</param>
     public Result SetPassword(PasswordHash hash, DateTimeOffset nowUtc)
+        => SetPasswordCore(hash, nowUtc, invalidatePasswordResetToken: true);
+
+    private Result SetPasswordCore(PasswordHash hash, DateTimeOffset nowUtc, bool invalidatePasswordResetToken)
     {
         PasswordCredential? existing = _credentials.OfType<PasswordCredential>().FirstOrDefault();
 
@@ -244,6 +253,11 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         else
         {
             existing.Update(hash);
+        }
+
+        if (invalidatePasswordResetToken)
+        {
+            InvalidatePasswordResetToken();
         }
 
         RotateSecurityStamp();
@@ -275,6 +289,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         }
 
         _credentials.Add(new ExternalProviderCredential(CredentialId.New(), provider, subjectId, nowUtc));
+        InvalidatePasswordResetToken();
         RaiseDomainEvent(new UserCredentialAdded(Id, CredentialType.ExternalProvider));
         return Result.Success();
     }
@@ -287,6 +302,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
     public Result AddPasskey(string credentialIdentifier, byte[] publicKey, string? name, DateTimeOffset nowUtc)
     {
         _credentials.Add(new WebAuthnCredential(CredentialId.New(), credentialIdentifier, publicKey, 0, name, nowUtc));
+        InvalidatePasswordResetToken();
         RaiseDomainEvent(new UserCredentialAdded(Id, CredentialType.WebAuthn));
         return Result.Success();
     }
@@ -306,6 +322,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         totp.MarkVerified(nowUtc);
         _credentials.Add(totp);
         _credentials.Add(new RecoveryCodeCredential(CredentialId.New(), recoveryCodes, nowUtc));
+        InvalidatePasswordResetToken();
         RaiseDomainEvent(new UserMfaEnabled(Id));
         return Result.Success();
     }
@@ -319,6 +336,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         }
 
         _credentials.RemoveAll(credential => credential.Type is CredentialType.Totp or CredentialType.RecoveryCodes);
+        InvalidatePasswordResetToken();
         RaiseDomainEvent(new UserMfaDisabled(Id));
         return Result.Success();
     }
@@ -354,6 +372,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         }
 
         _credentials.Remove(credential);
+        InvalidatePasswordResetToken();
         RotateSecurityStamp();
         RaiseDomainEvent(new UserCredentialRemoved(Id, credential.Type));
         return Result.Success();
@@ -377,6 +396,11 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
     /// <param name="nowUtc">The current UTC time.</param>
     public Result CompletePasswordReset(PasswordResetTokenHash providedHash, PasswordHash newHash, DateTimeOffset nowUtc)
     {
+        if (Status != UserStatus.Active)
+        {
+            return Result.Failure(IdentityErrors.PasswordResetTokenInvalid);
+        }
+
         if (PasswordResetToken is null)
         {
             return Result.Failure(IdentityErrors.PasswordResetTokenMissing);
@@ -391,7 +415,7 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
 
         PasswordResetToken.MarkUsed(nowUtc);
         RaiseDomainEvent(new UserPasswordResetCompleted(Id, PasswordResetToken.Id));
-        return SetPassword(newHash, nowUtc);
+        return SetPasswordCore(newHash, nowUtc, invalidatePasswordResetToken: false);
     }
 
     /// <summary>Assigns a platform (system) role to the user.</summary>
@@ -419,6 +443,8 @@ public sealed class User : AggregateRoot<UserId>, IPrincipal
         RaiseDomainEvent(new UserPlatformRoleRemoved(Id, roleId));
         return Result.Success();
     }
+
+    private void InvalidatePasswordResetToken() => PasswordResetToken = null;
 
     private void RotateSecurityStamp() => SecurityStamp = SecurityStamp.New();
 }

@@ -10,7 +10,7 @@ Status of the Identity, CRM and Sales modules after the Identity hardening
 | --- | --- | --- | --- |
 | D1 | Ephemeral JWT signing keys | **Resolved** | `JwtOptionsConfiguration` permits ephemeral keys only in Development and fails fast otherwise; startup validation added; rotation documented; tests added. |
 | D2 | No migration strategy | **Resolved** | Official out-of-band strategy documented; optional startup migration; schema readiness check (`identity-database-schema`) detects drift; tests added. |
-| D3 | Password reset is a silent no-op | **Resolved** | Customer-facing recovery flow added; SMTP delivery is configurable; incomplete delivery returns explicit `503`; token hashing, expiry, single-use, session revocation and enumeration safety tested. See [password recovery](../identity/password-recovery.md). |
+| D3 | Password reset is a silent no-op | **Resolved** | Customer-facing recovery flow added; SMTP delivery is queued and configurable; incomplete or insecure delivery fails closed; token hashing, expiry, single-use, security-state invalidation, session revocation and timing/enumeration protections are tested. See [password recovery](../identity/password-recovery.md). |
 | D4 | Deployment topology undocumented | **Resolved** | Single-instance, HA, rate-limiting and authentication deployment guides added. |
 | D5 | No CI pipeline | **Resolved** | `.github/workflows/ci.yml` with build/test/release jobs (warnings fail builds); pipeline documentation added. |
 | D6 | Health strategy not split | **Resolved** | Tagged liveness (`/health/live`) and readiness (`/health/ready`) checks; tests added. |
@@ -114,9 +114,10 @@ PostgreSQL parity (when Docker is available) and endpoint integration suites gre
 
 ## Remaining known limitations (accepted / deferred)
 
-- **Password-reset email delivery** is handled by the host SMTP adapter. It must be configured with
-  a verified sender and public base URL for pilot or production recovery; when incomplete, the
-  endpoint returns `503` by design. The adapter sends directly without durable outbox retry. See
+- **Password-reset email delivery** is handled by a queued host SMTP dispatcher. It must be configured
+  with a verified sender, HTTPS public base URL and SMTP TLS for pilot or production recovery; when
+  incomplete or insecure outside Development, startup fails or the endpoint returns `503` by design.
+  The in-process queue is not a durable outbox retry. See
   [password recovery](../identity/password-recovery.md).
 - **Rate limiting** is per-instance by default; implement `IDistributedRateLimitStore` (for example
   Redis) for strict cluster-wide limits in HA. CRM and Sales business endpoints are

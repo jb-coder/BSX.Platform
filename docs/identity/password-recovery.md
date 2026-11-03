@@ -39,6 +39,8 @@ errors.
 | Re-request | Replaces the previous token and invalidates it. |
 | Single use | Marked used on successful completion; replay is rejected. |
 | Expiry | Expired tokens are rejected. |
+| Security-state changes | Deactivation, activation, lockout, unlock, email change, password change, MFA and other credential changes invalidate the token. |
+| Recovery eligibility | Only an `Active` user can complete a reset; locked, disabled and pending users fail closed. |
 | Logging | The plaintext token is never logged or persisted outside the email delivery call. |
 | Reset completion | Rotates the user security stamp and revokes every active session. |
 
@@ -60,8 +62,10 @@ The host-level `SmtpPasswordResetNotifier` implements the existing
 - If delivery is not configured, `IsDeliveryEnabled` is false and the request endpoint returns
   `503` for every caller.
 
-The current adapter is a synchronous SMTP send from the request path. There is no outbox retry for
-password-reset email yet; a user can request another link if delivery fails.
+Email is queued in-process and sent by a background dispatcher, so SMTP latency is not part of the
+reset-request response. The request handler also applies a response-time floor to known and unknown
+valid-format accounts, preventing practical timing-based account enumeration. There is no durable
+outbox retry for password-reset email yet; a user can request another link if delivery fails.
 
 ### Configuration
 
@@ -104,7 +108,9 @@ Do not commit SMTP credentials or the production public URL. Supply both through
 secret/configuration path.
 
 `PublicBaseUrl` must be the externally reachable HTTPS origin. The reset link is not derived from
-the request host because the request may arrive through a proxy or API client.
+the request host because the request may arrive through a proxy or API client. Outside Development,
+startup fails if delivery is enabled with a non-HTTPS public URL or SMTP without TLS; Development
+may explicitly use local HTTP/SMTP for testing.
 
 ---
 
@@ -165,6 +171,10 @@ require an interactive circuit.
 - [x] Refresh tokens for revoked sessions fail closed.
 - [x] Antiforgery on both web forms.
 - [x] Request rate limiting per normalized email.
+- [x] Response-time normalization and queued delivery for practical timing-enumeration protection.
+- [x] Outstanding tokens invalidated by security-state and credential changes.
+- [x] Completion fails closed for non-active users.
+- [x] Production rejects HTTP reset URLs and SMTP without TLS.
 - [x] SMTP credentials supplied by secret/configuration, not source.
 
 ---
@@ -205,7 +215,8 @@ require an interactive circuit.
 
 ### Current limitations
 
-- Delivery is direct SMTP; there is no durable outbox retry for reset email yet.
+- Delivery is queued in-process to an SMTP dispatcher; there is no durable outbox retry for reset
+  email yet. A process restart can lose a queued email, in which case the user can request again.
 - There is no administrative “force reset” UI. A pilot operator should use the same self-service
   flow or the documented Identity application command path.
 - Reset requests are rate-limited per email; a per-IP limiter remains an operational hardening item.

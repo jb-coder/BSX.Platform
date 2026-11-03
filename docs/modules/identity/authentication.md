@@ -156,14 +156,18 @@ Follows [ADR-016](../../decisions/ADR-016-Password-Reset-Security-Strategy.md).
   `IPasswordResetNotifier` **out-of-band port** (never persisted, never logged, never in the
   Outbox). Responses are **enumeration-safe**: valid-format emails receive the same accepted
   response regardless of account existence.
-- The web host supplies an SMTP notifier. SMTP delivery is enabled only when the complete
-  `Identity:PasswordReset:Delivery` configuration is present; otherwise the request endpoint returns
-  an explicit `503` for every caller.
+- The web host queues reset email for background SMTP dispatch. Delivery is enabled only when the
+  complete `Identity:PasswordReset:Delivery` configuration is present; otherwise the request endpoint
+  returns an explicit `503` for every caller. Outside Development, HTTP reset URLs and SMTP without
+  TLS are rejected at startup.
 - `CompletePasswordResetCommand` (anonymous): hashes the presented token, finds the user by hash,
-  and completes the reset. The token is **single-use** and expires after **30 minutes**. A
-  successful reset rotates the security stamp and **revokes all sessions** (ADR-017).
-- Ports: `IPasswordResetTokenHasher` (SHA-256), `IPasswordResetNotifier` (host SMTP adapter or
-  disabled default).
+  and completes the reset. The token is **single-use** and expires after **30 minutes**. Only an
+  `Active` user is eligible. A successful reset rotates the security stamp and **revokes all
+  sessions** (ADR-017).
+- Outstanding tokens are invalidated by deactivation, activation, lockout, unlock, email change,
+  password change, MFA changes and other credential changes.
+- Ports: `IPasswordResetTokenHasher` (SHA-256), `IPasswordResetNotifier` (host queued SMTP notifier
+  or disabled default).
 - Rate limited per email via `RateLimitOptions.PasswordReset`.
 - Customer-facing routes: `/forgot-password`, `/reset-password`, `/auth/password-reset/request`,
   `/auth/password-reset/complete`. See [password recovery](../../identity/password-recovery.md).

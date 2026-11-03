@@ -37,10 +37,14 @@ Review before every production release. Each item should have an owner and evide
 
 ## Password reset
 
-- [ ] SMTP delivery is configured with a verified sender and public base URL, or the endpoint
-      returns `503` (never a silent success).
+- [ ] SMTP delivery is configured with a verified sender, HTTPS public base URL and SMTP TLS, or
+      the endpoint returns `503` (never a silent success).
 - [ ] Reset tokens are single-use, hashed at rest, and short-lived (30 minutes).
-- [ ] Reset completion rotates the security stamp and revokes all sessions.
+- [ ] Deactivation, activation, lockout, unlock, email/password/MFA/credential changes invalidate
+      outstanding reset tokens.
+- [ ] Reset completion fails closed for non-active users, rotates the security stamp and revokes all
+      sessions.
+- [ ] Request handling uses queued delivery and a response-time floor to avoid timing enumeration.
 - [ ] No reset token or recipient appears in application logs.
 
 ## Transport & host

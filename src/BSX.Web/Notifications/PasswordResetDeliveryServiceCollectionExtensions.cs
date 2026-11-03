@@ -12,18 +12,28 @@ public static class PasswordResetDeliveryServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
+    /// <param name="isDevelopment">Whether the host runs in the Development environment.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddWebPasswordResetDelivery(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool isDevelopment)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.Configure<PasswordResetDeliveryOptions>(
-            configuration.GetSection(PasswordResetDeliveryOptions.SectionName));
+        services.AddOptions<PasswordResetDeliveryOptions>()
+            .Bind(configuration.GetSection(PasswordResetDeliveryOptions.SectionName))
+            .Validate(
+                options => !options.Enabled || isDevelopment || options.IsTransportSecure,
+                "Password-reset delivery requires an HTTPS PublicBaseUrl and SMTP TLS outside Development.")
+            .ValidateOnStart();
+
+        services.TryAddSingleton<PasswordResetNotificationQueue>();
+        services.TryAddSingleton<SmtpPasswordResetEmailSender>();
         services.Replace(
-            ServiceDescriptor.Singleton<IPasswordResetNotifier, SmtpPasswordResetNotifier>());
+            ServiceDescriptor.Singleton<IPasswordResetNotifier, QueuedPasswordResetNotifier>());
+        services.AddHostedService<PasswordResetEmailDispatcher>();
 
         return services;
     }

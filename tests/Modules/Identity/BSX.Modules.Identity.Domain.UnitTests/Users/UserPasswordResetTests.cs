@@ -1,4 +1,5 @@
 using BSX.Modules.Identity.Domain.DomainEvents;
+using BSX.Modules.Identity.Domain.Enums;
 using BSX.Modules.Identity.Domain.Users;
 using BSX.Modules.Identity.Domain.ValueObjects;
 using BSX.SharedKernel.Results;
@@ -8,6 +9,17 @@ namespace BSX.Modules.Identity.Domain.UnitTests.Users;
 public sealed class UserPasswordResetTests
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
+
+    private static User CreateRequestedUser()
+    {
+        User user = TestData.CreateActiveUser();
+        user.RequestPasswordReset(
+            PasswordResetTokenId.New(),
+            PasswordResetTokenHash.From("hash-1"),
+            TestData.Now,
+            Lifetime);
+        return user;
+    }
 
     [Fact]
     public void Should_RequestReset_AndRaiseEvent()
@@ -72,6 +84,58 @@ public sealed class UserPasswordResetTests
 
         reuse.IsFailure.Should().BeTrue();
         reuse.Error.Code.Should().Be("Identity.User.PasswordResetTokenUsed");
+    }
+
+    [Fact]
+    public void Should_InvalidateToken_WhenUserDeactivated()
+    {
+        User user = CreateRequestedUser();
+
+        user.Deactivate().IsSuccess.Should().BeTrue();
+
+        user.PasswordResetToken.Should().BeNull();
+    }
+
+    [Fact]
+    public void Should_InvalidateToken_WhenEmailChanges()
+    {
+        User user = CreateRequestedUser();
+
+        user.ChangeEmail(Email.Create("changed@example.com").Value).IsSuccess.Should().BeTrue();
+
+        user.PasswordResetToken.Should().BeNull();
+    }
+
+    [Fact]
+    public void Should_InvalidateToken_WhenUserLocked()
+    {
+        User user = CreateRequestedUser();
+
+        user.Lock(TestData.Now.AddMinutes(15), TestData.Now).IsSuccess.Should().BeTrue();
+
+        user.PasswordResetToken.Should().BeNull();
+    }
+
+    [Fact]
+    public void Should_InvalidateToken_WhenPasswordChanges()
+    {
+        User user = CreateRequestedUser();
+
+        user.SetPassword(TestData.CreatePasswordHash("new-password"), TestData.Now.AddMinutes(1))
+            .IsSuccess.Should().BeTrue();
+
+        user.PasswordResetToken.Should().BeNull();
+    }
+
+    [Fact]
+    public void Should_InvalidateToken_WhenCredentialChanges()
+    {
+        User user = CreateRequestedUser();
+
+        user.AddExternalCredential(ExternalProvider.Microsoft, "provider-subject", TestData.Now)
+            .IsSuccess.Should().BeTrue();
+
+        user.PasswordResetToken.Should().BeNull();
     }
 
     [Fact]

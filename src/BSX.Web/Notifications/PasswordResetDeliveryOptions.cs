@@ -76,4 +76,13 @@ public sealed class PasswordResetDeliveryOptions
             }
         }
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the reset link and SMTP transport are both protected. This
+    /// is required outside Development; Development may explicitly use HTTP/local SMTP.
+    /// </summary>
+    public bool IsTransportSecure
+        => Uri.TryCreate(PublicBaseUrl, UriKind.Absolute, out Uri? baseUri)
+            && baseUri.Scheme == Uri.UriSchemeHttps
+            && UseStartTls;
 }

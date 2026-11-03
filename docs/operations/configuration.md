@@ -98,6 +98,9 @@ guidance.
   the demo credentials and seeded records are public. See
   [demo readiness](../demo/demo-readiness.md).
 - **HSTS / HTTPS redirection** are enabled by default. HSTS is emitted only outside Development.
+- **Password recovery transport.** Outside Development, startup rejects password-reset delivery when
+  `PublicBaseUrl` is not HTTPS or `UseStartTls` is false. Development may use local HTTP/SMTP for
+  testing.
 
 ## Environment variable mapping
 

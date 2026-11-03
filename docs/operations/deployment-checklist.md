@@ -48,8 +48,9 @@ Data Protection details.
 - [ ] `Sales:Database:VerifySchema=true` where the deployment owns the `sales` schema (recommended).
 - [ ] `Identity:Permissions:SynchronizeOnStartup` set for the topology (`true` seeds the system
       roles from module catalogs; requires the Identity schema to be present).
-- [ ] `Identity:PasswordReset:Delivery` is configured for customer recovery (SMTP relay, verified
-      sender, public HTTPS base URL), or the deployment explicitly accepts `503` reset requests.
+- [ ] `Identity:PasswordReset:Delivery` is configured for customer recovery (SMTP relay with TLS,
+      verified sender, public HTTPS base URL), or the deployment explicitly accepts `503` reset
+      requests. Outside Development, insecure transport is rejected at startup.
 - [ ] Liveness/readiness probe paths configured in the orchestrator.
 - [ ] The previous artifact is retained for rollback.
 

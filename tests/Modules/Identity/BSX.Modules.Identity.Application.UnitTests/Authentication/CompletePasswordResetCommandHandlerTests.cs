@@ -63,6 +63,20 @@ public sealed class CompletePasswordResetCommandHandlerTests
     }
 
     [Fact]
+    public async Task Should_FailClosed_WhenUserIsNoLongerEligibleForRecovery()
+    {
+        (Guid userId, string token) = await RequestAsync();
+        User user = _users.Users.Single(candidate => candidate.Id.Value == userId);
+        user.Deactivate().IsSuccess.Should().BeTrue();
+
+        var result = await CreateCompleteHandler().HandleAsync(
+            new CompletePasswordResetCommand(token, "NewPassw0rd!"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Identity.User.PasswordResetTokenInvalid");
+    }
+
+    [Fact]
     public async Task Should_Fail_WhenTokenUnknown()
     {
         await RequestAsync();

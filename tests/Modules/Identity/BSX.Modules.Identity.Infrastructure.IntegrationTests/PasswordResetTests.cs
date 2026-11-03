@@ -19,6 +19,7 @@ public sealed class PasswordResetTests
         var tokenHasher = new PasswordResetTokenHasher();
 
         User user = TestData.CreateUser("reset@example.com");
+        user.Activate(TestData.Now).IsSuccess.Should().BeTrue();
         await users.AddAsync(user);
         await unitOfWork.SaveChangesAsync();
 

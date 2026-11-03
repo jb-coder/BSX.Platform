@@ -1,6 +1,7 @@
 using BSX.BuildingBlocks.Cqrs;
 using BSX.BuildingBlocks.Persistence;
 using BSX.Modules.Identity.Application.Abstractions;
+using BSX.Modules.Identity.Domain.Enums;
 using BSX.Modules.Identity.Domain.Errors;
 using BSX.Modules.Identity.Domain.Sessions;
 using BSX.Modules.Identity.Domain.Users;
@@ -46,9 +47,10 @@ public sealed class CompletePasswordResetCommandHandler : ICommandHandler<Comple
         var providedHash = _tokenHasher.Hash(request.Token);
 
         User? user = await _users.FindByPasswordResetTokenAsync(providedHash, cancellationToken).ConfigureAwait(false);
-        if (user is null)
+        if (user is null || user.Status != UserStatus.Active)
         {
-            // Do not reveal whether the token exists.
+            // Do not reveal whether the token or account exists, or whether the account is locked
+            // or disabled. Only an active account is eligible for recovery.
             return Result.Failure(IdentityErrors.PasswordResetTokenInvalid);
         }
 

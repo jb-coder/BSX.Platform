@@ -2,53 +2,37 @@ using System.Net;
 using System.Net.Mail;
 using System.Net.Mime;
 using System.Text;
-using BSX.Modules.Identity.Application.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace BSX.Web.Notifications;
 
-/// <summary>
-/// SMTP implementation of the existing <see cref="IPasswordResetNotifier"/> port. It composes the
-/// reset link and email template without persisting or logging the plaintext token. Delivery
-/// failures are logged without recipient or token data and do not reveal whether an account exists.
-/// </summary>
-internal sealed class SmtpPasswordResetNotifier : IPasswordResetNotifier
+/// <summary>SMTP sender used by the background password-reset dispatcher.</summary>
+internal sealed class SmtpPasswordResetEmailSender
 {
     private readonly PasswordResetDeliveryOptions _options;
-    private readonly ILogger<SmtpPasswordResetNotifier> _logger;
+    private readonly ILogger<SmtpPasswordResetEmailSender> _logger;
 
-    /// <summary>Initializes a new instance of the <see cref="SmtpPasswordResetNotifier"/> class.</summary>
-    public SmtpPasswordResetNotifier(
+    /// <summary>Initializes a new instance of the <see cref="SmtpPasswordResetEmailSender"/> class.</summary>
+    public SmtpPasswordResetEmailSender(
         IOptions<PasswordResetDeliveryOptions> options,
-        ILogger<SmtpPasswordResetNotifier> logger)
+        ILogger<SmtpPasswordResetEmailSender> logger)
     {
         _options = options.Value;
         _logger = logger;
     }
 
-    /// <inheritdoc />
-    public bool IsDeliveryEnabled => _options.IsConfigured;
-
-    /// <inheritdoc />
-    public async Task NotifyAsync(
-        string email,
-        string resetToken,
-        DateTimeOffset expiresAtUtc,
-        CancellationToken cancellationToken = default)
+    /// <summary>Sends one reset email. Delivery failures are logged without recipient or token data.</summary>
+    public async Task SendAsync(PasswordResetNotification notification, CancellationToken cancellationToken)
     {
-        if (!IsDeliveryEnabled)
-        {
-            throw new InvalidOperationException(
-                "Password-reset delivery is not configured. The request handler must not invoke this notifier.");
-        }
+        ArgumentNullException.ThrowIfNull(notification);
 
         try
         {
             PasswordResetEmail content = PasswordResetEmailFactory.Create(
                 _options,
-                email,
-                resetToken,
-                expiresAtUtc);
+                notification.Email,
+                notification.Token,
+                notification.ExpiresAtUtc);
 
             using var message = new MailMessage
             {
@@ -60,7 +44,7 @@ internal sealed class SmtpPasswordResetNotifier : IPasswordResetNotifier
                 IsBodyHtml = true,
             };
 
-            message.To.Add(new MailAddress(email));
+            message.To.Add(new MailAddress(notification.Email));
             message.AlternateViews.Add(
                 AlternateView.CreateAlternateViewFromString(
                     content.TextBody,

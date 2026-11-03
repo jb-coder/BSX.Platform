@@ -9,12 +9,16 @@ token is delivered out of band. The complete customer flow is documented in
 The Identity module still owns the `IPasswordResetNotifier` port. The web host supplies an SMTP
 adapter through `AddWebPasswordResetDelivery`:
 
-- When the complete SMTP/public-URL configuration is present, reset email is sent.
+- When the complete SMTP/public-URL configuration is present, reset email is queued for background
+  delivery and sent by the SMTP dispatcher.
+- Queueing keeps SMTP latency out of the reset-request response. The request handler also applies a
+  fixed response-time floor to known and unknown accounts.
 - When delivery is not configured, `IsDeliveryEnabled == false` and the request endpoint returns
   **`503 Service Unavailable`** for every request (known and unknown accounts alike).
 - SMTP failures are logged without recipient or token data and do not create an account-existence
   signal.
 - The plaintext reset token is never persisted or logged; it appears only in the emailed link.
+- Outside Development, startup rejects an HTTP `PublicBaseUrl` or SMTP delivery with TLS disabled.
 
 ## Required Configuration
 
@@ -44,10 +48,14 @@ deployment secret store, never in committed files.
 
 ## Enumeration and Token Safety
 
-- Unknown and invalid-but-valid-format email addresses return the same accepted response.
+- Unknown and invalid-but-valid-format email addresses return the same accepted response and are
+  subject to the same response-time floor; SMTP is dispatched outside the request path.
 - When delivery is disabled, all requests return the same `503`.
 - Reset tokens are hashed, single-use and expire after 30 minutes.
 - Requesting a new link replaces and invalidates the previous token.
+- Deactivation, activation, lockout, unlock, email changes, password changes, MFA changes and other
+  credential changes invalidate an outstanding token.
+- Completion fails closed for locked, disabled and pending users.
 - The request path is rate-limited per normalized email (`Identity:RateLimiting:PasswordReset`).
 
 ## Reset Completion
@@ -66,9 +74,10 @@ The web adapter clears the current authentication and refresh cookies and redire
 
 ## Integrations
 
-The notifier remains replaceable. A future Notifications module can replace the SMTP adapter with a
-provider-backed implementation, or route reset delivery through a durable outbox. The request
-handler treats delivery failures as non-enumerating and does not expose provider errors to the user.
+The notifier remains replaceable. A future Notifications module can replace the SMTP dispatcher
+with a provider-backed implementation, or route reset delivery through a durable outbox. The current
+queue is in-process and is not durable across a restart. The request handler treats delivery
+failures as non-enumerating and does not expose provider errors to the user.
 
 ## Verification
 
