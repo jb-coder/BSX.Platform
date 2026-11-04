@@ -1,12 +1,15 @@
+using System.Security.Claims;
 using BSX.Modules.Crm.Contracts.Permissions;
 using BSX.Modules.Identity.Application.Common;
 using BSX.Modules.Sales.Contracts.Permissions;
+using BSX.Web.Authentication;
 
 namespace BSX.Web.Navigation;
 
 /// <summary>
-/// The single source of truth for application navigation. Items are filtered by permission before
-/// they reach the shell; the Inventory module is deliberately not visible in this foundation.
+/// The single source of truth for application navigation. Items are filtered by permission and by
+/// the active tenant before they reach the shell; the Inventory module is deliberately not visible
+/// in this foundation.
 /// </summary>
 public static class NavigationCatalog
 {
@@ -31,13 +34,15 @@ public static class NavigationCatalog
                 $"{AppRoot}/crm/customers",
                 CrmPermissionCodes.CustomersRead,
                 "Customer records, contacts and addresses.",
-                "customers"),
+                "customers",
+                RequiresTenant: true),
             new(
                 "Organizations",
                 $"{AppRoot}/crm/organizations",
                 CrmPermissionCodes.OrganizationsRead,
                 "Organizations and their billing details.",
-                "organizations"),
+                "organizations",
+                RequiresTenant: true),
         ]),
         new("Sales",
         [
@@ -46,13 +51,15 @@ public static class NavigationCatalog
                 $"{AppRoot}/sales/leads",
                 SalesPermissionCodes.LeadsRead,
                 "Incoming leads and qualification.",
-                "leads"),
+                "leads",
+                RequiresTenant: true),
             new(
                 "Opportunities",
                 $"{AppRoot}/sales/opportunities",
                 SalesPermissionCodes.OpportunitiesRead,
                 "Revenue opportunities and their lifecycle.",
-                "opportunities"),
+                "opportunities",
+                RequiresTenant: true),
         ]),
         new("Administration",
         [
@@ -67,13 +74,15 @@ public static class NavigationCatalog
                 $"{AppRoot}/admin/roles",
                 IdentityPermissionCodes.RolesRead,
                 "Roles and permission assignments.",
-                "roles"),
+                "roles",
+                RequiresTenant: true),
             new(
                 "Memberships",
                 $"{AppRoot}/admin/memberships",
                 IdentityPermissionCodes.MembershipsRead,
                 "Workspace members and invitations.",
-                "memberships"),
+                "memberships",
+                RequiresTenant: true),
             new(
                 "Sessions",
                 $"{AppRoot}/admin/sessions",
@@ -88,17 +97,22 @@ public static class NavigationCatalog
 
     /// <summary>Returns the sections the user may see, removing empty sections.</summary>
     /// <param name="permissions">The user's granted permissions.</param>
-    public static IReadOnlyList<NavigationSection> For(IReadOnlyCollection<string> permissions)
+    /// <param name="tenantId">The active tenant, or <see langword="null"/> when no workspace is selected.</param>
+    public static IReadOnlyList<NavigationSection> For(
+        IReadOnlyCollection<string> permissions,
+        Guid? tenantId)
     {
         ArgumentNullException.ThrowIfNull(permissions);
 
         var granted = new HashSet<string>(permissions, StringComparer.Ordinal);
+        bool hasTenant = HasActiveTenant(tenantId);
         var sections = new List<NavigationSection>();
 
         foreach (NavigationSection section in Sections)
         {
             NavigationItem[] visible = section.Items
-                .Where(item => item.Permission is null || granted.Contains(item.Permission))
+                .Where(item => (item.Permission is null || granted.Contains(item.Permission))
+                    && (!item.RequiresTenant || hasTenant))
                 .ToArray();
 
             if (visible.Length > 0)
@@ -112,9 +126,15 @@ public static class NavigationCatalog
 
     /// <summary>Finds the first destination a user can access.</summary>
     /// <param name="permissions">The user's granted permissions.</param>
-    public static string GetLandingRoute(IReadOnlyCollection<string> permissions)
-        => For(permissions).SelectMany(section => section.Items).FirstOrDefault()?.Href
+    /// <param name="tenantId">The active tenant, or <see langword="null"/> when no workspace is selected.</param>
+    public static string GetLandingRoute(IReadOnlyCollection<string> permissions, Guid? tenantId)
+        => For(permissions, tenantId).SelectMany(section => section.Items).FirstOrDefault()?.Href
             ?? $"{AppRoot}/admin/profile";
+
+    /// <summary>Whether the identifier represents an active tenant.</summary>
+    /// <param name="tenantId">The candidate tenant identifier.</param>
+    public static bool HasActiveTenant(Guid? tenantId)
+        => tenantId is { } value && value != Guid.Empty;
 
     /// <summary>Finds the navigation item for a path.</summary>
     /// <param name="path">The application-relative path.</param>
@@ -144,9 +164,20 @@ public static class NavigationCatalog
 
     /// <summary>Gets permissions from a principal's claims.</summary>
     /// <param name="principal">The authenticated principal.</param>
-    public static IReadOnlyCollection<string> PermissionsOf(System.Security.Claims.ClaimsPrincipal? principal)
-        => principal?.FindAll(BSX.Web.Authentication.WebAuthDefaults.PermissionClaim)
+    public static IReadOnlyCollection<string> PermissionsOf(ClaimsPrincipal? principal)
+        => principal?.FindAll(WebAuthDefaults.PermissionClaim)
             .Select(claim => claim.Value)
             .ToArray()
             ?? [];
+
+    /// <summary>Gets the active tenant from a principal's claims, treating an empty identifier as no tenant.</summary>
+    /// <param name="principal">The authenticated principal.</param>
+    public static Guid? TenantIdOf(ClaimsPrincipal? principal)
+    {
+        string? value = principal?.FindFirst(WebAuthDefaults.TenantIdClaim)?.Value;
+
+        return Guid.TryParse(value, out Guid tenantId) && tenantId != Guid.Empty
+            ? tenantId
+            : null;
+    }
 }

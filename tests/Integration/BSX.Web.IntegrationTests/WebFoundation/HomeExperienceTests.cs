@@ -71,6 +71,18 @@ public sealed class HomeExperienceTests
     }
 
     [Fact]
+    public void BuildSteps_ShouldHideTenantScopedSteps_WhenTheUserHasNoTenant()
+    {
+        var input = new GettingStartedInput(AllPermissions, 0, 0, 0, 1, null, HasTenant: false);
+
+        IReadOnlyList<GettingStartedStep> steps = HomeExperience.BuildSteps(input);
+
+        steps.Should().OnlyContain(step => !step.IsAvailable);
+        steps.Should().NotContain(step => step.IsNext);
+        HomeExperience.IsNewWorkspace(input).Should().BeFalse();
+    }
+
+    [Fact]
     public void BuildSteps_ShouldSendAnEmptyOpportunityStepBackToLeads()
     {
         var input = new GettingStartedInput(AllPermissions, 1, 1, 0, 1, null);

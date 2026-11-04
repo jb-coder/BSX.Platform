@@ -6,12 +6,14 @@ namespace BSX.Web.Navigation;
 /// <param name="Permission">The permission required to see the item, if any.</param>
 /// <param name="Description">A short description for the page subtitle.</param>
 /// <param name="Icon">The icon key used by the shell.</param>
+/// <param name="RequiresTenant">Whether the item is only available when the user has an active tenant.</param>
 public sealed record NavigationItem(
     string Label,
     string Href,
     string? Permission,
     string Description,
-    string Icon);
+    string Icon,
+    bool RequiresTenant = false);
 
 /// <summary>A navigation group.</summary>
 /// <param name="Label">The section label.</param>

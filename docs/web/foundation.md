@@ -91,7 +91,7 @@ No authentication rule is reimplemented in the web layer.
 
 1. The user opens `/login`.
 2. Credentials are verified through the Identity application.
-3. No memberships: the user signs in without a workspace and sees only self-service navigation.
+3. No memberships: the user signs in without a workspace and sees only platform-scoped navigation.
 4. One active membership: the workspace is selected automatically.
 5. Multiple active memberships: the user is redirected to `/select-tenant`.
 6. The selected workspace signs the user in with that active tenant.
@@ -147,7 +147,7 @@ See [password recovery](../identity/password-recovery.md).
 - `PermissionPolicyProvider` creates `Permission:<code>` policies on demand.
 - `PermissionAuthorizationHandler` checks the permission claim and fails closed.
 - Route attributes use permission policies for each business area.
-- `NavigationCatalog.For(permissions)` removes inaccessible items and empty sections.
+- `NavigationCatalog.For(permissions, tenantId)` removes inaccessible items, tenant-scoped items without an active tenant and empty sections.
 - `/app/admin/profile` and `/app/admin/sessions` require authentication only.
 - Inventory navigation is intentionally hidden.
 - Unauthenticated protected page requests are challenged to `/login` with a return URL.
@@ -161,36 +161,49 @@ See [password recovery](../identity/password-recovery.md).
 - Multi-tenant users receive a workspace chooser with an explicit active membership list.
 - The shell shows the current workspace in the header badge.
 - The tenant identifier is shown in shortened form in the badge and fully in the tooltip.
+- Users without an active membership sign in without a tenant and only see platform-scoped navigation.
 - Tenant creation, renaming, branding and switching without re-authentication are out of scope.
 
 ---
 
 ## Navigation Strategy
 
-The navigation catalog is the single source of truth:
+The navigation catalog is the single source of truth. Each item declares the permission it needs
+and whether it requires an active tenant:
 
 ```text
 Workspace
-  Home            /                        authenticated
+  Home            /                        authenticated                   platform
 
 CRM
-  Customers       /app/crm/customers       crm.customers.read
-  Organizations   /app/crm/organizations   crm.organizations.read
+  Customers       /app/crm/customers       crm.customers.read              tenant
+  Organizations   /app/crm/organizations   crm.organizations.read          tenant
 
 Sales
-  Leads           /app/sales/leads         sales.leads.read
-  Opportunities   /app/sales/opportunities sales.opportunities.read
+  Leads           /app/sales/leads         sales.leads.read                tenant
+  Opportunities   /app/sales/opportunities sales.opportunities.read        tenant
 
 Administration
-  Users           /app/admin/users         identity.users.read
-  Roles           /app/admin/roles         identity.roles.read
-  Memberships     /app/admin/memberships   identity.memberships.read
-  Sessions        /app/admin/sessions      authenticated
+  Users           /app/admin/users         identity.users.read             platform
+  Roles           /app/admin/roles         identity.roles.read             tenant
+  Memberships     /app/admin/memberships   identity.memberships.read       tenant
+  Sessions        /app/admin/sessions      authenticated                   platform
 ```
 
+`NavigationCatalog.For(permissions, tenantId)` removes items the user cannot see and sections with no
+visible items. An item marked `RequiresTenant` is only visible when `tenantId` is a non-empty GUID;
+both `null` and `Guid.Empty` mean "no active workspace". This keeps platform-only capabilities
+(Home, Users, Sessions and Profile) available while CRM, Sales, Roles and Memberships are hidden.
+
+The web shell reads permissions and tenant from the same authenticated principal through
+`NavigationCatalog.PermissionsOf` and `NavigationCatalog.TenantIdOf`. The first accessible destination
+is available through `NavigationCatalog.GetLandingRoute(permissions, tenantId)`.
+
+Without an active workspace the Home page shows an informational "no workspace assigned" notice and
+does not query or promote tenant-scoped data. It is not a workspace selector; `/select-tenant` is only
+used during sign-in when multiple memberships exist.
+
 Business routes live under `/app` so they cannot collide with the `/crm` and `/sales` APIs.
-Sections with no visible items are omitted. The first accessible destination is available through
-`NavigationCatalog.GetLandingRoute`.
 
 ---
 
