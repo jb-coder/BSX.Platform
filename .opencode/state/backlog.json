@@ -71,11 +71,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "pending",
-      "branch": null,
-      "attempts": 0,
+      "status": "designing",
+      "branch": "feature/eliminate-stale-dbcontext-circuit-writes",
+      "attempts": 1,
       "lastError": null,
-      "updatedAt": null
+      "updatedAt": "2026-11-04T18:44:09.9671163+01:00"
     },
     {
       "id": "TASK-004",
