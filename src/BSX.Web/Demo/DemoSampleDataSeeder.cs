@@ -1,7 +1,5 @@
 using System.Data.Common;
-using System.Security.Claims;
 using BSX.BuildingBlocks.Cqrs;
-using BSX.Contracts.Permissions;
 using BSX.Modules.Crm.Application.Addresses.AddAddress;
 using BSX.Modules.Crm.Application.Common;
 using BSX.Modules.Crm.Application.Contacts.AddContact;
@@ -11,6 +9,9 @@ using BSX.Modules.Crm.Application.Customers.ListCustomers;
 using BSX.Modules.Crm.Application.Dtos;
 using BSX.Modules.Crm.Application.Organizations.CreateOrganization;
 using BSX.Modules.Crm.Application.Organizations.ListOrganizations;
+using BSX.Modules.Identity.Application.Abstractions;
+using BSX.Modules.Identity.Application.Authentication.Login;
+using BSX.Modules.Identity.Application.Dtos;
 using BSX.Modules.Identity.Application.Users.ActivateUser;
 using BSX.Modules.Identity.Application.Users.RegisterUser;
 using BSX.Modules.Identity.Domain.Users;
@@ -66,7 +67,7 @@ internal static class DemoSampleDataSeeder
         var identity = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         var currentUser = scope.ServiceProvider.GetRequiredService<WebCurrentUser>();
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();
-        var catalog = scope.ServiceProvider.GetRequiredService<PermissionCatalog>();
+        var tokenValidator = scope.ServiceProvider.GetRequiredService<IAccessTokenValidator>();
         var timeProvider = scope.ServiceProvider.GetRequiredService<TimeProvider>();
 
         try
@@ -84,13 +85,43 @@ internal static class DemoSampleDataSeeder
                 return;
             }
 
-            currentUser.SetPrincipal(CreatePrincipal(administrator.Id.Value, catalog.Permissions.Select(item => item.Code)));
+            // Authenticate through the real login pipeline instead of fabricating claims. This
+            // persists a session whose identifier and permissions are then revalidated against the
+            // Identity store by the regular authorization behavior on every seeded command.
+            Result<AuthenticationTokensResponse> login = await sender
+                .SendAsync(new LoginCommand(
+                    DemoIdentitySeeder.Email,
+                    DemoIdentitySeeder.Password,
+                    DemoIdentitySeeder.TenantId,
+                    "BSX demo sample data seeder",
+                    IpAddress: null))
+                .ConfigureAwait(false);
 
+            if (login.IsFailure)
+            {
+                logger.LogError(
+                    "Demo sample data seeding skipped: the demo administrator could not sign in: {Error}.",
+                    login.Error.Code);
+                return;
+            }
+
+            if (!tokenValidator.TryValidate(login.Value.AccessToken, out ValidatedAccessToken token))
+            {
+                logger.LogError(
+                    "Demo sample data seeding skipped: the issued demo access token could not be validated.");
+                return;
+            }
+
+            currentUser.SetPrincipal(WebPrincipalFactory.Create(token));
+
+            var failures = new SeedFailureCollector();
             DateTimeOffset now = timeProvider.GetUtcNow();
+
+            var inviteeIds = new List<Guid?>(Invitees.Count);
 
             foreach (DemoUserSeed invitee in Invitees)
             {
-                await EnsureUserAsync(identity, sender, invitee, logger).ConfigureAwait(false);
+                inviteeIds.Add(await EnsureUserAsync(identity, sender, invitee, logger, failures).ConfigureAwait(false));
             }
 
             Guid? northwindGroup = await EnsureOrganizationAsync(
@@ -98,14 +129,16 @@ internal static class DemoSampleDataSeeder
                 "Northwind Group",
                 "US-91-1234567",
                 new AddressInput("400 Harbor Street", null, "Seattle", "WA", "98101", "US"),
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
             Guid? contosoHoldings = await EnsureOrganizationAsync(
                 sender,
                 "Contoso Holdings",
                 "US-91-7654321",
                 new AddressInput("1 Contoso Way", null, "Redmond", "WA", "98052", "US"),
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
             Guid? northwind = await EnsureCustomerAsync(
                 sender,
@@ -118,7 +151,8 @@ internal static class DemoSampleDataSeeder
                     "Dana Whitfield",
                     "dana.whitfield@northwind.example",
                     "+1 206 555 0101"),
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
             Guid? contoso = await EnsureCustomerAsync(
                 sender,
@@ -131,7 +165,8 @@ internal static class DemoSampleDataSeeder
                     "Mina Park",
                     "mina.park@contoso.example",
                     "+1 425 555 0144"),
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
             Guid? fabrikam = await EnsureCustomerAsync(
                 sender,
@@ -144,7 +179,8 @@ internal static class DemoSampleDataSeeder
                     "Owen Brooks",
                     "owen.brooks@fabrikam.example",
                     "+1 312 555 0188"),
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
             Guid? northwindLead = await EnsureLeadAsync(
                 sender,
@@ -152,15 +188,17 @@ internal static class DemoSampleDataSeeder
                 northwind,
                 northwindGroup,
                 "Renewal discussion with Dana Whitfield. Procurement is aligned on a three-year term.",
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
-            await EnsureLeadAsync(
+            Guid? contosoLead = await EnsureLeadAsync(
                 sender,
                 "Contoso analytics workshop",
                 contoso,
                 contosoHoldings,
                 "Inbound request for a two-day analytics workshop for the operations team.",
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
             Guid? fabrikamLead = await EnsureLeadAsync(
                 sender,
@@ -168,7 +206,8 @@ internal static class DemoSampleDataSeeder
                 fabrikam,
                 organizationId: null,
                 "Discovery call confirmed the expansion timeline and budget range.",
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
             Guid? tailspinLead = await EnsureLeadAsync(
                 sender,
@@ -176,13 +215,14 @@ internal static class DemoSampleDataSeeder
                 customerId: null,
                 organizationId: null,
                 "Unlinked prospect from the website. Confirm the company and primary contact next.",
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
-            await EnsureLeadStatusAsync(sender, northwindLead, "Qualified", logger).ConfigureAwait(false);
-            await EnsureLeadStatusAsync(sender, fabrikamLead, "Qualified", logger).ConfigureAwait(false);
-            await EnsureLeadStatusAsync(sender, tailspinLead, "Contacted", logger).ConfigureAwait(false);
+            await EnsureLeadStatusAsync(sender, northwindLead, "Qualified", logger, failures).ConfigureAwait(false);
+            await EnsureLeadStatusAsync(sender, fabrikamLead, "Qualified", logger, failures).ConfigureAwait(false);
+            await EnsureLeadStatusAsync(sender, tailspinLead, "Contacted", logger, failures).ConfigureAwait(false);
 
-            await EnsureOpportunityAsync(
+            Guid? northwindOpportunity = await EnsureOpportunityAsync(
                 sender,
                 northwindLead,
                 northwind,
@@ -191,9 +231,10 @@ internal static class DemoSampleDataSeeder
                 probability: 45,
                 now.AddDays(45),
                 stageAdvances: 0,
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
-            await EnsureOpportunityAsync(
+            Guid? fabrikamOpportunity = await EnsureOpportunityAsync(
                 sender,
                 fabrikamLead,
                 fabrikam,
@@ -202,12 +243,42 @@ internal static class DemoSampleDataSeeder
                 probability: 60,
                 now.AddDays(75),
                 stageAdvances: 2,
-                logger).ConfigureAwait(false);
+                logger,
+                failures).ConfigureAwait(false);
 
-            logger.LogInformation(
-                "Demo sample data is ready for tenant {TenantId}: 3 customers, 4 leads, 2 opportunities and {InviteeCount} invite-ready users.",
-                DemoIdentitySeeder.TenantId,
-                Invitees.Count);
+            var problems = new List<string>(failures.Failures);
+
+            AddMissing(problems, northwindGroup, "organization 'Northwind Group'");
+            AddMissing(problems, contosoHoldings, "organization 'Contoso Holdings'");
+            AddMissing(problems, northwind, "customer 'Northwind Traders'");
+            AddMissing(problems, contoso, "customer 'Contoso Ltd'");
+            AddMissing(problems, fabrikam, "customer 'Fabrikam'");
+            AddMissing(problems, northwindLead, "lead 'Northwind annual services renewal'");
+            AddMissing(problems, contosoLead, "lead 'Contoso analytics workshop'");
+            AddMissing(problems, fabrikamLead, "lead 'Fabrikam warehouse expansion'");
+            AddMissing(problems, tailspinLead, "lead 'Tailspin onboarding project'");
+            AddMissing(problems, northwindOpportunity, "opportunity 'Northwind annual services renewal'");
+            AddMissing(problems, fabrikamOpportunity, "opportunity 'Fabrikam warehouse expansion'");
+
+            for (int index = 0; index < inviteeIds.Count; index++)
+            {
+                AddMissing(problems, inviteeIds[index], $"invite-ready user '{Invitees[index].Email}'");
+            }
+
+            if (problems.Count == 0)
+            {
+                logger.LogInformation(
+                    "Demo sample data is ready for tenant {TenantId}: 3 customers, 4 leads, 2 opportunities and {InviteeCount} invite-ready users.",
+                    DemoIdentitySeeder.TenantId,
+                    Invitees.Count);
+            }
+            else
+            {
+                logger.LogError(
+                    "Demo sample data seeding did not complete: {ProblemCount} problem(s). {Problems}",
+                    problems.Count,
+                    string.Join(" | ", problems));
+            }
         }
         catch (Exception exception) when (exception is DbException or InvalidOperationException)
         {
@@ -217,32 +288,20 @@ internal static class DemoSampleDataSeeder
         }
     }
 
-    private static ClaimsPrincipal CreatePrincipal(Guid userId, IEnumerable<string> permissions)
+    private static void AddMissing(List<string> problems, Guid? id, string description)
     {
-        var claims = new List<Claim>
+        if (id is null)
         {
-            new(WebAuthDefaults.UserIdClaim, userId.ToString()),
-            new(WebAuthDefaults.EmailClaim, DemoIdentitySeeder.Email),
-            new(WebAuthDefaults.NameClaim, "Demo Administrator"),
-            new(WebAuthDefaults.TenantIdClaim, DemoIdentitySeeder.TenantId.ToString()),
-        };
-
-        claims.AddRange(permissions.Select(permission => new Claim(WebAuthDefaults.PermissionClaim, permission)));
-
-        var identity = new ClaimsIdentity(
-            claims,
-            authenticationType: WebAuthDefaults.CookieScheme,
-            nameType: WebAuthDefaults.NameClaim,
-            roleType: ClaimTypes.Role);
-
-        return new ClaimsPrincipal(identity);
+            problems.Add($"{description} was not created.");
+        }
     }
 
     private static async Task<Guid?> EnsureUserAsync(
         IdentityDbContext identity,
         ISender sender,
         DemoUserSeed seed,
-        ILogger logger)
+        ILogger logger,
+        SeedFailureCollector failures)
     {
         User? existing = await identity.Users
             .FirstOrDefaultAsync(candidate => EF.Property<string>(candidate, "SearchEmail") == seed.Email)
@@ -258,6 +317,7 @@ internal static class DemoSampleDataSeeder
 
         if (registered.IsFailure)
         {
+            failures.Add($"user '{seed.Email}' registration", registered.Error);
             logger.LogWarning(
                 "Demo user {Email} could not be created: {Error}.",
                 seed.Email,
@@ -265,18 +325,21 @@ internal static class DemoSampleDataSeeder
             return null;
         }
 
+        Guid userId = registered.Value.UserId;
+
         Result activated = await sender.SendAsync(
-            new ActivateUserCommand(registered.Value.UserId)).ConfigureAwait(false);
+            new ActivateUserCommand(userId)).ConfigureAwait(false);
 
         if (activated.IsFailure)
         {
+            failures.Add($"user '{seed.Email}' activation", activated.Error);
             logger.LogWarning(
                 "Demo user {Email} was created but could not be activated: {Error}.",
                 seed.Email,
                 activated.Error.Code);
         }
 
-        return registered.Value.UserId;
+        return userId;
     }
 
     private static async Task<Guid?> EnsureOrganizationAsync(
@@ -284,10 +347,16 @@ internal static class DemoSampleDataSeeder
         string name,
         string taxIdentifier,
         AddressInput address,
-        ILogger logger)
+        ILogger logger,
+        SeedFailureCollector failures)
     {
         var existing = await sender.SendAsync(
             new ListOrganizationsQuery(1, 10, name)).ConfigureAwait(false);
+
+        if (existing.IsFailure)
+        {
+            failures.Add($"organization lookup '{name}'", existing.Error);
+        }
 
         OrganizationDto? match = existing.IsSuccess
             ? existing.Value.Items.FirstOrDefault(item =>
@@ -307,6 +376,7 @@ internal static class DemoSampleDataSeeder
             return created.Value;
         }
 
+        failures.Add($"organization '{name}' creation", created.Error);
         logger.LogWarning(
             "Demo organization {Name} could not be created: {Error}.",
             name,
@@ -318,10 +388,16 @@ internal static class DemoSampleDataSeeder
     private static async Task<Guid?> EnsureCustomerAsync(
         ISender sender,
         DemoCustomerSeed seed,
-        ILogger logger)
+        ILogger logger,
+        SeedFailureCollector failures)
     {
         var existing = await sender.SendAsync(
             new ListCustomersQuery(1, 10, seed.Code)).ConfigureAwait(false);
+
+        if (existing.IsFailure)
+        {
+            failures.Add($"customer lookup '{seed.Code}'", existing.Error);
+        }
 
         CustomerSummaryDto? match = existing.IsSuccess
             ? existing.Value.Items.FirstOrDefault(item =>
@@ -338,6 +414,7 @@ internal static class DemoSampleDataSeeder
 
         if (created.IsFailure)
         {
+            failures.Add($"customer '{seed.Code}' creation", created.Error);
             logger.LogWarning(
                 "Demo customer {Code} could not be created: {Error}.",
                 seed.Code,
@@ -349,20 +426,47 @@ internal static class DemoSampleDataSeeder
 
         if (seed.OrganizationId is { } organizationId)
         {
-            await sender.SendAsync(new AssignOrganizationCommand(customerId, organizationId))
+            Result assigned = await sender.SendAsync(new AssignOrganizationCommand(customerId, organizationId))
                 .ConfigureAwait(false);
+
+            if (assigned.IsFailure)
+            {
+                failures.Add($"customer '{seed.Code}' organization assignment", assigned.Error);
+                logger.LogWarning(
+                    "Demo customer {Code} could not be assigned to its organization: {Error}.",
+                    seed.Code,
+                    assigned.Error.Code);
+            }
         }
 
-        await sender.SendAsync(new AddAddressCommand(customerId, seed.Address, CrmAddressType.Billing))
-            .ConfigureAwait(false);
+        Result addressed = await sender.SendAsync(
+            new AddAddressCommand(customerId, seed.Address, CrmAddressType.Billing)).ConfigureAwait(false);
 
-        await sender.SendAsync(
+        if (addressed.IsFailure)
+        {
+            failures.Add($"customer '{seed.Code}' billing address", addressed.Error);
+            logger.LogWarning(
+                "Demo customer {Code} billing address could not be added: {Error}.",
+                seed.Code,
+                addressed.Error.Code);
+        }
+
+        Result contact = await sender.SendAsync(
             new AddContactCommand(
                 customerId,
                 seed.ContactName,
                 seed.ContactEmail,
                 seed.ContactPhone,
                 IsPrimary: true)).ConfigureAwait(false);
+
+        if (contact.IsFailure)
+        {
+            failures.Add($"customer '{seed.Code}' primary contact", contact.Error);
+            logger.LogWarning(
+                "Demo customer {Code} primary contact could not be added: {Error}.",
+                seed.Code,
+                contact.Error.Code);
+        }
 
         return customerId;
     }
@@ -373,10 +477,16 @@ internal static class DemoSampleDataSeeder
         Guid? customerId,
         Guid? organizationId,
         string notes,
-        ILogger logger)
+        ILogger logger,
+        SeedFailureCollector failures)
     {
         var existing = await sender.SendAsync(
             new ListLeadsQuery(1, 10, title)).ConfigureAwait(false);
+
+        if (existing.IsFailure)
+        {
+            failures.Add($"lead lookup '{title}'", existing.Error);
+        }
 
         LeadSummaryDto? match = existing.IsSuccess
             ? existing.Value.Items.FirstOrDefault(item =>
@@ -396,6 +506,7 @@ internal static class DemoSampleDataSeeder
             return created.Value;
         }
 
+        failures.Add($"lead '{title}' creation", created.Error);
         logger.LogWarning(
             "Demo lead {Title} could not be created: {Error}.",
             title,
@@ -408,10 +519,14 @@ internal static class DemoSampleDataSeeder
         ISender sender,
         Guid? leadId,
         string targetStatus,
-        ILogger logger)
+        ILogger logger,
+        SeedFailureCollector failures)
     {
         if (leadId is null)
         {
+            failures.Add($"lead status '{targetStatus}'", Error.Failure(
+                "Demo.Seeding.LeadMissing",
+                "The lead required for the status transition was not created."));
             return;
         }
 
@@ -419,6 +534,7 @@ internal static class DemoSampleDataSeeder
 
         if (leadResult.IsFailure)
         {
+            failures.Add($"lead status lookup '{targetStatus}'", leadResult.Error);
             return;
         }
 
@@ -437,6 +553,7 @@ internal static class DemoSampleDataSeeder
             Result contacted = await sender.SendAsync(new MarkLeadContactedCommand(lead.Id)).ConfigureAwait(false);
             if (contacted.IsFailure)
             {
+                failures.Add($"lead '{lead.Title}' mark contacted", contacted.Error);
                 logger.LogWarning(
                     "Demo lead {Title} could not be marked contacted: {Error}.",
                     lead.Title,
@@ -453,11 +570,24 @@ internal static class DemoSampleDataSeeder
             Result qualified = await sender.SendAsync(new QualifyLeadCommand(lead.Id)).ConfigureAwait(false);
             if (qualified.IsFailure)
             {
+                failures.Add($"lead '{lead.Title}' qualification", qualified.Error);
                 logger.LogWarning(
                     "Demo lead {Title} could not be qualified: {Error}.",
                     lead.Title,
                     qualified.Error.Code);
+                return;
             }
+
+            status = "Qualified";
+        }
+
+        if (!string.Equals(status, targetStatus, StringComparison.Ordinal))
+        {
+            failures.Add(
+                $"lead '{lead.Title}' status",
+                Error.Failure(
+                    "Demo.Seeding.LeadStatusNotReached",
+                    $"Expected status '{targetStatus}' but the lead is '{status}'."));
         }
     }
 
@@ -470,15 +600,24 @@ internal static class DemoSampleDataSeeder
         int probability,
         DateTimeOffset expectedClose,
         int stageAdvances,
-        ILogger logger)
+        ILogger logger,
+        SeedFailureCollector failures)
     {
         if (leadId is null || customerId is null)
         {
+            failures.Add($"opportunity '{title}'", Error.Failure(
+                "Demo.Seeding.OpportunityReferenceMissing",
+                "The lead or customer required for the opportunity was not created."));
             return null;
         }
 
         var existing = await sender.SendAsync(
             new ListOpportunitiesQuery(1, 10, title)).ConfigureAwait(false);
+
+        if (existing.IsFailure)
+        {
+            failures.Add($"opportunity lookup '{title}'", existing.Error);
+        }
 
         OpportunitySummaryDto? match = existing.IsSuccess
             ? existing.Value.Items.FirstOrDefault(item =>
@@ -504,6 +643,7 @@ internal static class DemoSampleDataSeeder
 
         if (created.IsFailure)
         {
+            failures.Add($"opportunity '{title}' creation", created.Error);
             logger.LogWarning(
                 "Demo opportunity {Title} could not be created: {Error}.",
                 title,
@@ -511,12 +651,25 @@ internal static class DemoSampleDataSeeder
             return null;
         }
 
+        Guid opportunityId = created.Value;
+
         for (int index = 0; index < stageAdvances; index++)
         {
-            await sender.SendAsync(new AdvanceOpportunityStageCommand(created.Value)).ConfigureAwait(false);
+            Result advanced = await sender
+                .SendAsync(new AdvanceOpportunityStageCommand(opportunityId))
+                .ConfigureAwait(false);
+
+            if (advanced.IsFailure)
+            {
+                failures.Add($"opportunity '{title}' stage advance {index + 1}", advanced.Error);
+                logger.LogWarning(
+                    "Demo opportunity {Title} could not advance to the next stage: {Error}.",
+                    title,
+                    advanced.Error.Code);
+            }
         }
 
-        return created.Value;
+        return opportunityId;
     }
 
     /// <summary>A seeded user that is ready to be invited to the workspace.</summary>
@@ -533,4 +686,17 @@ internal static class DemoSampleDataSeeder
         string ContactName,
         string ContactEmail,
         string ContactPhone);
+
+    private sealed class SeedFailureCollector
+    {
+        private readonly List<string> _failures = [];
+
+        public IReadOnlyList<string> Failures => _failures;
+
+        public void Add(string operation, Error error)
+        {
+            ArgumentNullException.ThrowIfNull(error);
+            _failures.Add($"{operation}: {error.Code}");
+        }
+    }
 }
