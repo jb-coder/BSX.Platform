@@ -23,7 +23,9 @@ public static class IdentityResults
     public static IResult FromCreated<TValue>(Result<TValue> result)
         => result.IsSuccess ? TypedResults.Created(string.Empty, result.Value) : Problem(result.Error);
 
-    private static IResult Problem(Error error)
+    /// <summary>Maps an Identity error to an RFC 9457 problem response.</summary>
+    /// <param name="error">The error.</param>
+    public static IResult Problem(Error error)
     {
         int statusCode = error.Type switch
         {
