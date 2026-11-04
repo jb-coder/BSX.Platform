@@ -38,6 +38,19 @@ else if (_role.IsSystem)
         <Actions><a class="button button-secondary" href="@($"/app/admin/roles/{_role.Id}")">Back to role</a></Actions>
     </PageHeader>
 }
+else if (_catalogError is not null)
+{
+    <PageHeader Title="@($"Permissions · {_role.Name}")"
+                Subtitle="Choose the capabilities granted by this workspace role.">
+        <Actions><a class="button button-secondary" href="@($"/app/admin/roles/{_role.Id}")">Cancel</a></Actions>
+    </PageHeader>
+
+    <div class="content-medium">
+        <Card>
+            <ErrorState Title="Permissions could not be loaded" Message="@_catalogError" />
+        </Card>
+    </div>
+}
 else
 {
     <PageHeader Title="@($"Permissions · {_role.Name}")"
@@ -75,7 +88,7 @@ else
                                 @bind-Selected="SelectedPermissions" />
 
             <div class="form-actions">
-                <button type="button" class="button button-primary" disabled="@_saving" @onclick="SaveAsync">
+                <button type="button" class="button button-primary" disabled="@(_saving || _catalogError is not null)" @onclick="SaveAsync">
                     @(_saving ? "Saving..." : "Save permissions")
                 </button>
                 <a class="button button-secondary" href="@($"/app/admin/roles/{_role.Id}")">Cancel</a>
@@ -88,6 +101,7 @@ else
     private RoleDto? _role;
     private IReadOnlyList<PermissionDto> _catalog = [];
     private string? _error;
+    private string? _catalogError;
     private bool _loading = true;
     private bool _saving;
     private bool _conflict;
@@ -123,7 +137,7 @@ else
 
         if (catalog.IsFailure)
         {
-            _error = IdentityMessages.For(catalog.Error);
+            _catalogError = IdentityMessages.For(catalog.Error);
             return;
         }
 
@@ -144,7 +158,7 @@ else
 
     private async Task SaveAsync()
     {
-        if (_saving || _role is null)
+        if (_saving || _role is null || _catalogError is not null)
         {
             return;
         }

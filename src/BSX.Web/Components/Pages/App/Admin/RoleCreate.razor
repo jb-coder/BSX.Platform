@@ -36,6 +36,10 @@
         {
             <LoadingState Label="Loading permissions..." />
         }
+        else if (_catalogError is not null)
+        {
+            <ErrorState Title="Permissions could not be loaded" Message="@_catalogError" />
+        }
         else
         {
             <EditForm Model="Form" OnValidSubmit="CreateAsync">
@@ -58,7 +62,7 @@
                                     @bind-Selected="Form.Permissions" />
 
                 <div class="form-actions">
-                    <button type="submit" class="button button-primary" disabled="@_saving">
+                    <button type="submit" class="button button-primary" disabled="@(_saving || _catalogError is not null)">
                         @(_saving ? "Creating..." : "Create role")
                     </button>
                     <a class="button button-secondary" href="/app/admin/roles">Cancel</a>
@@ -70,6 +74,7 @@
 
 @code {
     private string? _error;
+    private string? _catalogError;
     private bool _loading = true;
     private bool _saving;
 
@@ -86,7 +91,7 @@
 
         if (permissions.IsFailure)
         {
-            _error = IdentityMessages.For(permissions.Error);
+            _catalogError = IdentityMessages.For(permissions.Error);
             return;
         }
 
@@ -95,7 +100,7 @@
 
     private async Task CreateAsync()
     {
-        if (_saving || CurrentUser.TenantId is not { } tenantId)
+        if (_saving || _catalogError is not null || CurrentUser.TenantId is not { } tenantId)
         {
             return;
         }
