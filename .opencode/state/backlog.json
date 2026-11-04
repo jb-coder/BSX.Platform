@@ -117,11 +117,11 @@
       "priority": "high",
       "risk": "low",
       "requiresHumanApproval": false,
-      "status": "designing",
+      "status": "done",
       "branch": "feature/hide-tenant-navigation-without-tenant",
       "attempts": 1,
       "lastError": null,
-      "updatedAt": "2026-11-04T20:07:20.9011814+01:00"
+      "updatedAt": "2026-11-04T20:25:57.8272916+01:00"
     },
     {
       "id": "TASK-006",
