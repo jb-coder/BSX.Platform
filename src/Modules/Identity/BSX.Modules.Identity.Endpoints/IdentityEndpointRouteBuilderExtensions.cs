@@ -32,7 +32,9 @@ public static class IdentityEndpointRouteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        RouteGroupBuilder group = endpoints.MapGroup("/identity").WithTags("Identity");
+        RouteGroupBuilder group = endpoints.MapGroup("/identity")
+            .WithTags("Identity")
+            .AddEndpointFilter<IdentityConcurrencyConflictFilter>();
 
         MapAuthentication(group);
         MapSessions(group);
