@@ -94,11 +94,11 @@
       "priority": "high",
       "risk": "low",
       "requiresHumanApproval": false,
-      "status": "pending",
-      "branch": null,
-      "attempts": 0,
+      "status": "designing",
+      "branch": "feature/map-identity-concurrency-conflicts-409",
+      "attempts": 1,
       "lastError": null,
-      "updatedAt": null
+      "updatedAt": "2026-11-04T19:42:21.4091810+01:00"
     },
     {
       "id": "TASK-005",
