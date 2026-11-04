@@ -1,0 +1,1236 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Prevent RolePermissions from saving an empty permission set on catalog failure",
+      "acceptanceCriteria": [
+        "The role permission form is not rendered as editable until both the role and the permission catalog load successfully.",
+        "If the catalog query fails, Save is disabled or absent and no SetRolePermissions command can be sent.",
+        "The page shows a clear error message and does not clear or replace the existing role permissions.",
+        "RoleCreate applies the same guard when the catalog fails.",
+        "A component test simulates catalog failure and asserts that no command is dispatched."
+      ],
+      "context": [
+        "src/BSX.Web/Components/Pages/App/Admin/RolePermissions.razor:108-157",
+        "src/BSX.Web/Components/Pages/App/Admin/RoleCreate.razor:84-94",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Roles/SetRolePermissions/SetRolePermissionsCommandValidator.cs:11-13",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Permissions/ListPermissions/ListPermissionsQuery.cs:8"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-002",
+      "title": "Fix demo sample-data seeding so it satisfies authorization revalidation",
+      "acceptanceCriteria": [
+        "Demo seeding executes through a trusted system path that bypasses authorization revalidation, or creates a real persisted session and sets its session id.",
+        "The seeder tracks per-record failures and reports success only when the expected CRM and Sales records exist.",
+        "An integration test enables demo seeding and asserts that the expected records are created.",
+        "Behavior is unchanged when demo seeding flags are disabled."
+      ],
+      "context": [
+        "src/BSX.Web/Demo/DemoSampleDataSeeder.cs:87",
+        "src/BSX.Web/Demo/DemoSampleDataSeeder.cs:207-239",
+        "src/BSX.Web/Authentication/WebAuthorizationRevalidator.cs:35-40",
+        "src/BSX.Web/Authentication/WebAuthenticationExtensions.cs:84-87",
+        "src/BSX.Web/Program.cs:151-152"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-003",
+      "title": "Eliminate stale DbContext state across Blazor circuit writes",
+      "acceptanceCriteria": [
+        "CRM, Sales and Home write operations use a per-operation scope or equivalent so failed changes are not retained in circuit-scoped DbContexts.",
+        "TransactionBehavior clears or detaches tracked changes on rollback or exception.",
+        "A regression test sends a command that mutates then fails, followed by a successful command in the same scope, and asserts the failed change is not persisted.",
+        "Existing AdministrationDispatcher tests continue to pass."
+      ],
+      "context": [
+        "src/BSX.Web/Administration/AdministrationDispatcher.cs:8-43",
+        "src/BSX.BuildingBlocks/Behaviors/TransactionBehavior.cs:43-57",
+        "src/BSX.BuildingBlocks/Persistence/CompositeUnitOfWork.cs:43-107",
+        "src/BSX.Web/Components/Pages/App/Crm/CustomerEdit.razor:124",
+        "src/BSX.Web/Components/Pages/App/Sales/OpportunityEdit.razor:163",
+        "src/BSX.Web/Components/Pages/App/Home.razor:202-258"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-004",
+      "title": "Map Identity HTTP concurrency conflicts to the platform 409 contract",
+      "acceptanceCriteria": [
+        "Identity endpoints return HTTP 409 with the same ProblemDetails shape used by CRM and Sales when a ConcurrencyConflictException is raised.",
+        "An integration test forces an Identity concurrency conflict at the HTTP layer and asserts the 409 contract.",
+        "CRM and Sales behavior is unchanged."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Endpoints/IdentityEndpointRouteBuilderExtensions.cs:35-42",
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Persistence/IdentityUnitOfWork.cs:32-41",
+        "src/Modules/Crm/BSX.Modules.Crm.Endpoints/CrmConcurrencyConflictFilter.cs:22-42",
+        "src/Modules/Sales/BSX.Modules.Sales.Endpoints/SalesConcurrencyConflictFilter.cs:22-42"
+      ],
+      "priority": "high",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-005",
+      "title": "Hide tenant-scoped navigation when the user has no active tenant",
+      "acceptanceCriteria": [
+        "CRM, Sales and tenant-administration navigation items are hidden or replaced by a workspace-selection prompt when WebCurrentUser.TenantId is null.",
+        "Platform-only pages remain accessible to users without a tenant.",
+        "Tests cover a platform-only user, a tenant user and a user whose platform role carries tenant-scoped permissions."
+      ],
+      "context": [
+        "src/BSX.Web/Navigation/NavigationCatalog.cs:27-117",
+        "src/BSX.Web/Components/Pages/App/Home.razor:175-179",
+        "src/BSX.Web/Authentication/WebCurrentUser.cs:30-32",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Common/IdentityPermissionCodes.cs"
+      ],
+      "priority": "high",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-006",
+      "title": "Make write-only custom roles usable or fail gracefully",
+      "acceptanceCriteria": [
+        "Pages that require a write permission do not attempt to load data guarded by a separate read permission without handling the denial.",
+        "After a successful create or update, the user is redirected to a page they can actually open, or the result is shown in place.",
+        "The solution either enforces write-implies-read for tenant resources or provides explicit graceful-degradation behavior.",
+        "Tests cover create-only and update-only roles across CRM, Sales and Identity."
+      ],
+      "context": [
+        "src/BSX.Web/Components/Pages/App/Crm/CustomerEdit.razor:2,124,134",
+        "src/BSX.Web/Components/Pages/App/Sales/LeadEdit.razor:2,105",
+        "src/BSX.Web/Components/Pages/App/Sales/OpportunityEdit.razor:2,126",
+        "src/BSX.Web/Components/Pages/App/Admin/RolePermissions.razor:2,108-109",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Roles/CreateRole/CreateRoleCommandHandler.cs:65"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-007",
+      "title": "Unify API error responses with ProblemDetails",
+      "acceptanceCriteria": [
+        "Requests under /identity, /crm and /sales return application/problem+json for 401, 403, 404, 409 and unhandled 500 responses.",
+        "The ProblemDetails title is human-readable and the stable machine code is in extensions.code or type.",
+        "Unknown API routes and unauthenticated API requests no longer return HTML or empty bodies.",
+        "Contract tests cover each status code on each module."
+      ],
+      "context": [
+        "src/BSX.Web/Program.cs:156-162",
+        "src/BSX.Web/Authentication/WebAuthenticationExtensions.cs:113-122",
+        "src/BSX.Web/Components/Pages/Error.razor",
+        "src/BSX.Web/Components/Pages/NotFound.razor",
+        "src/Modules/Crm/BSX.Modules.Crm.Endpoints/CrmResults.cs:30-44"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-008",
+      "title": "Harden outbox recovery with periodic stale requeue and poison-message isolation",
+      "acceptanceCriteria": [
+        "Stale processing rows are requeued periodically, not only during the first loop pass.",
+        "Malformed payloads are marked failed or dead-lettered and do not stall other rows or stores.",
+        "Tests cover a stale row requeued after the first pass and a malformed payload isolated from healthy rows."
+      ],
+      "context": [
+        "src/BSX.Persistence/Outbox/OutboxRecoveryService.cs:47-121",
+        "src/BSX.Persistence/Outbox/DomainEventSerializer.cs:20-32",
+        "src/BSX.Persistence/Outbox/OutboxMessage.cs:90-132"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-009",
+      "title": "Replace permission string literals with module constants",
+      "acceptanceCriteria": [
+        "No [RequirePermission(\"...\")] string literal remains in CRM or Identity Application; all use module permission constants.",
+        "Web PermissionPolicies reference module constants instead of duplicating permission strings.",
+        "An architecture test rejects literal permission codes in RequirePermission attributes.",
+        "Build and tests pass."
+      ],
+      "context": [
+        "src/Modules/Crm/BSX.Modules.Crm.Contracts/Permissions/CrmPermissionCodes.cs",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Common/IdentityPermissionCodes.cs:45-51",
+        "src/Modules/Crm/BSX.Modules.Crm.Application/Addresses/AddAddress/AddAddressCommand.cs:12",
+        "src/BSX.Web/Authorization/PermissionRequirement.cs:12,48-66",
+        "tests/BSX.ArchitectureTests/ModuleBoundaryTests.cs:187-207"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-010",
+      "title": "Remove duplicated domain limits and password policy from Web forms",
+      "acceptanceCriteria": [
+        "Web form validation attributes reference module domain constants or shared validators instead of re-declaring lengths, formats and numeric limits.",
+        "The password policy is defined once and used by Identity application validators and Web forms.",
+        "Tests prove that Web and domain limits stay aligned for customer, address, lead, opportunity and user forms."
+      ],
+      "context": [
+        "src/BSX.Web/Crm/AddressFormModel.cs:19-41",
+        "src/BSX.Web/Sales/OpportunityFormModel.cs:20-56",
+        "src/BSX.Web/Sales/LeadFormModel.cs:16-27",
+        "src/BSX.Web/Crm/CustomerFormModel.cs:18-35",
+        "src/BSX.Web/Administration/UserCreateFormModel.cs:15-25",
+        "src/BSX.Web/Administration/RoleFormModel.cs:12-19",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Users/RegisterUser/RegisterUserCommandValidator.cs:14",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Authentication/CompletePasswordReset/CompletePasswordResetCommandValidator.cs:12",
+        "src/BSX.Web/Components/Pages/ResetPassword.razor:38"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-011",
+      "title": "Centralize tenant isolation query filters and tenant scopes",
+      "acceptanceCriteria": [
+        "The fail-closed tenant and soft-delete query filter is implemented once in shared persistence and reused by CRM and Sales.",
+        "Tenant scope and tenant resolver duplication is removed or reduced to module-specific typed wrappers.",
+        "Parity tests prove CRM and Sales keep identical tenant-isolation behavior."
+      ],
+      "context": [
+        "src/Modules/Crm/BSX.Modules.Crm.Infrastructure/Persistence/CrmDbContext.cs:53-57",
+        "src/Modules/Sales/BSX.Modules.Sales.Infrastructure/Persistence/SalesDbContext.cs:53-57",
+        "src/Modules/Crm/BSX.Modules.Crm.Infrastructure/Persistence/CrmTenantScope.cs:19-39",
+        "src/Modules/Sales/BSX.Modules.Sales.Infrastructure/Persistence/SalesTenantScope.cs:19-39",
+        "src/Modules/Crm/BSX.Modules.Crm.Application/Abstractions/CrmTenantResolver.cs:12",
+        "src/Modules/Sales/BSX.Modules.Sales.Application/Abstractions/SalesTenantResolver.cs:12"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-012",
+      "title": "Centralize the membership role assignment rule",
+      "acceptanceCriteria": [
+        "The rule that a membership role must be tenant-owned, non-system and belong to the same tenant lives in one domain method or policy.",
+        "AssignRoleToMembership and ChangeMembershipRole use that single implementation and return the same error codes.",
+        "Unit tests cover both handlers and the shared rule."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Memberships/AssignRoleToMembership/AssignRoleToMembershipCommandHandler.cs:71-78",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Memberships/ChangeMembershipRole/ChangeMembershipRoleCommandHandler.cs:77-84",
+        "src/Modules/Identity/BSX.Modules.Identity.Domain/Memberships/TenantMembership.cs"
+      ],
+      "priority": "high",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-013",
+      "title": "Add tenant-scoped Identity lookups and remove the cross-tenant existence oracle",
+      "acceptanceCriteria": [
+        "Identity tenant-owned lookups are scoped by the current tenant or return NotFound for cross-tenant resources.",
+        "No endpoint distinguishes a missing resource from a resource that exists in another tenant.",
+        "Security tests cover cross-tenant membership, role and service-account enumeration.",
+        "An architecture test fails tenant-owned repository access that is not tenant-scoped."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Persistence/IdentityDbContext.cs:46-58",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Common/TenantGuard.cs:21-31",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Memberships/AssignRoleToMembership/AssignRoleToMembershipCommandHandler.cs:46-59",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Memberships/RemoveMembership/RemoveMembershipCommandHandler.cs:44-57",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Roles/GetRoleById/GetRoleByIdQueryHandler.cs:33-50"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-014",
+      "title": "Deduplicate JWT validation parameters and claim names",
+      "acceptanceCriteria": [
+        "One shared factory or configuration builds JWT validation parameters for both token issuance/validation and endpoint authentication.",
+        "Claim names are defined once and consumed by the issuer, validator and Web authentication layer.",
+        "Tests assert issuer, validator and Web agree on issuer, audience, lifetime, clock skew and claim names."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Jwt/JwtAccessTokenValidator.cs:17-25",
+        "src/Modules/Identity/BSX.Modules.Identity.Endpoints/Authentication/IdentityAuthenticationExtensions.cs:30-38",
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Jwt/JwtAccessTokenIssuer.cs:11-26",
+        "src/BSX.Web/Authentication/WebAuthDefaults.cs:31-46"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-015",
+      "title": "Add CancellationToken support to Blazor page operations",
+      "acceptanceCriteria": [
+        "Blazor pages create a cancellation scope per operation and cancel it on dispose or navigation.",
+        "All ISender and Dispatcher calls receive the cancellation token.",
+        "Tests prove that navigation away cancels in-flight work."
+      ],
+      "context": [
+        "src/BSX.Web/Components/Pages/App/Home.razor:202-258",
+        "src/BSX.Web/Components/Pages/App/Crm/Customers.razor:149-150",
+        "src/BSX.Web/Components/Pages/App/Crm/CustomerEdit.razor:124-125",
+        "src/BSX.Web/Components/Pages/App/Sales/LeadDetail.razor:286-338",
+        "src/BSX.Web/Components/Pages/App/Admin/Memberships.razor:246-275"
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-016",
+      "title": "Reload route-parameter pages when the ID changes",
+      "acceptanceCriteria": [
+        "Detail and edit pages with route IDs load data in OnParametersSetAsync or equivalent and reload when the ID changes.",
+        "Navigating from record A to record B on the same route renders record B.",
+        "bUnit tests cover A-to-B navigation for CRM, Sales and Identity detail/edit pages."
+      ],
+      "context": [
+        "src/BSX.Web/Components/Pages/App/Crm/CustomerDetail.razor:138",
+        "src/BSX.Web/Components/Pages/App/Crm/CustomerEdit.razor:88",
+        "src/BSX.Web/Components/Pages/App/Sales/LeadDetail.razor:216",
+        "src/BSX.Web/Components/Pages/App/Sales/OpportunityEdit.razor:118",
+        "src/BSX.Web/Components/Pages/App/Admin/UserDetail.razor:170"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-017",
+      "title": "Add ErrorBoundary and recoverable error UI to the Blazor app",
+      "acceptanceCriteria": [
+        "An ErrorBoundary wraps routed content and shows a recoverable error UI with a correlation id.",
+        "Unexpected exceptions do not permanently break navigation; the user can retry or return to a safe page.",
+        "A component test throws inside a page and asserts the recovery UI is rendered."
+      ],
+      "context": [
+        "src/BSX.Web/Components/Layout/MainLayout.razor:32-36",
+        "src/BSX.Web/Components/App.razor",
+        "src/BSX.Web/Components/Routes.razor",
+        "src/BSX.Web/Components/Pages/Error.razor"
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-018",
+      "title": "Fix outbox batching and populate tenant and correlation metadata",
+      "acceptanceCriteria": [
+        "Pending outbox rows are filtered and limited in SQL, not loaded fully into memory.",
+        "Claims use a set-based update or equivalent and avoid one update per row.",
+        "TenantId and CorrelationId are populated when available.",
+        "Tests cover batch-size limits and metadata population."
+      ],
+      "context": [
+        "src/BSX.Persistence/Outbox/EfOutboxStore.cs:48-111",
+        "src/BSX.Persistence/Outbox/OutboxSaveChangesInterceptor.cs:75-82",
+        "src/BSX.Persistence/Outbox/OutboxMessage.cs:83-86"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-019",
+      "title": "Make outbox-disabled and integration-publishing modes fail safe",
+      "acceptanceCriteria": [
+        "Disabling the outbox does not silently disable domain event dispatch; the system either falls back to direct dispatch or fails fast at startup.",
+        "Integration publishing never marks rows processed when only NoOpEventBus is registered.",
+        "Integration rows are claimed atomically before publishing.",
+        "Tests cover disabled mode, no-op bus and concurrent publishers."
+      ],
+      "context": [
+        "src/BSX.Persistence/Outbox/OutboxSaveChangesInterceptor.cs:51-54",
+        "src/BSX.BuildingBlocks/Events/DomainEventDispatcher.cs:57-95",
+        "src/BSX.Persistence/Outbox/OutboxRecoveryService.cs:92-166",
+        "src/BSX.BuildingBlocks/Events/NoOpEventBus.cs:10-30"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-020",
+      "title": "Bound and expire in-memory rate-limit stores",
+      "acceptanceCriteria": [
+        "Expired rate-limit windows are removed and memory does not grow without bound.",
+        "Attacker-controlled partition keys cannot create permanent entries.",
+        "Tests cover eviction and expiry.",
+        "The single-instance limitation is documented in code."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Security/InMemoryRateLimiter.cs:10-45",
+        "src/BSX.BuildingBlocks/RateLimiting/InMemoryRateLimitStore.cs:12-55",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Abstractions/IRateLimiter.cs:17"
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-021",
+      "title": "Fix Identity user list ordering and case-insensitive name search",
+      "acceptanceCriteria": [
+        "Users are ordered deterministically by name and email, or by a documented order other than AccessFailedCount.",
+        "Name search is case-insensitive on PostgreSQL and SQLite.",
+        "Tests cover mixed-case name search and default ordering."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Repositories/UserReadRepository.cs:25-37",
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Persistence/Interceptors/AuditingSaveChangesInterceptor.cs:93-94",
+        "src/Modules/Crm/BSX.Modules.Crm.Infrastructure/Repositories/CustomerReadRepository.cs:120-126"
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-022",
+      "title": "Remove membership N+1 queries and add server-side paging and search",
+      "acceptanceCriteria": [
+        "Membership listing uses a join/projection or batched user lookup instead of one user query per membership.",
+        "Paging and search are performed server-side.",
+        "A test asserts a bounded number of user queries for N memberships."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Memberships/ListTenantMemberships/ListTenantMembershipsQueryHandler.cs:46-66",
+        "src/BSX.Web/Components/Pages/App/Admin/Memberships.razor:172-212",
+        "src/BSX.Web/Components/Pages/App/Home.razor:255-267"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-023",
+      "title": "Add a workspace home summary query and remove bounded scans from Home",
+      "acceptanceCriteria": [
+        "Home uses a dedicated summary query or read model for counts, the best qualified lead and conversion state.",
+        "Correctness does not depend on scanning only the first 100 leads or opportunities.",
+        "URLs come from a shared route helper or NavigationCatalog instead of hardcoded strings.",
+        "Tests cover workspaces with more than 100 leads and opportunities."
+      ],
+      "context": [
+        "src/BSX.Web/Components/Pages/App/Home.razor:192-267",
+        "src/BSX.Web/Home/HomeExperience.cs:47-194",
+        "src/BSX.Web/Navigation/NavigationCatalog.cs:113-117"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-024",
+      "title": "Send password-reset notifications only after the transaction commits",
+      "acceptanceCriteria": [
+        "The reset notification is queued only after a successful commit.",
+        "If the commit fails, no reset email is sent.",
+        "A test simulates commit failure and asserts no notification is dispatched."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Authentication/RequestPasswordReset/RequestPasswordResetCommandHandler.cs:83-92",
+        "src/BSX.BuildingBlocks/Behaviors/TransactionBehavior.cs:47-56",
+        "src/BSX.Web/Notifications/QueuedPasswordResetNotifier.cs:29-43"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-025",
+      "title": "Remove verified dead code and unused abstractions",
+      "acceptanceCriteria": [
+        "IAuditableEntity, ISoftDeletable, PermissionCatalog.ForScope, UserMappings.ToSummary, unused OutboxMessage.Mark* methods and ICrmReferenceValidator are removed or wired to a real consumer.",
+        "Build and tests pass.",
+        "No public API outside the listed types is broken."
+      ],
+      "context": [
+        "src/BSX.BuildingBlocks/Persistence/IAuditableEntity.cs:7",
+        "src/BSX.BuildingBlocks/Persistence/ISoftDeletable.cs:7",
+        "src/BSX.Contracts/Permissions/PermissionCatalog.cs:82",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Mappings/UserMappings.cs:22",
+        "src/BSX.Persistence/Outbox/OutboxMessage.cs:90-132",
+        "src/Modules/Sales/BSX.Modules.Sales.Infrastructure/Crm/ICrmReferenceValidator.cs:9"
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-026",
+      "title": "Remove sync-over-async from CRM reference validation",
+      "acceptanceCriteria": [
+        "The synchronous SavingChanges override no longer blocks async database work.",
+        "The async save path remains unchanged.",
+        "A test asserts the synchronous path is rejected or no longer used."
+      ],
+      "context": [
+        "src/Modules/Sales/BSX.Modules.Sales.Infrastructure/Persistence/Interceptors/CrmReferenceValidationInterceptor.cs:24-30"
+      ],
+      "priority": "low",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-027",
+      "title": "Remove nondeterministic timing and wall-clock dependencies from tests",
+      "acceptanceCriteria": [
+        "No test relies on Task.Delay for synchronization; use deterministic barriers or signals.",
+        "Date/time-dependent tests use a controllable TimeProvider with fixed values.",
+        "No wall-clock elapsed-time assertions remain in functional tests.",
+        "Affected tests pass repeatedly."
+      ],
+      "context": [
+        "tests/Modules/Identity/BSX.Modules.Identity.Infrastructure.IntegrationTests/PostgreSqlSecurityParityTests.cs:153-160",
+        "tests/Integration/BSX.Web.IntegrationTests/SalesTestData.cs:10",
+        "tests/Integration/BSX.Web.IntegrationTests/WebFoundation/SalesFormComponentTests.cs:68-164",
+        "tests/Integration/BSX.Web.IntegrationTests/WebFoundation/PendingLoginStoreTests.cs:16-100",
+        "tests/Integration/BSX.Web.IntegrationTests/Notifications/PasswordResetNotificationQueueTests.cs:23-30"
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-028",
+      "title": "Fix Docker test gating and use the production authorization revalidator in web tests",
+      "acceptanceCriteria": [
+        "Docker gating semantics are centralized and explicit: true/1 requires Docker, false/0 skips, unset auto-detects.",
+        "The main web integration factory uses the production WebAuthorizationRevalidator.",
+        "Claim-only compatibility tests explicitly assert the intended rejection or behavior.",
+        "A test proves claim-only principals are rejected in production mode."
+      ],
+      "context": [
+        "tests/Modules/Identity/BSX.Modules.Identity.Infrastructure.IntegrationTests/TestInfrastructure/DockerAvailableFactAttribute.cs:10-63",
+        "tests/Modules/Crm/BSX.Modules.Crm.Infrastructure.IntegrationTests/TestInfrastructure/DockerAvailableFactAttribute.cs",
+        "tests/Integration/BSX.Web.IntegrationTests/IdentityApiFactory.cs:333-336",
+        "tests/Integration/BSX.Web.IntegrationTests/TestAuthorizationRevalidator.cs:22-30"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-029",
+      "title": "Update non-ADR documentation to match the implemented code",
+      "acceptanceCriteria": [
+        "Foundation, module catalog, Identity README, CRM/Sales/Inventory module docs and .opencode context reflect implemented layers and host composition.",
+        "CRM and Sales docs no longer claim Infrastructure, API or UI are out of scope.",
+        "Inventory docs state Domain plus Application only and that the host does not compose it.",
+        "README stack matches actual packages and assets; remove MudBlazor, Tailwind and Docker claims unless they are added.",
+        "No file under docs/decisions is modified by this task."
+      ],
+      "context": [
+        "docs/architecture/foundation.md:9-10,75,164-172",
+        ".opencode/context/module-catalog.md:10-40",
+        "docs/modules/identity/README.md:7-13",
+        "docs/modules/crm/domain-model.md:3-4,192-197",
+        "docs/modules/sales/domain-model.md:3-5",
+        "docs/modules/inventory/application.md:3,58-65,127-147",
+        "README.md:32-34,52-57,77,92-104",
+        ".opencode/context/architecture-overview.md:21-23,48-52"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-030",
+      "title": "Harden architecture tests for all modules and layers",
+      "acceptanceCriteria": [
+        "Architecture tests discover modules from the solution or project references instead of a hardcoded list.",
+        "Missing expected layers fail unless explicitly allowlisted, with Inventory as the only documented exception.",
+        "Endpoints cannot reference own Infrastructure, EF Core or BSX.Web; Application cannot reference ASP.NET Core or BSX.Web; Infrastructure cannot reference Endpoints or BSX.Web.",
+        "Module classes are subject to sealing and naming rules.",
+        "Every IRequest has a permission attribute except an explicit allowlist.",
+        "An architecture test rejects literal permission codes."
+      ],
+      "context": [
+        "tests/BSX.ArchitectureTests/GovernedAssemblies.cs:21-56",
+        "tests/BSX.ArchitectureTests/ModuleBoundaryTests.cs:80-207",
+        "tests/BSX.ArchitectureTests/LayerDependencyTests.cs:8-40",
+        "tests/BSX.ArchitectureTests/NamingConventionTests.cs:8-10",
+        "tests/BSX.ArchitectureTests/ClassSealingTests.cs:8-10"
+      ],
+      "priority": "high",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-031",
+      "title": "Standardize created-resource HTTP responses",
+      "acceptanceCriteria": [
+        "All create operations return 201 with a usable Location or consistently use the documented alternative.",
+        "Identity created responses do not emit an empty Location.",
+        "Subresource creates in CRM use the same policy as top-level creates.",
+        "Endpoint tests cover status and Location for each module."
+      ],
+      "context": [
+        "src/Modules/Crm/BSX.Modules.Crm.Endpoints/CrmResults.cs:23-26",
+        "src/Modules/Sales/BSX.Modules.Sales.Endpoints/SalesResults.cs:23-26",
+        "src/Modules/Identity/BSX.Modules.Identity.Endpoints/IdentityResults.cs:23-24",
+        "src/Modules/Crm/BSX.Modules.Crm.Endpoints/CrmEndpointRouteBuilderExtensions.cs:115-196"
+      ],
+      "priority": "low",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-032",
+      "title": "Add session and refresh-token retention cleanup",
+      "acceptanceCriteria": [
+        "Expired and revoked sessions and consumed or expired refresh tokens are purged after a configurable retention period.",
+        "Cleanup is idempotent and logged.",
+        "Tests cover retention boundaries and repeated execution."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Domain/Sessions/UserSession.cs:163-177",
+        "src/Modules/Identity/BSX.Modules.Identity.Domain/Sessions/SessionPolicy.cs:10-15",
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/DependencyInjection/IdentityInfrastructureServiceCollectionExtensions.cs:75-76"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-033",
+      "title": "Map known unique-constraint violations to 409 conflicts",
+      "acceptanceCriteria": [
+        "Concurrent duplicate customer, organization, lead, opportunity, user and role inserts return 409 with the platform conflict contract.",
+        "Mapping is consistent across Identity, CRM and Sales.",
+        "Integration tests force each known unique constraint at the HTTP layer."
+      ],
+      "context": [
+        "src/Modules/Crm/BSX.Modules.Crm.Application/Customers/CreateCustomer/CreateCustomerCommandHandler.cs:62-64",
+        "src/Modules/Sales/BSX.Modules.Sales.Application/Opportunities/CreateOpportunityFromLead/CreateOpportunityFromLeadCommandHandler.cs:67-72",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Users/RegisterUser/RegisterUserCommandHandler.cs:49-52",
+        "src/Modules/Crm/BSX.Modules.Crm.Endpoints/CrmConcurrencyConflictFilter.cs:33"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-034",
+      "title": "Add missing Identity validators and fix invalid-session error semantics",
+      "acceptanceCriteria": [
+        "DiscoverTenantOptionsCommand has a validator equivalent to LoginCommand.",
+        "Every public Identity request record has a validator or an explicitly documented exception.",
+        "RevokeSession with an empty id returns an invalid-session-id error, not invalid credentials.",
+        "Tests cover the new validation and error code."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Authentication/DiscoverTenantOptions/DiscoverTenantOptionsCommand.cs:11-13",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Authentication/Login/LoginCommandValidator.cs:11-12",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Sessions/RevokeSession/RevokeSessionCommandHandler.cs:36",
+        "docs/architecture/implementation-guidelines.md:165"
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-035",
+      "title": "Use a shared safe return-URL helper in login UI and endpoint",
+      "acceptanceCriteria": [
+        "Login.razor and WebAuthEndpoints use one SafeReturnUrl implementation.",
+        "Backslash, scheme-relative and absolute external URLs are rejected consistently.",
+        "Tests cover the bypass cases."
+      ],
+      "context": [
+        "src/BSX.Web/Components/Pages/Login.razor:123-129",
+        "src/BSX.Web/Authentication/WebAuthEndpoints.cs:254-265"
+      ],
+      "priority": "low",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-036",
+      "title": "Implement the IModule composition contract",
+      "acceptanceCriteria": [
+        "An IModule contract exists with RegisterServices and MapEndpoints.",
+        "Each composed module exposes exactly one IModule implementation.",
+        "BSX.Web composes modules through IModule and does not reference module Application, Infrastructure or Endpoints projects directly.",
+        "A composition test discovers modules only through IModule."
+      ],
+      "context": [
+        "docs/architecture/module-boundaries.md:62",
+        "docs/architecture/foundation.md:62,75,151",
+        "src/BSX.Web/BSX.Web.csproj:23-33",
+        "src/BSX.Web/Program.cs:61-104,183-185"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-037",
+      "title": "Create Identity.Contracts and move the permission catalog",
+      "acceptanceCriteria": [
+        "BSX.Modules.Identity.Contracts exists and contains permission codes, catalog and cross-module contract types.",
+        "IdentityPermissionCodes moves out of Application.",
+        "Web and tests reference Identity.Contracts instead of Identity.Application implementation types.",
+        "An architecture test requires Contracts for every completed module except the explicitly incomplete Inventory."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Common/IdentityPermissionCodes.cs:45-51",
+        "src/BSX.Web/Navigation/NavigationCatalog.cs:2",
+        "src/BSX.Web/Components/_Imports.razor:12",
+        "docs/modules/identity/module-boundaries.md:17,37-45",
+        "tests/BSX.ArchitectureTests/GovernedAssemblies.cs:21-26"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-038",
+      "title": "Move IIntegrationEvent to BSX.Contracts and add a real integration event",
+      "acceptanceCriteria": [
+        "IIntegrationEvent and its base types live in BSX.Contracts.",
+        "Module Contracts can implement integration events without referencing BuildingBlocks.",
+        "At least one real integration event is produced and consumed through the outbox.",
+        "Architecture tests confirm the dependency direction."
+      ],
+      "context": [
+        "src/BSX.BuildingBlocks/Events/IIntegrationEvent.cs:8",
+        "src/BSX.Contracts/",
+        "src/BSX.Persistence/Outbox/OutboxRecoveryService.cs:180",
+        "docs/decisions/ADR-015-Contracts-Abstraction-Strategy.md:33-36",
+        "tests/BSX.ArchitectureTests/ModuleBoundaryTests.cs:23-33"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-039",
+      "title": "Remove Endpoints-to-Infrastructure project dependencies",
+      "acceptanceCriteria": [
+        "CRM, Identity and Sales Endpoints projects no longer reference their own Infrastructure projects.",
+        "Health checks, migration helpers and infrastructure exception filters move to Infrastructure or a composition project.",
+        "Endpoint filters depend only on Application or Contracts types.",
+        "Architecture tests forbid Endpoints-to-own-Infrastructure and Endpoints-to-EF-Core dependencies."
+      ],
+      "context": [
+        "src/Modules/Crm/BSX.Modules.Crm.Endpoints/BSX.Modules.Crm.Endpoints.csproj:17",
+        "src/Modules/Identity/BSX.Modules.Identity.Endpoints/BSX.Modules.Identity.Endpoints.csproj:18",
+        "src/Modules/Sales/BSX.Modules.Sales.Endpoints/BSX.Modules.Sales.Endpoints.csproj:17",
+        "src/Modules/Sales/BSX.Modules.Sales.Endpoints/SalesCrmReferenceExceptionFilter.cs:2",
+        "tests/BSX.ArchitectureTests/ModuleBoundaryTests.cs:109-133"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-040",
+      "title": "Complete or explicitly quarantine the Inventory module",
+      "acceptanceCriteria": [
+        "Inventory is either completed with Contracts, Infrastructure, Endpoints, migrations, host registration and UI navigation, or formally removed from the shipping solution.",
+        "If kept dormant, its permission catalog is not presented as active and the documentation says so.",
+        "Composition tests cover whichever decision is made."
+      ],
+      "context": [
+        "src/Modules/Inventory/",
+        "src/BSX.Web/BSX.Web.csproj:21-33",
+        "src/BSX.Web/Program.cs:61-108",
+        "src/BSX.Web/Navigation/NavigationCatalog.cs:9",
+        "README.md:108,232",
+        "docs/architecture/foundation.md:41-42"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-041",
+      "title": "Resolve service-account, API-key and MFA dead surfaces",
+      "acceptanceCriteria": [
+        "Service accounts, API keys and MFA/passkey capabilities are either exposed end-to-end or removed from code, permissions and schema.",
+        "No permission is published for a capability that cannot be executed.",
+        "The decision is recorded in an ADR if the feature is deferred or removed."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Application/ServiceAccounts/",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/ApiKeys/",
+        "src/Modules/Identity/BSX.Modules.Identity.Domain/Users/User.cs:280-342",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Common/IdentityPermissionCodes.cs:45-51,84-86"
+      ],
+      "priority": "medium",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-042",
+      "title": "Remove or feature-gate the outbox and event bus until a real consumer exists",
+      "acceptanceCriteria": [
+        "The platform either implements real domain-event consumers and integration producers or removes/feature-gates the outbox, recovery service, IEventBus and integration tables.",
+        "No command pays outbox persistence cost without a consumer.",
+        "The decision and its operational consequences are documented."
+      ],
+      "context": [
+        "src/BSX.Persistence/Outbox/",
+        "src/BSX.BuildingBlocks/Events/NoOpEventBus.cs:10-30",
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Persistence/Outbox/OutboxWriter.cs:8-38",
+        "src/BSX.Web/appsettings.json:27"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-043",
+      "title": "Add CI quality gates for format, coverage, vulnerabilities and migration drift",
+      "acceptanceCriteria": [
+        "CI runs dotnet format --verify-no-changes.",
+        "CI enforces a coverage threshold and publishes a coverage report.",
+        "CI runs dotnet list package --vulnerable --include-transitive and fails on vulnerabilities.",
+        "CI runs dotnet ef migrations has-pending-model-changes for each module with Infrastructure.",
+        "CI uses caching, concurrency cancellation and job timeouts."
+      ],
+      "context": [
+        ".github/workflows/ci.yml:30-108",
+        ".config/dotnet-tools.json",
+        "docs/operations/ci-cd.md:11-18",
+        "tests/Integration/BSX.Web.IntegrationTests/IdentityApiFactory.cs:370,440,444"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-044",
+      "title": "Consolidate duplicated test infrastructure into a shared test kit",
+      "acceptanceCriteria": [
+        "A shared test-support project contains common fakes, time providers, event dispatchers, Docker gating, test data builders and Web host helpers.",
+        "Module-specific test projects reuse the shared kit and keep only module-specific data.",
+        "Existing divergent fakes are unified or explicitly documented."
+      ],
+      "context": [
+        "tests/Modules/Crm/BSX.Modules.Crm.Application.UnitTests/Fakes/FakeUnitOfWork.cs",
+        "tests/Modules/Identity/BSX.Modules.Identity.Application.UnitTests/Fakes/FakeUnitOfWork.cs",
+        "tests/Modules/Sales/BSX.Modules.Sales.Application.UnitTests/Fakes/FakeUnitOfWork.cs",
+        "tests/Integration/BSX.Web.IntegrationTests/WebFoundation/WebFoundationTestHelper.cs:9-18",
+        "tests/Integration/BSX.Web.IntegrationTests/DeploymentHardeningTestHelper.cs:11-21"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-045",
+      "title": "Fix role soft-delete unique index and deletion audit fields",
+      "acceptanceCriteria": [
+        "Role unique indexes are filtered so a soft-deleted role name can be reused.",
+        "Role deletion records DeletedOnUtc and DeletedBy consistently with CRM and Sales.",
+        "A migration and regression test are added.",
+        "The change is reviewed before deployment."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Persistence/Configurations/RoleConfiguration.cs:22-37",
+        "src/Modules/Identity/BSX.Modules.Identity.Domain/Roles/Role.cs:152-168",
+        "src/Modules/Crm/BSX.Modules.Crm.Infrastructure/Persistence/Configurations/CustomerConfiguration.cs:52-54",
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Persistence/Migrations/"
+      ],
+      "priority": "medium",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-046",
+      "title": "Bind and validate RateLimitOptions from configuration",
+      "acceptanceCriteria": [
+        "Identity:RateLimiting is bound through IOptions with validation.",
+        "Operators can tune login, refresh and password-reset limits without code changes.",
+        "Startup fails on invalid limits.",
+        "Tests cover binding and validation."
+      ],
+      "context": [
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/DependencyInjection/IdentityInfrastructureServiceCollectionExtensions.cs:75",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Abstractions/RateLimitOptions.cs:4-16",
+        "src/BSX.Web/Program.cs:62-63",
+        "src/BSX.Web/appsettings.json"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-047",
+      "title": "Define the cross-module transaction and unit-of-work strategy",
+      "acceptanceCriteria": [
+        "The platform stops opening transactions on every module for every command.",
+        "Cross-module atomicity is either implemented or explicitly replaced with documented compensation/saga semantics.",
+        "Commands target a single module unless explicitly designed otherwise.",
+        "Tests prove single-module commands do not open unrelated module transactions."
+      ],
+      "context": [
+        "src/BSX.BuildingBlocks/Persistence/CompositeUnitOfWork.cs:43-107",
+        "src/BSX.BuildingBlocks/Persistence/CompositeDatabaseTransaction.cs:4-21",
+        "src/BSX.Web/Program.cs:108",
+        "docs/architecture/implementation-guidelines.md:65-66"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-048",
+      "title": "Amend or supersede ADRs that no longer match the implemented architecture",
+      "acceptanceCriteria": [
+        "ADR-011, ADR-015, ADR-016, ADR-009, ADR-012, ADR-010 and ADR-018 are reviewed and either implemented or formally superseded/amended.",
+        "Each ADR states its actual implementation status.",
+        "Architecture diagrams are updated to separate as-built behavior from planned behavior.",
+        "Documentation no longer claims nonexistent JWKS, deny-list, tenant switching, encrypted reset outbox or integration events."
+      ],
+      "context": [
+        "docs/decisions/ADR-011-Result-And-Error-Mapping-Strategy.md",
+        "docs/decisions/ADR-015-Contracts-Abstraction-Strategy.md",
+        "docs/decisions/ADR-016-Password-Reset-Security-Strategy.md",
+        "docs/decisions/ADR-009-Domain-Event-Dispatching-Strategy.md",
+        "docs/decisions/ADR-012-Authorization-Architecture.md",
+        "docs/decisions/ADR-010-Auditing-Strategy.md",
+        "docs/decisions/ADR-018-Role-Lifecycle-And-Permission-Cache-Strategy.md",
+        "docs/diagrams/"
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-049",
+      "title": "Consolidate the two rate-limiting abstractions",
+      "acceptanceCriteria": [
+        "The platform keeps a single rate-limiting abstraction and store.",
+        "Identity-specific limits use the same store or a clearly documented adapter.",
+        "The dead BuildingBlocks.RateLimiting surface is removed or wired to real consumers.",
+        "HA guidance names the actual distributed abstraction."
+      ],
+      "context": [
+        "src/BSX.BuildingBlocks/RateLimiting/",
+        "src/Modules/Identity/BSX.Modules.Identity.Application/Abstractions/IRateLimiter.cs:17",
+        "src/Modules/Identity/BSX.Modules.Identity.Infrastructure/Security/InMemoryRateLimiter.cs:10-45",
+        "docs/operations/rate-limiting.md:3-57",
+        "docs/operations/deployment-ha.md:44-49"
+      ],
+      "priority": "medium",
+      "risk": "medium",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-050",
+      "title": "Harden deployment security: Data Protection, CSP, proxy trust and reset-token transport",
+      "acceptanceCriteria": [
+        "Data Protection keys are protected at rest or stored in a managed key store.",
+        "CSP no longer allows arbitrary WebSocket connections; inline script usage is removed or documented.",
+        "Production startup validates reverse-proxy trust or requires explicit disablement.",
+        "Password-reset tokens are not carried in URLs that are routinely logged.",
+        "Security tests or startup checks cover each control."
+      ],
+      "context": [
+        "src/BSX.Web/Deployment/SecurityHeadersOptions.cs:14-30",
+        "src/BSX.Web/Deployment/WebDeploymentHardeningExtensions.cs:52-63,217-222",
+        "src/BSX.Web/Deployment/FileSystemKeyRepository.cs:7-70",
+        "src/BSX.Web/Notifications/PasswordResetEmail.cs:25,77-87",
+        "src/BSX.Web/Authentication/WebPasswordResetEndpoints.cs:73,124"
+      ],
+      "priority": "medium",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-051",
+      "title": "Add outbox backlog readiness and enable schema verification in production",
+      "acceptanceCriteria": [
+        "A readiness check reports degraded when outbox backlog or dead-letter count exceeds configured thresholds.",
+        "Production configuration enables schema verification for each module.",
+        "Health-check tests cover healthy and degraded states.",
+        "The health-check documentation matches the implementation."
+      ],
+      "context": [
+        "src/BSX.Web/Program.cs:174-182",
+        "src/BSX.Persistence/Outbox/OutboxRecoveryService.cs:131-136",
+        "src/BSX.Web/appsettings.json:34-38,81-90",
+        "docs/operations/health-checks.md:11",
+        "docs/decisions/ADR-009-Domain-Event-Dispatching-Strategy.md:199-202"
+      ],
+      "priority": "low",
+      "risk": "medium",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    }
+  ]
+}

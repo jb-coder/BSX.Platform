@@ -138,6 +138,9 @@ generated-docs/
 .opencode/tmp/
 .opencode/workspaces/
 .opencode/sessions/
+.opencode/state/autodev.lock
+.opencode/state/autodev.log
+.opencode/state/STOP
 
 #############################################
 # AI Generated Temporary Files

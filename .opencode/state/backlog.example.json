@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Add customer display name validation",
+      "acceptanceCriteria": [
+        "Empty or whitespace display names are rejected with a Result failure.",
+        "Existing behavior for valid names is preserved.",
+        "A unit test covers the rejection and the happy path."
+      ],
+      "priority": "medium",
+      "risk": "low",
+      "requiresHumanApproval": false,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    },
+    {
+      "id": "TASK-002",
+      "title": "Change customer table schema",
+      "acceptanceCriteria": [
+        "Add a new required column with a migration."
+      ],
+      "priority": "high",
+      "risk": "high",
+      "requiresHumanApproval": true,
+      "status": "pending",
+      "branch": null,
+      "attempts": 0,
+      "lastError": null,
+      "updatedAt": null
+    }
+  ]
+}

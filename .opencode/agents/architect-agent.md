@@ -8,8 +8,14 @@ permission:
     "git status*": allow
     "git diff*": allow
     "git log*": allow
+    "git show*": allow
+    "git rev-parse*": allow
     "dotnet build *": allow
     "dotnet test *": allow
+    "Test-Path*": allow
+    "Get-Content*": allow
+    "Get-ChildItem*": allow
+    "Select-String*": allow
 ---
 
 # BSX Platform Architect Agent
