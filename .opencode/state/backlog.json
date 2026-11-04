@@ -45,11 +45,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "pending",
-      "branch": null,
-      "attempts": 0,
+      "status": "designing",
+      "branch": "feature/fix-demo-seeding-authorization-revalidation",
+      "attempts": 1,
       "lastError": null,
-      "updatedAt": null
+      "updatedAt": "2026-11-04T18:16:53.0004341+01:00"
     },
     {
       "id": "TASK-003",
