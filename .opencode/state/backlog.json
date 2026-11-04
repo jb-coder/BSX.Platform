@@ -20,11 +20,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "pending",
-      "branch": null,
-      "attempts": 0,
+      "status": "designing",
+      "branch": "feature/prevent-rolepermissions-empty-permission-set",
+      "attempts": 1,
       "lastError": null,
-      "updatedAt": null
+      "updatedAt": "2026-11-04T17:55:20.5813750+01:00"
     },
     {
       "id": "TASK-002",
