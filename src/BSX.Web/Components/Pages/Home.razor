@@ -71,6 +71,13 @@
 }
 else
 {
+    if (!_hasTenant)
+    {
+        <div class="alert alert-info" role="status">
+            No workspace is assigned to your account. Platform areas remain available from the navigation.
+        </div>
+    }
+
     if (_loadWarning)
     {
         <div class="alert alert-warning" role="status">
@@ -81,7 +88,12 @@ else
     <div id="getting-started">
         <Card Title="Getting started"
               Subtitle="@ProgressText">
-            @if (_visibleSteps.Count == 0)
+            @if (!_hasTenant)
+            {
+                <EmptyState Title="No workspace assigned"
+                            Description="CRM, Sales and memberships require an active workspace. Platform areas remain available from the navigation." />
+            }
+            else if (_visibleSteps.Count == 0)
             {
                 <EmptyState Title="Your role has a focused starting point"
                             Description="Use the workspace areas below or ask an administrator to grant access to CRM, Sales or memberships." />
@@ -159,10 +171,13 @@ else
     private bool _isNewWorkspace;
     private bool _loadWarning;
     private bool _canCreateCustomer;
+    private bool _hasTenant;
 
-    private string ProgressText => _visibleSteps.Count == 0
-        ? "Your first steps in BSX."
-        : $"{_visibleSteps.Count(step => step.IsComplete)} of {_visibleSteps.Count} complete";
+    private string ProgressText => !_hasTenant
+        ? "No workspace assigned."
+        : _visibleSteps.Count == 0
+            ? "Your first steps in BSX."
+            : $"{_visibleSteps.Count(step => step.IsComplete)} of {_visibleSteps.Count} complete";
 
     protected override async Task OnInitializedAsync()
     {
@@ -173,21 +188,24 @@ else
         _greeting = string.IsNullOrWhiteSpace(name) ? "Welcome to your workspace" : $"Welcome, {name}";
 
         IReadOnlyCollection<string> permissions = NavigationCatalog.PermissionsOf(state.User);
-        IReadOnlyList<NavigationSection> sections = NavigationCatalog.For(permissions);
+        Guid? tenantId = NavigationCatalog.TenantIdOf(state.User);
+        _hasTenant = NavigationCatalog.HasActiveTenant(tenantId);
+        IReadOnlyList<NavigationSection> sections = NavigationCatalog.For(permissions, tenantId);
         _productSections = sections
             .Where(section => !string.Equals(section.Label, "Workspace", StringComparison.Ordinal))
             .ToArray();
 
-        bool canReadCustomers = permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
-        bool canReadLeads = permissions.Contains(SalesPermissionCodes.LeadsRead, StringComparer.Ordinal);
-        bool canReadOpportunities = permissions.Contains(
-            SalesPermissionCodes.OpportunitiesRead,
-            StringComparer.Ordinal);
-        bool canReadMemberships = permissions.Contains(
-            IdentityPermissionCodes.MembershipsRead,
-            StringComparer.Ordinal);
+        bool canReadCustomers = _hasTenant
+            && permissions.Contains(CrmPermissionCodes.CustomersRead, StringComparer.Ordinal);
+        bool canReadLeads = _hasTenant
+            && permissions.Contains(SalesPermissionCodes.LeadsRead, StringComparer.Ordinal);
+        bool canReadOpportunities = _hasTenant
+            && permissions.Contains(SalesPermissionCodes.OpportunitiesRead, StringComparer.Ordinal);
+        bool canReadMemberships = _hasTenant
+            && permissions.Contains(IdentityPermissionCodes.MembershipsRead, StringComparer.Ordinal);
 
-        _canCreateCustomer = permissions.Contains(CrmPermissionCodes.CustomersCreate, StringComparer.Ordinal);
+        _canCreateCustomer = _hasTenant
+            && permissions.Contains(CrmPermissionCodes.CustomersCreate, StringComparer.Ordinal);
 
         int customerCount = 0;
         int leadCount = 0;
@@ -272,7 +290,8 @@ else
             leadCount,
             opportunityCount,
             membershipCount,
-            qualifiedLeadId);
+            qualifiedLeadId,
+            _hasTenant);
 
         _visibleSteps = HomeExperience.BuildSteps(input)
             .Where(step => step.IsAvailable)

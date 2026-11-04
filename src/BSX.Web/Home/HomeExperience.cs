@@ -36,13 +36,15 @@ public sealed record GettingStartedStep(
 /// <param name="OpportunityCount">The number of opportunities in the workspace.</param>
 /// <param name="MembershipCount">The number of workspace memberships, including the current user.</param>
 /// <param name="QualifiedLeadId">A qualified lead that has no opportunity yet, when known.</param>
+/// <param name="HasTenant">Whether the user has an active tenant. Tenant-scoped guidance is hidden without one.</param>
 public sealed record GettingStartedInput(
     IReadOnlyCollection<string> Permissions,
     int CustomerCount,
     int LeadCount,
     int OpportunityCount,
     int MembershipCount,
-    Guid? QualifiedLeadId);
+    Guid? QualifiedLeadId,
+    bool HasTenant = true);
 
 /// <summary>Builds the permission-aware first-run path shown on the workspace home page.</summary>
 public static class HomeExperience
@@ -54,14 +56,15 @@ public static class HomeExperience
         ArgumentNullException.ThrowIfNull(input);
 
         var granted = new HashSet<string>(input.Permissions, StringComparer.Ordinal);
-        bool canReadCustomers = granted.Contains(CrmPermissionCodes.CustomersRead);
-        bool canReadLeads = granted.Contains(SalesPermissionCodes.LeadsRead);
-        bool canReadOpportunities = granted.Contains(SalesPermissionCodes.OpportunitiesRead);
-        bool canReadMemberships = granted.Contains(IdentityPermissionCodes.MembershipsRead);
+        bool hasTenant = input.HasTenant;
+        bool canReadCustomers = hasTenant && granted.Contains(CrmPermissionCodes.CustomersRead);
+        bool canReadLeads = hasTenant && granted.Contains(SalesPermissionCodes.LeadsRead);
+        bool canReadOpportunities = hasTenant && granted.Contains(SalesPermissionCodes.OpportunitiesRead);
+        bool canReadMemberships = hasTenant && granted.Contains(IdentityPermissionCodes.MembershipsRead);
 
-        bool canCreateCustomers = granted.Contains(CrmPermissionCodes.CustomersCreate);
-        bool canCreateLeads = granted.Contains(SalesPermissionCodes.LeadsCreate);
-        bool canManageMemberships = granted.Contains(IdentityPermissionCodes.MembershipsManage);
+        bool canCreateCustomers = hasTenant && granted.Contains(CrmPermissionCodes.CustomersCreate);
+        bool canCreateLeads = hasTenant && granted.Contains(SalesPermissionCodes.LeadsCreate);
+        bool canManageMemberships = hasTenant && granted.Contains(IdentityPermissionCodes.MembershipsManage);
 
         var steps = new List<GettingStartedStep>
         {
@@ -89,7 +92,10 @@ public static class HomeExperience
     public static bool IsNewWorkspace(GettingStartedInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
-        return input.CustomerCount == 0 && input.LeadCount == 0 && input.OpportunityCount == 0;
+        return input.HasTenant
+            && input.CustomerCount == 0
+            && input.LeadCount == 0
+            && input.OpportunityCount == 0;
     }
 
     private static GettingStartedStep CustomerStep(int customerCount, bool canRead, bool canCreate)

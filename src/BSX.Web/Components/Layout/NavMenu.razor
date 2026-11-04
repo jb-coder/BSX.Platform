@@ -32,7 +32,9 @@
     protected override async Task OnInitializedAsync()
     {
         AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        _sections = NavigationCatalog.For(NavigationCatalog.PermissionsOf(state.User));
+        _sections = NavigationCatalog.For(
+            NavigationCatalog.PermissionsOf(state.User),
+            NavigationCatalog.TenantIdOf(state.User));
     }
 
     private Task NotifyNavigated() => OnNavigate.InvokeAsync();
