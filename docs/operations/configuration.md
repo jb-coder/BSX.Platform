@@ -40,9 +40,13 @@ environment or a secret store, never from committed files.
 | `Outbox:BatchSize` | No | `100` | Rows per module per poll. |
 | `Outbox:MaxRetryCount` | No | `10` | Failed attempts before dead-lettering. |
 | `Outbox:BaseBackoff` | No | `00:00:05` | Exponential retry base. |
-| `Outbox:StaleProcessingAfter` | No | `00:05:00` | Requeue claims older than this after a crash. |
+| `Outbox:StaleProcessingAfter` | No | `00:05:00` | Requeue claims older than this after a crash. The stale-claim check runs on every poll. |
 | `Demo:SeedIdentity` | No | `false` | Development-only demo administrator and workspace bootstrap. Ignored outside Development. |
 | `Demo:SeedSampleData` | No | `false` | Development-only, idempotent CRM, Sales and invite-ready user sample data. Requires the demo administrator. Ignored outside Development. |
+
+The recovery loop requeues stale claims on every `Outbox:PollInterval` pass, not only at startup.
+If a domain row cannot be deserialized, the row is marked `Failed` (or `DeadLettered` after
+`Outbox:MaxRetryCount`) and the loop keeps processing the remaining rows and module stores.
 
 ## Deployment hardening settings
 

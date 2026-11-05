@@ -536,10 +536,11 @@ Los errores se devuelven como `ProblemDetails` con `title = code` y `detail = me
 6. Si todos los handlers terminan bien → `MarkProcessedAsync`.
 7. Si algún handler falla → `MarkFailedAsync`; se incrementa `RetryCount`, se calcula backoff
    exponencial (`BaseBackoff * 2^(n-1)`) y se pasa a `Failed` o `DeadLettered`.
-8. `OutboxRecoveryService` corre cada `Outbox:PollInterval`, reencola claims obsoletos, lee pendientes
-   y despacha domain events. Los integration events solo se publican si
-   `Outbox:IntegrationPublishingEnabled=true` y hay `IEventBus`; por defecto no hay broker y
-   `NoOpEventBus` no hace nada.
+8. `OutboxRecoveryService` corre cada `Outbox:PollInterval` y reencola claims obsoletos en **cada**
+   pasada (no solo al arrancar), lee pendientes y despacha domain events. Un payload malformado se
+   marca `Failed`/`DeadLettered` de forma aislada: no bloquea al resto de filas ni a otros stores.
+   Los integration events solo se publican si `Outbox:IntegrationPublishingEnabled=true` y hay
+   `IEventBus`; por defecto no hay broker y `NoOpEventBus` no hace nada.
 9. En tests unitarios sin `IOutboxStore`, el dispatcher ejecuta handlers directamente por
    compatibilidad.
 
@@ -2259,10 +2260,11 @@ Errors are returned as `ProblemDetails` with `title = code` and `detail = messag
 6. All handlers succeed → `MarkProcessedAsync`.
 7. A handler fails → `MarkFailedAsync`; `RetryCount` increments, exponential backoff is calculated
    (`BaseBackoff * 2^(n-1)`), and the row moves to `Failed` or `DeadLettered`.
-8. `OutboxRecoveryService` runs every `Outbox:PollInterval`, requeues stale claims, reads pending
-   rows and dispatches domain events. Integration events are published only when
-   `Outbox:IntegrationPublishingEnabled=true` and an `IEventBus` exists; by default there is no broker
-   and `NoOpEventBus` does nothing.
+8. `OutboxRecoveryService` runs every `Outbox:PollInterval` and requeues stale claims on **every**
+   pass (not only at startup), reads pending rows and dispatches domain events. A malformed payload
+   is marked `Failed`/`DeadLettered` in isolation: it does not block the remaining rows or other
+   stores. Integration events are published only when `Outbox:IntegrationPublishingEnabled=true` and
+   an `IEventBus` exists; by default there is no broker and `NoOpEventBus` does nothing.
 9. In unit tests without an `IOutboxStore`, the dispatcher runs handlers directly for backward
    compatibility.
 
@@ -2272,6 +2274,8 @@ Debugging consequences:
 - Inspect `outbox_messages` and `bsx.outbox.*` metrics.
 - Payloads are serialized with `System.Text.Json` plus a value-object converter.
 - There is no explicit event versioning; changing types/payloads may break old rows.
+- A row that cannot be deserialized is marked failed/dead-lettered without stopping the pass, so
+  healthy rows and other module stores continue to be processed.
 
 ### 6.3 Auditing, soft delete and concurrency
 
