@@ -142,11 +142,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "pending",
-      "branch": null,
-      "attempts": 0,
+      "status": "designing",
+      "branch": "feature/make-write-only-roles-usable",
+      "attempts": 1,
       "lastError": null,
-      "updatedAt": null
+      "updatedAt": "2026-11-05T09:15:54.1418707+01:00"
     },
     {
       "id": "TASK-007",
