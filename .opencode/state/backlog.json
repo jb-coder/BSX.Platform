@@ -189,11 +189,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "designing",
+      "status": "done",
       "branch": "feature/harden-outbox-recovery",
       "attempts": 1,
       "lastError": null,
-      "updatedAt": "2026-11-05T09:59:27.7699911+01:00"
+      "updatedAt": "2026-11-05T10:26:06.0762412+01:00"
     },
     {
       "id": "TASK-009",
