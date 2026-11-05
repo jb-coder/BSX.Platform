@@ -142,11 +142,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "designing",
+      "status": "blocked",
       "branch": "feature/make-write-only-roles-usable",
       "attempts": 1,
-      "lastError": null,
-      "updatedAt": "2026-11-05T09:15:54.1418707+01:00"
+      "lastError": "Review verdict: Approved With Changes (not Approved); 1 High. High: PageLoadFailureClassifier checks ErrorType.Forbidden before the '.Tenant.Required' suffix, so real CRM.Tenant.Required / SALES.Tenant.Required (Error.Forbidden) are classified as Forbidden and pages ask for a read permission the user already has; the TenantRequired test uses Error.Validation and is false-green. Fix: match '.Tenant.Required' before generic Forbidden (or restrict Forbidden mapping to Authorization.Forbidden) and test with the real CRM/SALES errors. Medium: MembershipRole shows identity.memberships.read when the missing permission is identity.roles.read; update-only tests do not prove the denied query is avoided or cover the server-side Authorization.Forbidden path. Low: ReadAccessRequiredState exposes the technical permission code; platform-scope user pages are out of scope and docs should be precise.",
+      "updatedAt": "2026-11-05T09:59:11.8205835+01:00"
     },
     {
       "id": "TASK-007",
