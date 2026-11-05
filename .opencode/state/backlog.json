@@ -214,11 +214,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "pending",
-      "branch": null,
-      "attempts": 0,
+      "status": "designing",
+      "branch": "feature/replace-permission-string-literals",
+      "attempts": 1,
       "lastError": null,
-      "updatedAt": null
+      "updatedAt": "2026-11-05T10:26:20.4198080+01:00"
     },
     {
       "id": "TASK-010",
