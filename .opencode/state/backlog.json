@@ -214,11 +214,11 @@
       "priority": "high",
       "risk": "medium",
       "requiresHumanApproval": false,
-      "status": "designing",
+      "status": "blocked",
       "branch": "feature/replace-permission-string-literals",
       "attempts": 1,
-      "lastError": null,
-      "updatedAt": "2026-11-05T10:26:20.4198080+01:00"
+      "lastError": "Review verdict: Approved With Changes (not Approved). No Critical/High. Production refactor verified correct (40 mappings, 24 policy values unchanged). Medium: (1) PermissionDeclarationTests regex only matches [RequirePermission(\"...\")] and misses named arguments, attribute lists, verbatim/raw strings and qualified attribute names; add Roslyn AttributeSyntax inspection and detector tests. (2) PermissionPolicies guard only detects Prefix + \"...\"; it misses full literal policies and its non-vacuity check is satisfied by PermissionRequirement.For; validate each public const <Policy> = Prefix + <identifier> structurally and reject quoted Permission: codes. (3) No semantic request-to-permission mapping tests for the 40 CRM/Identity attributes (copy/paste drift would compile and pass); add CrmPermissionTests/IdentityPermissionTests like Sales/Inventory. Low: docs generalize <Module>PermissionCodes (Sales/Inventory use different names), overstate test coverage, and a test fixture still uses a literal.",
+      "updatedAt": "2026-11-05T11:19:39.0843424+01:00"
     },
     {
       "id": "TASK-010",
