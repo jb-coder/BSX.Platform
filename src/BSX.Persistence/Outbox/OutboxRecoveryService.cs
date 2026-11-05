@@ -44,14 +44,11 @@ public sealed class OutboxRecoveryService : BackgroundService
             return;
         }
 
-        bool firstPass = true;
-
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await ProcessAsync(firstPass, stoppingToken).ConfigureAwait(false);
-                firstPass = false;
+                await ProcessOnceAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -73,7 +70,9 @@ public sealed class OutboxRecoveryService : BackgroundService
         }
     }
 
-    private async Task ProcessAsync(bool requeueStale, CancellationToken cancellationToken)
+    /// <summary>Runs a single recovery pass across every registered module store.</summary>
+    /// <param name="cancellationToken">A token used to cancel the pass.</param>
+    internal async Task ProcessOnceAsync(CancellationToken cancellationToken)
     {
         using Activity? activity = PlatformDiagnostics.ActivitySource.StartActivity("outbox.recovery_pass");
         using IServiceScope scope = _scopeFactory.CreateScope();
@@ -84,10 +83,9 @@ public sealed class OutboxRecoveryService : BackgroundService
 
         foreach (IOutboxStore store in stores)
         {
-            if (requeueStale)
-            {
-                await store.RequeueStaleAsync(_options.StaleProcessingAfter, cancellationToken).ConfigureAwait(false);
-            }
+            // Requeue on every pass so a row abandoned by a crashed worker is recovered even when
+            // it goes stale long after startup, not only during the first loop iteration.
+            await store.RequeueStaleAsync(_options.StaleProcessingAfter, cancellationToken).ConfigureAwait(false);
 
             IReadOnlyList<OutboxEnvelope> envelopes = await store
                 .ReadPendingAsync(_options.BatchSize, cancellationToken)
@@ -103,7 +101,29 @@ public sealed class OutboxRecoveryService : BackgroundService
                     continue;
                 }
 
-                IDomainEvent? domainEvent = DomainEventSerializer.Deserialize(envelope);
+                IDomainEvent? domainEvent;
+
+                try
+                {
+                    domainEvent = DomainEventSerializer.Deserialize(envelope);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    // Isolate the poison row: mark it failed so the remaining envelopes and stores
+                    // keep flowing. Never log the payload, only identifiers and the exception.
+                    await store.MarkFailedAsync(
+                        [envelope.EventId],
+                        $"Could not deserialize domain event '{envelope.EventType}': {exception.Message}",
+                        cancellationToken).ConfigureAwait(false);
+
+                    _logger.LogError(
+                        exception,
+                        "Could not deserialize outbox domain event {EventType} ({EventId}) from {Module}.",
+                        envelope.EventType,
+                        envelope.EventId,
+                        store.ModuleName);
+                    continue;
+                }
 
                 if (domainEvent is null)
                 {
